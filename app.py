@@ -52,6 +52,30 @@ from llm_utils import (
 
 
 # ----------------------------
+# 비밀번호 보호 (테스터 5명만 접근 가능)
+# ----------------------------
+
+def _check_password():
+    """비밀번호 확인 - 인증된 사용자만 앱 사용 가능"""
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
+
+    if not st.session_state.authenticated:
+        st.title("AI 면접 코칭")
+        st.markdown("---")
+        password = st.text_input("테스터 비밀번호를 입력하세요", type="password")
+        if password == "crew2024":  # 테스터용 비밀번호
+            st.session_state.authenticated = True
+            st.rerun()
+        elif password:
+            st.error("비밀번호가 틀렸습니다")
+        st.info("이 서비스는 현재 비공개 테스트 중입니다.")
+        st.stop()
+
+_check_password()
+
+
+# ----------------------------
 # SRCAI 적용 함수 (session_state 접근 필요)
 # ----------------------------
 

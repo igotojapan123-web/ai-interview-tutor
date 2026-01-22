@@ -1,0 +1,55 @@
+{
+  "last_updated": "2026-01-19",
+  "recruitments": [
+    {
+      "id": 1,
+      "airline": "진에어",
+      "position": "2026년 상반기 신입 객실승무원",
+      "start_date": "2026-01-16",
+      "end_date": "2026-01-22",
+      "expected_count": "두 자릿수 (서울/부산)",
+      "note": "4월 입사 예정",
+      "source": "jinair.recruiter.co.kr"
+    },
+    {
+      "id": 2,
+      "airline": "에어프레미아",
+      "position": "2026년 1차 신입 객실승무원",
+      "start_date": "2026-01-08",
+      "end_date": "2026-01-18",
+      "expected_count": "40명 이상",
+      "note": "3~4월 입사 예정",
+      "source": "airpremia.career.greetinghr.com"
+    },
+    {
+      "id": 3,
+      "airline": "파라타항공",
+      "position": "4기 신입/경력 객실승무원",
+      "start_date": "2025-12-23",
+      "end_date": "2025-12-31",
+      "expected_count": "두 자릿수",
+      "note": "2026년 2월 입사 예정",
+      "source": "parataair.recruiter.co.kr"
+    },
+    {
+      "id": 4,
+      "airline": "대한항공",
+      "position": "2025년 신입 객실승무원",
+      "start_date": "2025-09-22",
+      "end_date": "2025-10-13",
+      "expected_count": "대규모",
+      "note": "통합 항공사 대비 대규모 채용",
+      "source": "koreanair.recruiter.co.kr"
+    },
+    {
+      "id": 5,
+      "airline": "아시아나항공",
+      "position": "2025년 신입 인턴 객실승무원",
+      "start_date": "2025-11-06",
+      "end_date": "2025-11-19",
+      "expected_count": "미공개",
+      "note": "인턴 24개월 후 정규직 전환",
+      "source": "flyasiana.recruiter.co.kr"
+    }
+  ]
+}

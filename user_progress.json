@@ -1,0 +1,13 @@
+{
+  "target_date": "2026-02-13",
+  "target_airline": "대한항공",
+  "daily_goals": [],
+  "completed_tasks": [],
+  "practice_history": [],
+  "study_streak": 1,
+  "last_study_date": "2026-01-16",
+  "checklist_completed": {
+    "eng_cat_situation": false,
+    "resume_intro": false
+  }
+}

@@ -1,0 +1,152 @@
+{
+  "completed": [
+    "mask_refuse",
+    "foreign_object_food",
+    "seat_change_full",
+    "snoring_complaint"
+  ],
+  "scores": {
+    "mask_refuse": 100,
+    "foreign_object_food": 100,
+    "seat_change_full": 100,
+    "snoring_complaint": 100
+  },
+  "history": [
+    {
+      "scenario_id": "snoring_complaint",
+      "score": 100,
+      "timestamp": "2026-01-19T16:11:26.042935",
+      "conversation": [
+        {
+          "role": "crew",
+          "content": "네 손님 옆자리 코골이 승객분때문에 많이 불편하시죠, 제가 금방 조치해드리겠습니다"
+        },
+        {
+          "role": "passenger",
+          "content": "감사합니다. 가능한 빨리 해결해주시면 정말 고맙겠습니다.",
+          "level": 0
+        },
+        {
+          "role": "crew",
+          "content": "네 손님, 저쪽 손님도 주무셔야해서, 손님에게 귀마개와 안대를 제공해드리겠씁니다"
+        },
+        {
+          "role": "passenger",
+          "content": "아니 근데요, 귀마개와 안대로 해결이 될까요? 너무 시끄러워서 도저히 잠을 잘 수가 없어요.",
+          "level": 1
+        },
+        {
+          "role": "crew",
+          "content": "죄송합니다 손님, 그럼 남는자리가 있는지 한번 확인해보겠습니다"
+        },
+        {
+          "role": "passenger",
+          "content": "하아... 진짜 답답하네요. 남는 자리가 없으면 저도 방법이 없겠군요.",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "scenario_id": "seat_change_full",
+      "score": 100,
+      "timestamp": "2026-01-19T16:01:34.823258",
+      "conversation": [
+        {
+          "role": "crew",
+          "content": "안됩니다 어렵습니다"
+        },
+        {
+          "role": "passenger",
+          "content": "아니 진짜 어이가 없네! 내가 창가에서 풍경 보고 싶은데 이렇게 고집하는 이유가 뭐예요?",
+          "level": 2
+        },
+        {
+          "role": "crew",
+          "content": "고집이 아닙니다, 안됩니다"
+        },
+        {
+          "role": "passenger",
+          "content": "아니 그러니까요, 이건 말이 안 되잖아요! 그냥 창가 좌석 하나 바꿔주는 게 이렇게 어려운 일인가요?",
+          "level": 2
+        },
+        {
+          "role": "crew",
+          "content": "어렵습니다 "
+        },
+        {
+          "role": "passenger",
+          "content": "아니 진짜 어이가 없네! 이렇게 만석인데 왜 창가 좌석 하나 못 바꿔주나요?",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "scenario_id": "foreign_object_food",
+      "score": 100,
+      "timestamp": "2026-01-19T15:53:12.855930",
+      "conversation": [
+        {
+          "role": "crew",
+          "content": "아 네 손님 죄송합니다 많이 불편하셨죠, 금방 새 음식으로 조치해드리겠습니다."
+        },
+        {
+          "role": "passenger",
+          "content": "하아... 진짜 답답하네요. 이렇게 간단한 문제도 해결하는 데 시간이 걸리나요?",
+          "level": 0
+        },
+        {
+          "role": "crew",
+          "content": "네 손님 죄송"
+        },
+        {
+          "role": "passenger",
+          "content": "근데요, 정말 방법이 없는 건가요? 이렇게 불편하게 해야 하나요?",
+          "level": 1
+        },
+        {
+          "role": "crew",
+          "content": "네 손님 금방 새 음식으로 교체해드리고 기내에서 판매하고 있는 음식중 한가지 선택하시면  무료로 제공해드리겠습니다. 죄송합니다"
+        },
+        {
+          "role": "passenger",
+          "content": "알겠어요. 근데요, 이런 상황에서 조금 더 빠르게 대처해 주셨으면 좋겠어요.",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "scenario_id": "mask_refuse",
+      "score": 100,
+      "timestamp": "2026-01-19T15:43:05.042940",
+      "conversation": [
+        {
+          "role": "crew",
+          "content": "네 손님 마스크 착용이 많이 불편하시죠 ! 개인의 자유도 분명 존중합니다! 하지만 기내에서는 코로나 19 등 감염병 예방을 위해 마스크를 착용해주셔야 합니다 . "
+        },
+        {
+          "role": "passenger",
+          "content": "그렇지만 저는 제 권리를 주장하고 싶습니다. 개인의 선택을 존중해 주셨으면 합니다.",
+          "level": 0
+        },
+        {
+          "role": "crew",
+          "content": "네 손님 ! 정말 존중하지만 그래도 다른 승객분들의 안전과 항공사의 규정으로 마스크를 착용해주셔야 할 것 같습니다"
+        },
+        {
+          "role": "passenger",
+          "content": "다른 승객들의 안전도 중요하지만, 저의 권리도 생각해 주셨으면 좋겠습니다.",
+          "level": 0
+        },
+        {
+          "role": "crew",
+          "content": "씨발련아"
+        },
+        {
+          "role": "passenger",
+          "content": "그런 말은 옳지 않다고 생각합니다. 서로 존중하는 태도가 필요합니다.",
+          "level": 0
+        }
+      ]
+    }
+  ]
+}

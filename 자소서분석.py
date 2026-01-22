@@ -13,9 +13,28 @@ from config import (
     AIRLINES, AIRLINE_VALUES, VALUES_DEFAULT,
     _canonical_airline_name, _raw_airline_key, airline_profile,
     SOFT_TIMEOUT_SEC,
-    FSC_VALUE_DATA, LCC_VALUE_DATA,
+    FSC_VALUE_DATA, LCC_VALUE_DATA, HSC_VALUE_DATA,
     VALUE_Q_TEMPLATES_FSC, VALUE_Q_TEMPLATES_LCC,
+    # 버전별 VALUE_Q 템플릿
+    VALUE_Q_TEMPLATES_FSC_SOFT, VALUE_Q_TEMPLATES_FSC_SHARP,
+    VALUE_Q_TEMPLATES_LCC_SOFT, VALUE_Q_TEMPLATES_LCC_SHARP,
     Q1_FIXED, Q1_POOL, Q5_POOL, Q5_FORBIDDEN_WORDS,
+    # 항공사 유형별 질문 풀
+    Q1_POOL_FSC, Q1_POOL_LCC, Q1_POOL_HSC, Q1_POOL_COMMON,
+    Q5_POOL_FSC, Q5_POOL_LCC, Q5_POOL_HSC, Q5_POOL_COMMON,
+    # 버전별 말투 차이 (SHARP=날카로움, SOFT=부드러움)
+    Q5_POOL_COMMON_SHARP, Q5_POOL_COMMON_SOFT,
+    Q5_POOL_FSC_SHARP, Q5_POOL_FSC_SOFT,
+    Q5_POOL_LCC_SHARP, Q5_POOL_LCC_SOFT,
+    # Q1 버전별 말투
+    Q1_POOL_COMMON_SOFT, Q1_POOL_COMMON_SHARP,
+    Q1_POOL_FSC_SOFT, Q1_POOL_FSC_SHARP,
+    Q1_POOL_LCC_SOFT, Q1_POOL_LCC_SHARP,
+    Q1_POOL_HSC_SOFT, Q1_POOL_HSC_SHARP,
+    # 버전별 풀 선택 함수
+    get_q1_pool_by_airline, get_q5_pool_by_airline, get_value_q_templates,
+    # 통합/인수합병 관련 질문
+    INTEGRATED_LCC_Q_TEMPLATES, INTEGRATED_LCC_AIRLINES,
     # 새 공격 포인트 → 질문 번역 템플릿
     Q2_ATTACK_TEMPLATES, Q2_ATTACK_TEMPLATES_SOFT,
     Q2_RISK_TEMPLATES, Q2_RISK_TEMPLATES_SOFT,
@@ -31,6 +50,19 @@ from config import (
     # Q3 꿈/목표 전용 템플릿
     Q3_DREAM_CONDITION, Q3_DREAM_PRIORITY,
     Q3_DREAM_LIMIT, Q3_DREAM_REPEAT,
+    # 요금제 및 이력서 설정
+    PLAN_CONFIG, DEFAULT_PLAN,
+    RESUME_MAJOR_OPTIONS, RESUME_EXPERIENCE_OPTIONS, RESUME_GAP_OPTIONS,
+    # 면접 팁 및 2026 채용 트렌드
+    AIRLINE_PREFERRED_TYPE, ENGLISH_INTERVIEW_AIRLINES,
+    INTERVIEW_TIPS, FSC_VS_LCC_INTERVIEW,
+    COMMON_INTERVIEW_MISTAKES, CREW_ESSENTIAL_QUALITIES,
+    KOREAN_AIR_INTERVIEW_INFO, HIRING_TRENDS_2026,
+    # 면접관 톤 규칙 및 한국어 질문 생성 규칙
+    INTERVIEWER_TONE_RULES, KOREAN_QUESTION_RULES,
+    TONE_CONVERSION_RULES, ABSOLUTE_PROHIBITIONS,
+    # Q2 공격 구조 및 Few-shot 예시
+    Q2_ATTACK_STRUCTURES, Q2_FORBIDDEN_PATTERNS, Q2_FEWSHOT_EXAMPLES,
 )
 from text_utils import (
     normalize_ws, stable_int_hash, split_sentences, split_essay_items,
@@ -47,32 +79,18 @@ from analysis import (
 from llm_utils import (
     _ensure_llm_state_boxes, _llm_gc, _calc_llm_hash_from_qa_sets,
     _llm_try_extract_or_reuse, _llm_type_to_internal,
-    _llm_extract_for_slot,
+    _llm_extract_for_slot, generate_q3_from_answer,
+    generate_resume_questions,
 )
+from extraction_verifier import is_complete_sentence
+from feedback_analyzer import analyze_answer
 
 
 # ----------------------------
 # 비밀번호 보호 (테스터 5명만 접근 가능)
 # ----------------------------
-
-def _check_password():
-    """비밀번호 확인 - 인증된 사용자만 앱 사용 가능"""
-    if "authenticated" not in st.session_state:
-        st.session_state.authenticated = False
-
-    if not st.session_state.authenticated:
-        st.title("AI 면접 코칭")
-        st.markdown("---")
-        password = st.text_input("테스터 비밀번호를 입력하세요", type="password")
-        if password == "crew2024":  # 테스터용 비밀번호
-            st.session_state.authenticated = True
-            st.rerun()
-        elif password:
-            st.error("비밀번호가 틀렸습니다")
-        st.info("이 서비스는 현재 비공개 테스트 중입니다.")
-        st.stop()
-
-_check_password()
+from auth_utils import check_tester_password
+check_tester_password()
 
 
 # ----------------------------
@@ -125,6 +143,42 @@ def _srcai_apply_to_qa_sets(qa_sets: List[Dict[str, str]]) -> None:
 # Basis 선택 로직 (session_state 접근 필요)
 # ----------------------------
 
+def _is_valid_basis_text(text: str) -> bool:
+    """basis 텍스트가 유효한지 검증 (불완전한 문장 필터링)"""
+    if not text or len(text.strip()) < 10:
+        return False
+    text = text.strip()
+
+    # 불완전한 문장 패턴 (관형형 어미로 끝남 - 명사가 와야 함)
+    incomplete_endings = [
+        "향한", "위한", "통한", "대한", "관한",
+        "하는", "되는", "같은", "다른", "있는", "없는",
+        "라는", "이라는", "라고 하는",
+        "과의", "와의", "에서의", "으로의", "로의",
+        "처럼", "같이", "대로",
+    ]
+    for ending in incomplete_endings:
+        if text.endswith(ending):
+            return False
+
+    # 연결어미로 끝나는 문장
+    connecting_endings = [
+        "하고", "하며", "하면서", "하여", "해서",
+        "되고", "되며", "으며", "며", "면서",
+        "지만", "는데", "니까", "므로", "어서", "아서",
+        "려고", "으려고", "고자", "도록",
+    ]
+    for ending in connecting_endings:
+        if text.endswith(ending):
+            return False
+
+    # 조사로만 끝나는 짧은 문장
+    if re.search(r"[을를이가은는와과]$", text) and len(text) < 25:
+        return False
+
+    return True
+
+
 def _pick_basis_from_llm_or_fallback(
     idx0: int,
     qtype_internal: str,
@@ -135,8 +189,12 @@ def _pick_basis_from_llm_or_fallback(
         acts = llm_item.get("action_sentences", [])
         ress = llm_item.get("result_sentences", [])
         if isinstance(acts, list) and isinstance(ress, list):
-            A_raw = acts[0] if acts else ""
-            B_raw = ress[0] if ress else (acts[1] if len(acts) > 1 else "")
+            # 유효한 문장만 필터링 (불완전한 문장 제외)
+            valid_acts = [a for a in acts if isinstance(a, str) and _is_valid_basis_text(a)]
+            valid_ress = [r for r in ress if isinstance(r, str) and _is_valid_basis_text(r)]
+
+            A_raw = valid_acts[0] if valid_acts else ""
+            B_raw = valid_ress[0] if valid_ress else (valid_acts[1] if len(valid_acts) > 1 else "")
             if A_raw or B_raw:
                 A = {"text": _trim_no_ellipsis(_strip_ellipsis_tokens(A_raw), 120) if A_raw else "", "kind": "action"}
                 B = {"text": _trim_no_ellipsis(_strip_ellipsis_tokens(B_raw), 120) if B_raw else "", "kind": "result"}
@@ -157,9 +215,13 @@ def _pick_basis_from_llm_or_fallback(
         act_cands = per_actions[idx0] if isinstance(per_actions, list) and idx0 < len(per_actions) else []
         res_cands = per_results[idx0] if isinstance(per_results, list) and idx0 < len(per_results) else []
         if isinstance(act_cands, list) or isinstance(res_cands, list):
-            A_raw = act_cands[0] if isinstance(act_cands, list) and act_cands else ""
-            B_raw = (res_cands[0] if isinstance(res_cands, list) and res_cands else "") or (
-                act_cands[1] if isinstance(act_cands, list) and len(act_cands) > 1 else ""
+            # 유효한 문장만 필터링 (불완전한 문장 제외)
+            valid_act_cands = [a for a in act_cands if isinstance(a, str) and _is_valid_basis_text(a)] if isinstance(act_cands, list) else []
+            valid_res_cands = [r for r in res_cands if isinstance(r, str) and _is_valid_basis_text(r)] if isinstance(res_cands, list) else []
+
+            A_raw = valid_act_cands[0] if valid_act_cands else ""
+            B_raw = (valid_res_cands[0] if valid_res_cands else "") or (
+                valid_act_cands[1] if len(valid_act_cands) > 1 else ""
             )
             if A_raw or B_raw:
                 A = {"text": _trim_no_ellipsis(_strip_ellipsis_tokens(A_raw), 120) if A_raw else "", "kind": "action"}
@@ -263,10 +325,14 @@ def _analyze_qa_sets(qa_sets: List[Dict[str, str]], llm_data: Optional[Dict[str,
     return out
 
 
+# 캐시 무효화 버전 - 이 값을 바꾸면 모든 세션 캐시가 무효화됨
+_CACHE_VERSION = "v2_incomplete_filter"
+
 def _get_or_build_item_analysis_cache(qa_sets: List[Dict[str, str]], essay_hash: str, force_rebuild: bool = False) -> Dict[str, Any]:
     box = st.session_state.get("_item_analysis_box", {})
     llm_hash = _calc_llm_hash_from_qa_sets(qa_sets)
-    key = f"{essay_hash}|{llm_hash}" if llm_hash else f"{essay_hash}"
+    # 캐시 버전을 키에 포함하여 이전 캐시 무효화
+    key = f"{_CACHE_VERSION}|{essay_hash}|{llm_hash}" if llm_hash else f"{_CACHE_VERSION}|{essay_hash}"
 
     # 캐시된 결과 확인 (force_rebuild가 아닌 경우에만)
     if not force_rebuild and isinstance(box, dict) and key in box:
@@ -325,13 +391,36 @@ def _get_or_build_item_analysis_cache(qa_sets: List[Dict[str, str]], essay_hash:
 # 질문 생성 헬퍼 함수
 # ----------------------------
 
-def _slot_q1_common(base: int, version: int) -> str:
-    """Q1: 공통 질문 풀에서 버전별 선택"""
-    if not Q1_POOL:
+def _slot_q1_common(base: int, version: int, atype: str = "LCC") -> str:
+    """Q1: 항공사 유형(FSC/LCC/HSC)에 맞는 질문 풀에서 버전별 선택
+
+    버전에 따라 톤 선택: 홀수(1,3,5)=날카로운, 짝수(2,4,6)=부드러운
+    """
+    # 버전에 따라 톤 선택
+    is_soft_version = (version % 2 == 0)
+
+    # 항공사 유형에 맞는 질문 풀 선택 (버전별 톤 적용)
+    if atype == "FSC":
+        if is_soft_version:
+            pool = Q1_POOL_COMMON_SOFT + Q1_POOL_FSC_SOFT
+        else:
+            pool = Q1_POOL_COMMON_SHARP + Q1_POOL_FSC_SHARP
+    elif atype == "HSC":
+        if is_soft_version:
+            pool = Q1_POOL_COMMON_SOFT + Q1_POOL_HSC_SOFT
+        else:
+            pool = Q1_POOL_COMMON_SHARP + Q1_POOL_HSC_SHARP
+    else:  # LCC
+        if is_soft_version:
+            pool = Q1_POOL_COMMON_SOFT + Q1_POOL_LCC_SOFT
+        else:
+            pool = Q1_POOL_COMMON_SHARP + Q1_POOL_LCC_SHARP
+
+    if not pool:
         return "승무원으로서 안전과 서비스가 동시에 요구되는 상황에서 무엇을 먼저 선택하고 어떤 행동으로 마무리하겠습니까?"
-    idx = (base + version * 7 + 1) % len(Q1_POOL)
+    idx = (base + version * 7 + 1) % len(pool)
     # Q1도 풀에서 가져온 질문을 그대로 사용 (변형 금지)
-    return normalize_ws(Q1_POOL[idx])
+    return normalize_ws(pool[idx])
 
 
 def _is_abstract_sentence(point: str) -> bool:
@@ -366,11 +455,57 @@ def _is_context_dependent_sentence(point: str) -> bool:
     - 비유/은유가 맥락 없이 이해 불가 (살보다 뼈를...)
     - 지시어만 있는 문장 (이번의, 그때의, 그것은...)
     - 너무 짧거나 의미 파악 불가
+    - 불완전한 문장 (동사 없이 끝남, 연결어미로 끝남)
 
     자기소개서를 모르는 사람도 질문만 보고 대답할 수 있어야 함.
     """
+    point = point.strip()
+
     # 너무 짧은 문장은 제외 (맥락 없이 이해 불가)
-    if len(point.strip()) < 15:
+    if len(point) < 15:
+        return True
+
+    # 불완전한 문장 감지 (동사 없이 끝나는 패턴)
+    incomplete_endings = [
+        # 관형형 어미 (명사가 뒤에 와야 함)
+        "을 향한", "를 향한", "에 향한", "향한",
+        "을 위한", "를 위한", "에 위한", "위한",
+        "과 함께", "와 함께",
+        "을 통한", "를 통한", "통한",
+        "에 대한", "에서의", "으로의", "로의",
+        "과의", "와의", "에게의",
+        "이라는", "라는", "라고 하는",
+        # 관형사형 전성어미
+        "하는", "되는", "인", "적인", "스러운",
+        "같은", "다른", "새로운", "높은", "낮은",
+        # 부사형으로 끝나는 불완전 문장
+        "처럼", "같이", "대로",
+        # 접속조사/보조사로 끝나는 문장
+        "그리고", "그러나", "하지만", "따라서",
+    ]
+    for ending in incomplete_endings:
+        if point.endswith(ending):
+            return True
+
+    # 연결어미로 끝나는 불완전한 문장
+    connecting_endings = [
+        "하고", "하며", "하면서", "하여", "해서",
+        "되고", "되며", "되면서",
+        "으며", "며", "면서",
+        "지만", "는데", "ㄴ데",
+        "으면", "면", "니까", "므로", "어서", "아서",
+        "려고", "으려고", "고자", "도록",
+    ]
+    for ending in connecting_endings:
+        if point.endswith(ending):
+            return True
+
+    # 조사로만 끝나는 불완전한 문장 (주어/목적어만 있고 동사 없음)
+    if re.search(r"[을를이가은는도만]$", point) and len(point) < 25:
+        return True
+
+    # "~와/과" 로 끝나면 불완전 (병렬 구조가 끊김)
+    if re.search(r"[와과]$", point):
         return True
 
     context_dependent_patterns = [
@@ -403,7 +538,28 @@ def _is_context_dependent_sentence(point: str) -> bool:
             return True
 
     # 문장이 지시어로 시작하면 맥락 의존
-    if point.strip().startswith(("그", "이", "저")) and len(point.strip()) < 30:
+    if point.startswith(("그", "이", "저")) and len(point) < 30:
+        return True
+
+    # 완전한 문장인지 검사 (동사/형용사 어미가 있어야 함)
+    complete_endings = [
+        "다", "요", "죠", "니다", "습니다", "입니다",
+        "했다", "했습니다", "했어요", "됐다", "됐습니다",
+        "있다", "있습니다", "없다", "없습니다",
+        "이다", "이었다", "였다",
+    ]
+    has_complete_ending = any(point.endswith(e) for e in complete_endings)
+
+    # 완전한 어미가 없어도 의미있는 명사구는 허용 (예: "함께라서 극복할 수 있었다")
+    meaningful_patterns = [
+        r"할 수 있",
+        r"수 있다",
+        r"극복", "해결", "이겨냈", "성공",
+        r"했습니다", r"했다", r"했어요",
+    ]
+    has_meaningful = any(re.search(p, point) for p in meaningful_patterns)
+
+    if not has_complete_ending and not has_meaningful and len(point) < 40:
         return True
 
     return False
@@ -596,6 +752,58 @@ def _extract_premise_from_point(point: str) -> Tuple[str, str]:
     return f"'{short_point}'가 가능하다는 것", "그것이 불가능한 상황이라면"
 
 
+def _apply_airline_tone(question: str, is_fsc: bool, is_soft: bool) -> str:
+    """FSC/LCC 톤 규칙을 질문에 적용 (config.py 상수 활용)
+
+    INTERVIEWER_TONE_RULES에서 정의된 규칙 적용:
+    - FSC: 말수 적음, 감정 절제, 짧고 단정, 검증/판단/기준 위주
+    - LCC: 구어체, 현장 상황 연상, 판단→행동→결과 빠르게 요구
+
+    KOREAN_QUESTION_RULES["forbidden_expressions"]에서 금지 표현 제거
+    TONE_CONVERSION_RULES에서 FSC/LCC + SOFT/SHARP 조합별 변환 적용
+    """
+    if not question:
+        return question
+
+    q = question.strip()
+
+    # 금지 표현 제거 (KOREAN_QUESTION_RULES 활용)
+    forbidden_expressions = KOREAN_QUESTION_RULES.get("forbidden_expressions", [])
+    for expr in forbidden_expressions:
+        if expr == "설명해주세요":
+            q = q.replace(expr, "말씀해주세요")
+        else:
+            q = q.replace(expr, "")
+
+    # 톤 변환 키 결정
+    if is_fsc:
+        tone_key = "FSC_SOFT" if is_soft else "FSC_SHARP"
+        # FSC: 불필요한 완충 표현 제거
+        fsc_trim = [
+            ("혹시 ", ""),
+            ("아마 ", ""),
+            ("그런데요, ", ""),
+            ("그러면요, ", ""),
+            ("그럼요, ", ""),
+        ]
+        for old, new in fsc_trim:
+            q = q.replace(old, new)
+    else:
+        tone_key = "LCC_SOFT" if is_soft else "LCC_SHARP"
+
+    # TONE_CONVERSION_RULES에서 변환 규칙 적용
+    tone_rule = TONE_CONVERSION_RULES.get(tone_key, {})
+    conversions = tone_rule.get("conversions", [])
+    for old, new in conversions:
+        q = q.replace(old, new)
+
+    # 중복 공백 제거
+    while "  " in q:
+        q = q.replace("  ", " ")
+
+    return q.strip()
+
+
 def _slot_q2_deep(
     base: int,
     version: int,
@@ -604,99 +812,163 @@ def _slot_q2_deep(
     llm_item: Optional[Dict[str, Any]],
     basis: str,
     raw_answer: str = "",
+    atype: str = "LCC",
 ) -> Tuple[str, str, str]:
-    """Q2: 검증형 심층 질문 (공격 포인트 기반 - 새 방식)"""
+    """Q2: 검증형 심층 질문 (새 프롬프트 기반 - deep_questions 우선 사용)
+
+    FSC/LCC 톤 규칙:
+    - FSC: 말수 적음, 감정 절제, 짧고 단정한 문장, 검증/판단/기준 위주
+    - LCC: 구어체, 현장 상황 연상, 판단→행동→결과 빠르게 요구
+    """
 
     # 버전에 따라 톤 선택: 홀수(1,3,5...)=날카로운, 짝수(2,4,6...)=부드러운
     is_soft_version = (version % 2 == 0)
+    is_fsc = (atype == "FSC")
 
-    # 1단계: LLM에서 공격 포인트 추출
+    # ========================================
+    # 새 방식: deep_questions 직접 사용 (우선)
+    # ========================================
+    deep_questions = _llm_extract_for_slot(llm_item, "deep_questions", [])
+
+    # 디버그: llm_item 상태 확인
+    print(f"[DEBUG] llm_item is None: {llm_item is None}")
+    if llm_item:
+        print(f"[DEBUG] llm_item keys: {list(llm_item.keys()) if isinstance(llm_item, dict) else 'not a dict'}")
+        print(f"[DEBUG] deep_questions count: {len(deep_questions) if deep_questions else 0}")
+
+    if deep_questions and isinstance(deep_questions, list) and len(deep_questions) > 0:
+        # 버전에 따라 다른 질문 선택
+        q_idx = (base + version) % len(deep_questions)
+        selected_q = deep_questions[q_idx]
+
+        if isinstance(selected_q, dict):
+            q2_text = selected_q.get("question", "")
+            source_sentence = selected_q.get("source_sentence", "")
+
+            # 질문이 유효한지 확인
+            if q2_text and len(q2_text) >= 10:
+                # FSC/LCC 톤 규칙 적용
+                q2_text = _apply_airline_tone(q2_text, is_fsc, is_soft_version)
+
+                # Q3용으로 source_sentence와 expected_answers 저장
+                # expected_answers는 Q3 생성 시 사용됨
+                expected_answers = selected_q.get("expected_answers", [])
+
+                # session_state에 Q3용 데이터 저장 (있으면)
+                if expected_answers and hasattr(st, 'session_state'):
+                    st.session_state["_q2_expected_answers"] = expected_answers
+
+                return q2_text, source_sentence, source_sentence
+
+    # ========================================
+    # 폴백: 기존 방식 (over_idealized_points 등)
+    # ========================================
     over_idealized = _llm_extract_for_slot(llm_item, "over_idealized_points", [])
     risk_points = _llm_extract_for_slot(llm_item, "risk_points", [])
     rejected_alts = _llm_extract_for_slot(llm_item, "rejected_alternatives", [])
     claim = _llm_extract_for_slot(llm_item, "claim", "")
 
-    # 공격 포인트 선택 (우선순위: over_idealized > risk > rejected_alternatives)
+    # 유효한 포인트 필터링 (맥락 의존적 문장 + 불완전한 조각 제외)
+    valid_idealized = [
+        p for p in (over_idealized or [])
+        if isinstance(p, str) and p.strip()
+        and not _is_context_dependent_sentence(p)
+        and is_complete_sentence(p)
+    ]
+    valid_risks = [
+        r for r in (risk_points or [])
+        if isinstance(r, str) and r.strip()
+        and not _is_context_dependent_sentence(r)
+        and is_complete_sentence(r)
+    ]
+    valid_alts = [
+        a for a in (rejected_alts or [])
+        if isinstance(a, str) and a.strip()
+        and not _is_context_dependent_sentence(a)
+        and is_complete_sentence(a)
+    ]
+
+    # 공격 포인트 선택 - 버전별로 다른 타입 우선순위 적용
     attack_point = ""
-    attack_type = "idealized"  # idealized, risk, alternative
+    attack_type = "idealized"
 
-    # over_idealized_points 우선 사용 (가장 날카로운 질문 생성)
-    # 맥락 없이 이해 불가능한 문장은 제외
-    if over_idealized and isinstance(over_idealized, list):
-        valid_points = [
-            p for p in over_idealized
-            if isinstance(p, str) and p.strip()
-            and not _is_context_dependent_sentence(p)
+    version_mod = version % 3
+
+    if version_mod == 1:
+        priority_order = [
+            ("idealized", valid_idealized),
+            ("risk", valid_risks),
+            ("alternative", valid_alts),
         ]
-        if valid_points:
-            idx = (base + version * 7) % len(valid_points)
-            attack_point = normalize_ws(valid_points[idx])
-            attack_type = "idealized"
-
-    # over_idealized가 없으면 risk_points 사용
-    if not attack_point and risk_points and isinstance(risk_points, list):
-        valid_risks = [
-            r for r in risk_points
-            if isinstance(r, str) and r.strip()
-            and not _is_context_dependent_sentence(r)
+    elif version_mod == 2:
+        priority_order = [
+            ("risk", valid_risks),
+            ("idealized", valid_idealized),
+            ("alternative", valid_alts),
         ]
-        if valid_risks:
-            idx = (base + version * 11) % len(valid_risks)
-            attack_point = normalize_ws(valid_risks[idx])
-            attack_type = "risk"
-
-    # risk_points도 없으면 rejected_alternatives 사용
-    if not attack_point and rejected_alts and isinstance(rejected_alts, list):
-        valid_alts = [
-            a for a in rejected_alts
-            if isinstance(a, str) and a.strip()
-            and not _is_context_dependent_sentence(a)
+    else:
+        priority_order = [
+            ("alternative", valid_alts),
+            ("idealized", valid_idealized),
+            ("risk", valid_risks),
         ]
-        if valid_alts:
-            idx = (base + version * 13) % len(valid_alts)
-            attack_point = normalize_ws(valid_alts[idx])
-            attack_type = "alternative"
 
-    # 2단계: 폴백 - LLM 실패 시 자소서에서 이상적 표현 직접 추출
+    for at, points in priority_order:
+        if points:
+            idx = (base + version * 7 + hash(at) % 5) % len(points)
+            attack_point = normalize_ws(points[idx])
+            attack_type = at
+            break
+
+    # 폴백 2: 자소서에서 직접 추출
     if not attack_point and raw_answer:
-        idealistic_patterns = [
-            r"(함께[라면서]?[서면]? [^.]*(?:극복|해결|성공|이룰)[^.]*)",
-            r"(웃으?[면서며]? [^.]*(?:환경|분위기)[^.]*)",
-            r"(따뜻한 [^.]*(?:미소|배려|마음)[^.]*)",
-            r"([^.]*소통[하으]?[며면서]? [^.]*(?:해결|극복)[^.]*)",
-            r"([^.]*(?:팀워크|협업|공동체)[^.]*(?:중요|소중|값진)[^.]*)",
-        ]
-        for pattern in idealistic_patterns:
-            match = re.search(pattern, raw_answer)
-            if match:
-                attack_point = normalize_ws(match.group(1))[:80]
+        sentences = split_sentences(raw_answer)
+        idealistic_keywords = ["함께", "극복", "소통", "팀워크", "협력", "해결", "성장", "노력", "배려", "따뜻"]
+        for sentence in sentences:
+            sentence = sentence.strip()
+            if len(sentence) < 15:
+                continue
+            has_keyword = any(kw in sentence for kw in idealistic_keywords)
+            if has_keyword and is_complete_sentence(sentence):
+                attack_point = normalize_ws(sentence)[:100]
                 attack_type = "idealized"
                 break
 
-    # 3단계: 최종 폴백 - 일반적인 이상적 표현
-    if not attack_point:
-        default_points = [
-            "함께라서 극복할 수 있었다",
-            "소통하며 문제를 해결했다",
-            "팀워크로 어려움을 이겨냈다",
-            "긍정적인 마음으로 임했다",
-            "최선을 다해 노력했다",
+    # 폴백 3: 아무 문장이나
+    if not attack_point and raw_answer:
+        sentences = split_sentences(raw_answer)
+        valid_sentences = [
+            s for s in sentences
+            if isinstance(s, str) and len(s.strip()) >= 15 and is_complete_sentence(s.strip())
         ]
-        idx = (base + version * 17) % len(default_points)
-        attack_point = default_points[idx]
+        if valid_sentences:
+            idx = (base + version * 17) % len(valid_sentences)
+            attack_point = normalize_ws(valid_sentences[idx])[:100]
+            attack_type = "idealized"
+
+    # 폴백 4: claim 사용
+    if not attack_point and claim and is_complete_sentence(claim):
+        attack_point = claim
         attack_type = "idealized"
 
-    # 4단계: 공격 타입에 따른 템플릿 선택
+    # 유효하지 않으면 기본 질문
+    if not attack_point or not is_complete_sentence(attack_point):
+        default_questions = [
+            "자소서에 적어주신 경험 중 가장 기억에 남는 게 있으신가요?",
+            "본인이 생각하는 가장 큰 강점은 무엇인가요?",
+            "이 경험을 통해 얻은 가장 큰 교훈이 있다면요?",
+            "자소서에 적어주신 내용 중 가장 자신있게 말씀하실 수 있는 부분은요?",
+        ]
+        q2_text = default_questions[(base + version) % len(default_questions)]
+        return q2_text, claim, ""
+
+    # 템플릿 기반 질문 생성 (기존 방식)
     if attack_type == "idealized":
-        # 문장 유형 확인 (우선순위: 꿈/소망 > 추상적/비유 > 일반 경험)
         is_dream = _is_dream_sentence(attack_point)
         is_abstract = _is_abstract_sentence(attack_point)
-
-        # 전제 추출 (모든 케이스에서 필요)
         premise, premise_broken = _extract_premise_from_point(attack_point)
 
         if is_dream:
-            # 꿈/소망 문장: "경험"이 아닌 적절한 질문 방식
             if is_soft_version:
                 templates = Q2_DREAM_TEMPLATES_SOFT
             else:
@@ -708,10 +980,7 @@ def _slot_q2_deep(
                 premise_broken=premise_broken
             )
         elif is_abstract:
-            # 추상적 문장: "왜 그렇게 표현하셨나요?" 스타일
-            # 핵심만 추출하여 짧게
             short_point = _extract_short_point(attack_point)
-
             if is_soft_version:
                 templates = Q2_ABSTRACT_TEMPLATES_SOFT
             else:
@@ -722,12 +991,8 @@ def _slot_q2_deep(
                 short_point=short_point
             )
         else:
-            # 일반 이상적 표현 (경험 기반): 전제 공격 스타일
-            # 구체적 판단 추출
             judgment = _extract_judgment_from_point(attack_point)
-            # 상대방이 누구인지 추출
             who = _extract_who_from_context(attack_point, raw_answer)
-
             if is_soft_version:
                 templates = Q2_ATTACK_TEMPLATES_SOFT
             else:
@@ -757,10 +1022,9 @@ def _slot_q2_deep(
         tpl_idx = (base + version * 19) % len(templates)
         q2_raw = templates[tpl_idx].format(alt=attack_point)
 
-    # 조사(을/를, 이/가 등) 보정 후 정리
     q2_text = _sanitize_question_strict(_fix_particles_after_format(q2_raw))
+    q2_text = _apply_airline_tone(q2_text, is_fsc, is_soft_version)
 
-    # Q3용으로 claim과 attack_point 반환
     return q2_text, claim, attack_point
 
 
@@ -803,26 +1067,48 @@ def _slot_q3_followup(
     llm_item: Optional[Dict[str, Any]],
     claim: str,
     attack_point: str,
+    atype: str = "LCC",
 ) -> str:
-    """Q3: 꼬리 질문 (Q2 맥락 상속 - 4가지 유형)
+    """Q3: 꼬리 질문 (새 프롬프트 기반 - expected_answers 우선 사용)
 
     핵심 원칙:
     - 답변 강요 X, 사고 확장 O
     - Q2의 연장선 (새로운 주제 도입 금지)
     - "만약", "가능할까요" 같은 열린 표현 사용
+
+    FSC/LCC 톤 규칙도 적용
     """
-    # 전제 정보 추출 (Q2와 동일한 맥락 유지)
+    is_soft_version = (version % 2 == 0)
+    is_fsc = (atype == "FSC")
+
+    # ========================================
+    # 새 방식: expected_answers에서 꼬리질문 사용 (우선)
+    # ========================================
+    expected_answers = None
+    if hasattr(st, 'session_state'):
+        expected_answers = st.session_state.get("_q2_expected_answers", None)
+
+    if expected_answers and isinstance(expected_answers, list) and len(expected_answers) > 0:
+        # 버전에 따라 다른 예상답변/꼬리질문 선택
+        ans_idx = (base + version) % len(expected_answers)
+        selected_ans = expected_answers[ans_idx]
+
+        if isinstance(selected_ans, dict):
+            followup = selected_ans.get("followup", "")
+
+            if followup and len(followup) >= 5:
+                # FSC/LCC 톤 규칙 적용
+                q3_text = _apply_airline_tone(followup, is_fsc, is_soft_version)
+                return q3_text
+
+    # ========================================
+    # 폴백: 기존 템플릿 방식
+    # ========================================
     premise, premise_broken = _extract_premise_from_point(attack_point)
-
-    # Q2가 꿈/목표 문장인지 확인
     is_dream = _is_dream_sentence(attack_point)
-
-    # 4가지 Q3 유형을 결정론적으로 선택 (version 기반)
-    # 0: 조건 변화형, 1: 우선순위 충돌형, 2: 한계 인식형, 3: 재현성 검증형
     q3_type = (base + version) % 4
 
     if is_dream:
-        # 꿈/목표 문장용 Q3 템플릿 사용
         if q3_type == 0:
             templates = Q3_DREAM_CONDITION
             tpl_idx = (base + version * 11) % len(templates)
@@ -840,36 +1126,55 @@ def _slot_q3_followup(
             tpl_idx = (base + version * 19) % len(templates)
             q3_text = templates[tpl_idx]
     else:
-        # 일반 경험 문장용 Q3 템플릿 사용
         if q3_type == 0:
-            # ① 조건 변화형: "만약 ○○ 조건이 달라진다면?"
             templates = Q3_CONDITION_CHANGE
             tpl_idx = (base + version * 11) % len(templates)
             q3_text = templates[tpl_idx].format(premise_broken=premise_broken)
         elif q3_type == 1:
-            # ② 우선순위 충돌형: "둘 다 중요할 때 무엇을 먼저 선택하는가"
             templates = Q3_PRIORITY_CONFLICT
             tpl_idx = (base + version * 13) % len(templates)
             q3_text = templates[tpl_idx]
         elif q3_type == 2:
-            # ③ 한계 인식형: "그 선택의 약점은 무엇인가"
             templates = Q3_LIMIT_RECOGNITION
             tpl_idx = (base + version * 17) % len(templates)
             q3_text = templates[tpl_idx]
         else:
-            # ④ 재현성 검증형: "다음에도 가능한가"
             templates = Q3_REPEATABILITY
             tpl_idx = (base + version * 19) % len(templates)
             q3_text = templates[tpl_idx]
 
-    # 조사(을/를, 이/가 등) 보정 후 정리
     q3_text = _sanitize_question_strict(_fix_particles_after_format(q3_text))
+    q3_text = _apply_airline_tone(q3_text, is_fsc, is_soft_version)
+
     return q3_text
 
 
-def _slot_q5_surprise(base: int, version: int) -> str:
-    """Q5: 돌발/확장 (경험형 금지, 판단/가정/상황만)"""
-    pool = Q5_POOL
+def _slot_q5_surprise(base: int, version: int, atype: str = "LCC") -> str:
+    """Q5: 항공사 유형(FSC/LCC/HSC)에 맞는 돌발질문 풀에서 선택 (경험형 금지)
+
+    버전에 따라 톤 선택: 홀수(1,3,5)=날카로운, 짝수(2,4,6)=부드러운
+    """
+    # 버전에 따라 톤 선택
+    is_soft_version = (version % 2 == 0)
+
+    # 항공사 유형에 맞는 질문 풀 선택 (버전별 톤 적용)
+    if atype == "FSC":
+        if is_soft_version:
+            pool = Q5_POOL_COMMON_SOFT + Q5_POOL_FSC_SOFT
+        else:
+            pool = Q5_POOL_COMMON_SHARP + Q5_POOL_FSC_SHARP
+    elif atype == "HSC":
+        # HSC는 아직 SHARP/SOFT 분리 안 됨 - 기존 풀 사용하되 버전 반영
+        if is_soft_version:
+            pool = Q5_POOL_COMMON_SOFT + Q5_POOL_HSC
+        else:
+            pool = Q5_POOL_COMMON_SHARP + Q5_POOL_HSC
+    else:  # LCC
+        if is_soft_version:
+            pool = Q5_POOL_COMMON_SOFT + Q5_POOL_LCC_SOFT
+        else:
+            pool = Q5_POOL_COMMON_SHARP + Q5_POOL_LCC_SHARP
+
     if not pool:
         return "압박이 큰 상황에서 설명을 짧게 정리해야 할 때, 어떤 순서로 말하고 어떤 행동부터 실행하겠습니까?"
 
@@ -945,7 +1250,7 @@ def _fallback_questions_fixed_slots_item(
         basis = raw_answer[:80] if raw_answer else "자기소개서 답변에서 언급한 내용"
 
     # 새 방식: _slot_q2_deep과 _slot_q3_followup 호출 (LLM 없이 폴백 사용)
-    q1 = _slot_q1_common(base, version)
+    q1 = _slot_q1_common(base, version, atype)
 
     # Q2: 공격 포인트 기반 (llm_item=None이면 폴백 로직 작동)
     q2, claim, attack_point = _slot_q2_deep(
@@ -954,6 +1259,7 @@ def _fallback_questions_fixed_slots_item(
         qtype=qtype,
         situation=situation,
         llm_item=None,  # 폴백이므로 LLM 데이터 없음
+        atype=atype,  # FSC/LCC 톤 적용
         basis=basis,
         raw_answer=raw_answer,
     )
@@ -966,26 +1272,51 @@ def _fallback_questions_fixed_slots_item(
         llm_item=None,  # 폴백이므로 LLM 데이터 없음
         claim=claim,
         attack_point=attack_point,
+        atype=atype,  # FSC/LCC 톤 적용
     )
 
-    value_data = FSC_VALUE_DATA if atype == "FSC" else LCC_VALUE_DATA
-    value_tpls = VALUE_Q_TEMPLATES_FSC if atype == "FSC" else VALUE_Q_TEMPLATES_LCC
-    q4_tpl_idx = _pick_det_idx(base, version, 4, len(value_tpls))
-    kw = value_data.get("keywords", []) or []
-    desc = _auto_fix_particles_kor(_sanity_kor_endings(_strip_ellipsis_tokens(value_data.get("desc", ""))))
-    if not kw:
-        kw = VALUES_DEFAULT["FSC"] if atype == "FSC" else VALUES_DEFAULT["LCC"]
-    kw1 = kw[(base + version) % len(kw)]
-    kw2 = kw[(base + version * 3 + 1) % len(kw)]
-    if kw2 == kw1 and len(kw) > 1:
-        kw2 = kw[(base + version * 3 + 2) % len(kw)]
-    airline_disp = _canonical_airline_name(airline)
-    q4_text = value_tpls[q4_tpl_idx].format(airline=airline_disp, kw1=kw1, kw2=kw2, desc=desc)
-    q4_text = _normalize_airline_name_in_text(q4_text, airline)
+    # 항공사 유형에 맞는 가치 데이터 선택 (FSC/LCC/HSC)
+    if atype == "FSC":
+        value_data = FSC_VALUE_DATA
+    elif atype == "HSC":
+        value_data = HSC_VALUE_DATA
+    else:
+        value_data = LCC_VALUE_DATA
+
+    # 통합 LCC 항공사(진에어/에어부산/에어서울)는 일부 버전에서 통합 관련 질문 사용
+    airline_key = _raw_airline_key(airline)
+    use_integration_q = (airline_key in INTEGRATED_LCC_AIRLINES) and (version % 3 == 0)
+
+    if use_integration_q:
+        # 통합 LCC 질문 사용
+        q4_idx = (base + version) % len(INTEGRATED_LCC_Q_TEMPLATES)
+        q4_text = INTEGRATED_LCC_Q_TEMPLATES[q4_idx]
+    else:
+        # 기존 인재상 질문 사용 (버전별 톤 적용)
+        # HSC는 LCC 템플릿 사용 (장거리 특화이지만 저비용 구조 기반)
+        # 홀수 버전(1,3,5)=날카로움, 짝수 버전(2,4,6)=부드러움
+        is_soft_version = (version % 2 == 0)
+        if atype == "FSC":
+            value_tpls = VALUE_Q_TEMPLATES_FSC_SOFT if is_soft_version else VALUE_Q_TEMPLATES_FSC_SHARP
+        else:
+            value_tpls = VALUE_Q_TEMPLATES_LCC_SOFT if is_soft_version else VALUE_Q_TEMPLATES_LCC_SHARP
+        q4_tpl_idx = _pick_det_idx(base, version, 4, len(value_tpls))
+        kw = value_data.get("keywords", []) or []
+        desc = _auto_fix_particles_kor(_sanity_kor_endings(_strip_ellipsis_tokens(value_data.get("desc", ""))))
+        if not kw:
+            kw = VALUES_DEFAULT.get(atype, VALUES_DEFAULT["LCC"])
+        kw1 = kw[(base + version) % len(kw)]
+        kw2 = kw[(base + version * 3 + 1) % len(kw)]
+        if kw2 == kw1 and len(kw) > 1:
+            kw2 = kw[(base + version * 3 + 2) % len(kw)]
+        airline_disp = _canonical_airline_name(airline)
+        q4_text = value_tpls[q4_tpl_idx].format(airline=airline_disp, kw1=kw1, kw2=kw2, desc=desc)
+        q4_text = _normalize_airline_name_in_text(q4_text, airline)
+
     q4_text = _fix_particles_after_format(q4_text)  # 조사 보정 추가
     q4 = _sanitize_question_strict(q4_text)
 
-    q5 = _slot_q5_surprise(base, version)
+    q5 = _slot_q5_surprise(base, version, atype)
 
     anchor = _pick_anchor_by_rule(
         qtype_internal=qtype,
@@ -1041,7 +1372,7 @@ def generate_questions(essay: str, airline: str, version: int) -> Dict[str, Dict
     essay_hash = hashlib.sha256(essay.encode("utf-8", errors="ignore")).hexdigest() if essay else ""
     cache = _get_or_build_item_analysis_cache(st.session_state.get("qa_sets", []), essay_hash)
     items = cache.get("items", []) or []
-    llm_data = _llm_try_extract_or_reuse(st.session_state.get("qa_sets", []))
+    llm_data = _llm_try_extract_or_reuse(st.session_state.get("qa_sets", []), airline=airline)
     llm_items = llm_data.get("items", []) if isinstance(llm_data, dict) else []
 
     essay_id = stable_int_hash(essay)
@@ -1080,31 +1411,52 @@ def generate_questions(essay: str, airline: str, version: int) -> Dict[str, Dict
 
     angle = _version_angle(version)
 
-    q1_text = _slot_q1_common(base, version)
+    q1_text = _slot_q1_common(base, version, atype)
 
-    # Q2: 공격 포인트 기반 질문 생성
-    q2_text, claim, attack_point = _slot_q2_deep(base, version, qtype, situation, llm_item, basis, raw_answer)
+    # Q2: 공격 포인트 기반 질문 생성 (FSC/LCC 톤 적용)
+    q2_text, claim, attack_point = _slot_q2_deep(base, version, qtype, situation, llm_item, basis, raw_answer, atype)
 
-    # Q3: 재현성/판단기준 기반 꼬리 질문
-    q3_text = _slot_q3_followup(base, version, qtype, llm_item, claim, attack_point)
+    # Q3: 재현성/판단기준 기반 꼬리 질문 (FSC/LCC 톤 적용)
+    q3_text = _slot_q3_followup(base, version, qtype, llm_item, claim, attack_point, atype)
 
-    q5_text = _slot_q5_surprise(base, version)
+    q5_text = _slot_q5_surprise(base, version, atype)
 
-    value_data = FSC_VALUE_DATA if atype == "FSC" else LCC_VALUE_DATA
-    value_tpls = VALUE_Q_TEMPLATES_FSC if atype == "FSC" else VALUE_Q_TEMPLATES_LCC
-    q4_tpl_idx = _pick_det_idx(base, version, 4, len(value_tpls))
-    kw = value_data.get("keywords", []) or []
-    desc = _auto_fix_particles_kor(_sanity_kor_endings(_strip_ellipsis_tokens(value_data.get("desc", ""))))
-    if not kw:
-        kw = VALUES_DEFAULT["FSC"] if atype == "FSC" else VALUES_DEFAULT["LCC"]
-    kw1 = kw[(base + version) % len(kw)]
-    kw2 = kw[(base + version * 3 + 1) % len(kw)]
-    if kw2 == kw1 and len(kw) > 1:
-        kw2 = kw[(base + version * 3 + 2) % len(kw)]
-    airline_disp = _canonical_airline_name(airline)
-    q4_text = value_tpls[q4_tpl_idx].format(airline=airline_disp, kw1=kw1, kw2=kw2, desc=desc)
-    q4_text = _normalize_airline_name_in_text(q4_text, airline)
-    q4_text = _fix_particles_after_format(q4_text)  # 조사 보정 추가
+    # 항공사 유형에 맞는 가치 데이터 선택 (FSC/LCC/HSC)
+    if atype == "FSC":
+        value_data = FSC_VALUE_DATA
+    elif atype == "HSC":
+        value_data = HSC_VALUE_DATA
+    else:
+        value_data = LCC_VALUE_DATA
+    # HSC는 LCC 템플릿 사용 (장거리 특화이지만 저비용 구조 기반)
+    # 홀수 버전(1,3,5)=날카로움, 짝수 버전(2,4,6)=부드러움
+    is_soft_version = (version % 2 == 0)
+    if atype == "FSC":
+        value_tpls = VALUE_Q_TEMPLATES_FSC_SOFT if is_soft_version else VALUE_Q_TEMPLATES_FSC_SHARP
+    else:
+        value_tpls = VALUE_Q_TEMPLATES_LCC_SOFT if is_soft_version else VALUE_Q_TEMPLATES_LCC_SHARP
+
+    # 진에어/에어부산/에어서울 통합 LCC 질문 (version % 3 == 0 일 때)
+    airline_key = _canonical_airline_name(airline)
+    use_integration_q = (airline_key in INTEGRATED_LCC_AIRLINES) and (version % 3 == 0)
+
+    if use_integration_q:
+        q4_idx = (base + version) % len(INTEGRATED_LCC_Q_TEMPLATES)
+        q4_text = INTEGRATED_LCC_Q_TEMPLATES[q4_idx]
+    else:
+        q4_tpl_idx = _pick_det_idx(base, version, 4, len(value_tpls))
+        kw = value_data.get("keywords", []) or []
+        desc = _auto_fix_particles_kor(_sanity_kor_endings(_strip_ellipsis_tokens(value_data.get("desc", ""))))
+        if not kw:
+            kw = VALUES_DEFAULT.get(atype, VALUES_DEFAULT["LCC"])
+        kw1 = kw[(base + version) % len(kw)]
+        kw2 = kw[(base + version * 3 + 1) % len(kw)]
+        if kw2 == kw1 and len(kw) > 1:
+            kw2 = kw[(base + version * 3 + 2) % len(kw)]
+        airline_disp = airline_key
+        q4_text = value_tpls[q4_tpl_idx].format(airline=airline_disp, kw1=kw1, kw2=kw2, desc=desc)
+        q4_text = _normalize_airline_name_in_text(q4_text, airline)
+        q4_text = _fix_particles_after_format(q4_text)  # 조사 보정 추가
     q4_text = _sanitize_question_strict(q4_text)
 
     anchor = _pick_anchor_by_rule(
@@ -1288,7 +1640,13 @@ _AIRPLANE_CURSOR_SVG = (
 
 st.markdown(
     f"""
+    <meta name="google" content="notranslate">
+    <meta name="robots" content="notranslate">
     <style>
+      /* 구글 번역 방지 */
+      html {{
+        translate: no;
+      }}
       .stApp, .stApp * {{
         cursor: url("{_AIRPLANE_CURSOR_SVG}") 4 4, auto !important;
       }}
@@ -1298,10 +1656,23 @@ st.markdown(
       .stApp button, .stApp a, .stApp [role="button"] {{
         cursor: pointer !important;
       }}
+      /* 질문 생성 버튼 - 부드러운 파스텔 블루 */
+      button[kind="primary"] {{
+        background-color: #A8D8EA !important;
+        border-color: #A8D8EA !important;
+        color: #2C3E50 !important;
+      }}
+      button[kind="primary"]:hover {{
+        background-color: #8BC9DE !important;
+        border-color: #8BC9DE !important;
+      }}
     </style>
     """,
     unsafe_allow_html=True,
 )
+
+# 구글 번역 방지 - HTML lang 속성
+st.markdown('<div translate="no" class="notranslate">', unsafe_allow_html=True)
 
 # ----------------------------
 # UI / App
@@ -1321,6 +1692,8 @@ if "feedback" not in st.session_state:
     st.session_state.feedback = {"q1": "", "q2": "", "q3": "", "q4": "", "q5": ""}
 if "report_text" not in st.session_state:
     st.session_state.report_text = ""
+if "q3_generated" not in st.session_state:
+    st.session_state.q3_generated = False
 if "_regen_last_request_id" not in st.session_state:
     st.session_state._regen_last_request_id = ""
 if "_regen_in_progress" not in st.session_state:
@@ -1328,9 +1701,8 @@ if "_regen_in_progress" not in st.session_state:
 if "qa_sets" not in st.session_state:
     st.session_state.qa_sets = [{"prompt": "", "answer": ""}]
 
-st.title("승무원 AI 면접 코칭 MVP (Streamlit)")
-st.caption("단일 app.py / 외부 API·LLM 없음 / 무작위 없음 / 결정론적 재생성")
-
+st.title("승무원 AI 면접 코칭")
+st.caption("자소서 기반 면접 질문 생성 및 답변 연습")
 colL, colR = st.columns([1, 1])
 
 with colL:
@@ -1342,9 +1714,71 @@ with colL:
         format_func=_canonical_airline_name,
     )
     airline = _canonical_airline_name(airline_raw)
+    st.session_state.selected_airline = airline  # LLM 호출 시 FSC/LCC 구분용
     atype = airline_profile(airline)
     st.info(f"항공사 타입: {atype}")
     st.caption("면접 언어: 한국어(고정)")
+
+    # 항공사별 선호 인재상 표시
+    airline_key = _raw_airline_key(airline)
+    pref_type = AIRLINE_PREFERRED_TYPE.get(airline_key, {})
+    if pref_type:
+        st.markdown(f"**2026 선호 인재상:** {pref_type.get('nickname', '')}")
+        st.caption(f"{pref_type.get('description', '')}")
+
+    # 영어 면접 있는 항공사 안내
+    if airline_key in ENGLISH_INTERVIEW_AIRLINES:
+        st.warning("이 항공사는 **영어 면접 전형**이 있습니다.")
+
+    # 이력서 정보 입력 (Basic/Pro 요금제용)
+    current_plan = st.session_state.get("current_plan", DEFAULT_PLAN)
+    plan_config = PLAN_CONFIG.get(current_plan, PLAN_CONFIG["basic"])
+
+    if plan_config.get("resume_questions", 0) > 0:
+        with st.expander("이력서 정보 (선택)", expanded=False):
+            st.caption("개인정보 없이 필요한 항목만 선택하세요.")
+
+            # 이력서 세션 상태 초기화
+            if "resume_data" not in st.session_state:
+                st.session_state.resume_data = {}
+
+            resume_major = st.selectbox(
+                "전공 계열",
+                options=RESUME_MAJOR_OPTIONS,
+                index=0,
+                key="resume_major"
+            )
+            resume_exp = st.selectbox(
+                "총 경력 기간",
+                options=RESUME_EXPERIENCE_OPTIONS,
+                index=0,
+                key="resume_exp"
+            )
+            resume_gap = st.selectbox(
+                "경력 공백",
+                options=RESUME_GAP_OPTIONS,
+                index=0,
+                key="resume_gap"
+            )
+
+            st.markdown("**해당 항목 체크**")
+            has_short_career = st.checkbox("1년 미만 퇴사 경력", key="has_short_career")
+            has_overseas = st.checkbox("해외 경험 (어학연수/교환학생/워홀)", key="has_overseas")
+            has_service_exp = st.checkbox("서비스직 경험", key="has_service_exp")
+            has_language_cert = st.checkbox("어학 자격증 (토익/토플/HSK 등)", key="has_language_cert")
+            major_mismatch = st.checkbox("전공-직무 연관성 낮음", key="major_mismatch")
+
+            # 세션에 저장
+            st.session_state.resume_data = {
+                "major": resume_major,
+                "experience": resume_exp,
+                "gap": resume_gap,
+                "has_short_career": has_short_career,
+                "has_overseas": has_overseas,
+                "has_service_exp": has_service_exp,
+                "has_language_cert": has_language_cert,
+                "major_mismatch": major_mismatch,
+            }
 
 with colR:
     st.subheader("STEP 2) 자기소개서 입력 (최대 5,000자)")
@@ -1387,6 +1821,7 @@ if st.session_state.last_essay_hash and current_hash and current_hash != st.sess
     st.session_state.answers = {"q1": "", "q2": "", "q3": "", "q4": "", "q5": ""}
     st.session_state.feedback = {"q1": "", "q2": "", "q3": "", "q4": "", "q5": ""}
     st.session_state.report_text = ""
+    st.session_state.q3_generated = False  # Q3 동적 생성 플래그 리셋
     st.session_state._regen_last_request_id = ""
     st.session_state._regen_in_progress = False
     st.session_state.ps_srcai_sentences = []
@@ -1400,13 +1835,12 @@ _srcai_apply_to_qa_sets(st.session_state.get("qa_sets", []))
 
 st.divider()
 
-btn_col1, btn_col2, btn_col3 = st.columns([1, 1, 2])
-with btn_col1:
-    regen = st.button("질문 생성/갱신 (STEP 4)", use_container_width=True, disabled=(not essay.strip()))
-with btn_col2:
+# 리셋 버튼만 상단에 배치 (질문 생성 버튼은 STEP 4~5로 이동)
+reset_col, info_col = st.columns([1, 3])
+with reset_col:
     reset = st.button("리셋", use_container_width=True)
-with btn_col3:
-    st.caption("동일 자소서/항공사에서 '질문 생성/갱신'을 연속 클릭하면, 세션 카운터로 질문 패턴/각도/근거가 결정론적으로 바뀝니다.")
+with info_col:
+    st.caption("👇 아래 'STEP 4~5) 면접 질문' 옆의 **질문 생성** 버튼을 눌러주세요.")
 
 if reset:
     st.session_state.question_version = 1
@@ -1414,46 +1848,10 @@ if reset:
     st.session_state.answers = {"q1": "", "q2": "", "q3": "", "q4": "", "q5": ""}
     st.session_state.feedback = {"q1": "", "q2": "", "q3": "", "q4": "", "q5": ""}
     st.session_state.report_text = ""
+    st.session_state.q3_generated = False  # Q3 동적 생성 플래그 리셋
     st.session_state._regen_last_request_id = ""
     st.session_state._regen_in_progress = False
     st.rerun()
-
-if regen:
-    # 버전 1~6 순환 (6 다음은 다시 1)
-    current_ver = st.session_state.question_version
-    st.session_state.question_version = (current_ver % 6) + 1
-    request_id = hashlib.sha256(
-        f"{current_hash}|{airline}|{st.session_state.question_version}".encode("utf-8", errors="ignore")
-    ).hexdigest()
-
-    should_run = (
-        (not st.session_state._regen_in_progress)
-        and (request_id != st.session_state._regen_last_request_id)
-    )
-
-    if should_run:
-        st.session_state._regen_in_progress = True
-        try:
-            # LLM 실패 상태였다면 재시도를 위해 force_rebuild=True
-            llm_hash = _calc_llm_hash_from_qa_sets(st.session_state.qa_sets)
-            llm_box = st.session_state.get("_llm_extract_box", {})
-            llm_rec = llm_box.get(llm_hash, {}) if llm_hash and isinstance(llm_box, dict) else {}
-            llm_state = llm_rec.get("state", "") if isinstance(llm_rec, dict) else ""
-            need_rebuild = llm_state in ("FAILED", "NO_RECORD", "")
-
-            _get_or_build_item_analysis_cache(st.session_state.qa_sets, current_hash, force_rebuild=need_rebuild)
-            st.session_state.questions = safe_generate_questions(
-                essay=essay,
-                airline=airline,
-                version=st.session_state.question_version,
-            )
-            st.session_state._regen_last_request_id = request_id
-        finally:
-            st.session_state._regen_in_progress = False
-
-    st.session_state.answers = {"q1": "", "q2": "", "q3": "", "q4": "", "q5": ""}
-    st.session_state.feedback = {"q1": "", "q2": "", "q3": "", "q4": "", "q5": ""}
-    st.session_state.report_text = ""
 
 st.subheader("STEP 3) 자기소개서 분석")
 if essay.strip():
@@ -1473,19 +1871,60 @@ if essay.strip():
     else:
         cache = _get_or_build_item_analysis_cache(st.session_state.qa_sets, current_hash)
 
-    risk_keywords = cache.get("agg_risk", []) or []
-    evidence = cache.get("agg_evidence", []) or []
-    if not risk_keywords:
-        risk_keywords = cache.get("agg_keywords", []) or []
+    # LLM 추출 데이터 우선 사용, 없으면 폴백
+    llm_data = None
+    if llm_hash:
+        rec = (st.session_state.get("_llm_extract_box", {}) or {}).get(llm_hash, {})
+        if isinstance(rec, dict) and isinstance(rec.get("data"), dict):
+            llm_data = rec.get("data")
+
+    # 핵심 키워드: LLM 추출 > 폴백
+    display_keywords = []
+    if llm_data and llm_data.get("items"):
+        for item in llm_data["items"]:
+            if isinstance(item, dict):
+                kw = item.get("key_keywords", [])
+                if isinstance(kw, list):
+                    display_keywords.extend(kw)
+    if not display_keywords:
+        display_keywords = cache.get("agg_risk", []) or cache.get("agg_keywords", []) or []
+
+    # 근거 문장: LLM 추출 > 폴백
+    display_evidence = []
+    if llm_data and llm_data.get("items"):
+        for item in llm_data["items"]:
+            if isinstance(item, dict):
+                ev = item.get("evidence_sentences", [])
+                if isinstance(ev, list):
+                    display_evidence.extend(ev)
+    if not display_evidence:
+        display_evidence = cache.get("agg_evidence", []) or []
+
+    # 중복 제거
+    display_keywords = list(dict.fromkeys(display_keywords))[:10]
+    display_evidence = list(dict.fromkeys(display_evidence))[:8]
+
+    st.markdown("### 자소서 분석 결과")
+    st.caption("면접관이 주목할 키워드와 질문의 근거가 될 문장입니다.")
 
     c2, c3 = st.columns([1, 1])
     with c2:
-        st.markdown("**핵심 키워드**")
-        st.write(", ".join(risk_keywords) if risk_keywords else "-")
+        st.markdown("**핵심 키워드** (면접관이 물어볼 포인트)")
+        if display_keywords:
+            # 키워드를 태그처럼 표시
+            keyword_html = " ".join([f"<span style='background-color:#e8f4f8;padding:4px 10px;border-radius:12px;margin:2px;display:inline-block;font-size:14px;'>{kw}</span>" for kw in display_keywords])
+            st.markdown(keyword_html, unsafe_allow_html=True)
+        else:
+            st.write("-")
     with c3:
-        st.markdown("**근거 문장(앵커) 후보**")
-        for s in evidence[:8]:
-            st.write(f"- {s}")
+        st.markdown("**근거 문장** (질문의 출처가 되는 문장)")
+        if display_evidence:
+            for i, s in enumerate(display_evidence, 1):
+                # 문장이 너무 길면 자르기
+                display_s = s[:100] + "..." if len(s) > 100 else s
+                st.markdown(f"<div style='background-color:#f9f9f9;padding:8px 12px;border-left:3px solid #4a90d9;margin:4px 0;font-size:13px;'>{i}. {display_s}</div>", unsafe_allow_html=True)
+        else:
+            st.write("-")
 
     # LLM 호출 후 상태 다시 확인
     rec = (st.session_state.get("_llm_extract_box", {}) or {}).get(llm_hash, {}) if llm_hash else {}
@@ -1513,9 +1952,69 @@ if essay.strip():
         )
 
 st.divider()
-st.subheader("STEP 4~5) 면접 질문 5문항")
+
+# STEP 4~5 헤더와 질문생성 버튼을 나란히 배치
+step_header_col, step_btn_col = st.columns([2.5, 1.5])
+with step_header_col:
+    st.subheader("STEP 4~5) 면접 질문 5문항")
+with step_btn_col:
+    regen_step45 = st.button("질문 생성/갱신", key="regen_step45", use_container_width=True, type="primary", disabled=(not essay.strip()))
+
+# STEP 4~5 버튼 클릭 시 전체 로직 실행
+if regen_step45:
+    current_ver = st.session_state.question_version
+    st.session_state.question_version = (current_ver % 6) + 1
+    request_id = hashlib.sha256(
+        f"{current_hash}|{airline}|{st.session_state.question_version}".encode("utf-8", errors="ignore")
+    ).hexdigest()
+
+    should_run = (
+        (not st.session_state._regen_in_progress)
+        and (request_id != st.session_state._regen_last_request_id)
+    )
+
+    if should_run:
+        st.session_state._regen_in_progress = True
+        try:
+            # LLM 실패 상태였다면 재시도를 위해 force_rebuild=True
+            llm_hash_45 = _calc_llm_hash_from_qa_sets(st.session_state.qa_sets)
+            llm_box_45 = st.session_state.get("_llm_extract_box", {})
+            llm_rec_45 = llm_box_45.get(llm_hash_45, {}) if llm_hash_45 and isinstance(llm_box_45, dict) else {}
+            llm_state_45 = llm_rec_45.get("state", "") if isinstance(llm_rec_45, dict) else ""
+            need_rebuild = llm_state_45 in ("FAILED", "NO_RECORD", "")
+
+            _get_or_build_item_analysis_cache(st.session_state.qa_sets, current_hash, force_rebuild=need_rebuild)
+            st.session_state.questions = safe_generate_questions(
+                essay=essay,
+                airline=airline,
+                version=st.session_state.question_version,
+            )
+
+            # 이력서 기반 질문 생성 (Basic/Pro 요금제)
+            resume_data = st.session_state.get("resume_data", {})
+            num_resume_q = plan_config.get("resume_questions", 0)
+            if num_resume_q > 0 and resume_data:
+                resume_qs = generate_resume_questions(resume_data, airline, num_resume_q)
+                if resume_qs:
+                    st.session_state.resume_questions = resume_qs
+                    st.session_state.resume_data = {}
+                else:
+                    st.session_state.resume_questions = []
+            else:
+                st.session_state.resume_questions = []
+
+            st.session_state._regen_last_request_id = request_id
+        finally:
+            st.session_state._regen_in_progress = False
+
+    st.session_state.answers = {"q1": "", "q2": "", "q3": "", "q4": "", "q5": "", "r1": "", "r2": ""}
+    st.session_state.feedback = {"q1": "", "q2": "", "q3": "", "q4": "", "q5": "", "r1": "", "r2": ""}
+    st.session_state.report_text = ""
+    st.session_state.q3_generated = False
+    st.rerun()
+
 if st.session_state.questions:
-    st.success(f"질문 버전: {st.session_state.question_version} (리셋 시 0으로 초기화)")
+    st.caption(f"현재 버전: {st.session_state.question_version} / 버튼을 눌러 다른 각도의 질문을 받아보세요")
     for key in ["q1", "q2", "q3", "q4", "q5"]:
         qobj = st.session_state.questions.get(key, {})
         qtype = qobj.get("type", "")
@@ -1524,6 +2023,30 @@ if st.session_state.questions:
         anchor = qobj.get("anchor", "")
 
         with st.expander(f"{key.upper()} · {qtype}", expanded=True):
+            # Q3 특별 처리: Q2 답변 기반 동적 생성
+            if key == "q3":
+                q2_answer = st.session_state.answers.get("q2", "").strip()
+                q2_question = st.session_state.questions.get("q2", {}).get("question", "")
+
+                # Q3가 동적 생성되지 않았고, Q2 답변이 충분하면 생성 버튼 표시
+                if not st.session_state.get("q3_generated", False):
+                    if q2_answer and len(q2_answer) >= 20:
+                        st.info("Q2 답변을 기반으로 맞춤형 꼬리질문을 생성할 수 있습니다.")
+                        if st.button("Q3 꼬리질문 생성", key="gen_q3_btn", type="primary"):
+                            with st.spinner("Q3 생성 중..."):
+                                new_q3 = generate_q3_from_answer(q2_question, q2_answer)
+                                if new_q3:
+                                    st.session_state.questions["q3"]["question"] = new_q3
+                                    st.session_state.questions["q3"]["basis"] = "Q2 답변 기반 AI 동적 생성"
+                                    st.session_state.q3_generated = True
+                                    st.rerun()
+                                else:
+                                    st.error("Q3 생성에 실패했습니다. 기존 질문을 사용합니다.")
+                    elif q2_answer:
+                        st.warning("Q2 답변을 조금 더 입력하세요. (최소 20자)")
+                    else:
+                        st.warning("Q2 답변을 먼저 입력하세요. 답변을 기반으로 맞춤형 꼬리질문을 생성합니다.")
+
             st.markdown(f"**질문**\n\n{qtext}")
             if basis:
                 st.markdown(f"**생성 근거**\n\n- {basis}")
@@ -1536,6 +2059,28 @@ if st.session_state.questions:
                 height=120,
                 key=f"ans_{key}",
             )
+
+    # 이력서 기반 질문 표시 (Basic/Pro 요금제)
+    resume_questions = st.session_state.get("resume_questions", [])
+    if resume_questions:
+        st.divider()
+        st.subheader("이력서 기반 추가 질문")
+        st.caption("이력서 정보를 기반으로 생성된 예상 질문입니다.")
+
+        for i, rq in enumerate(resume_questions, 1):
+            rkey = f"r{i}"
+            with st.expander(f"R{i} · 이력서 검증", expanded=True):
+                st.markdown(f"**질문**\n\n{rq}")
+                st.markdown("**생성 근거**\n\n- 이력서 정보 기반 AI 생성")
+
+                if rkey not in st.session_state.answers:
+                    st.session_state.answers[rkey] = ""
+                st.session_state.answers[rkey] = st.text_area(
+                    f"R{i} 답변",
+                    value=st.session_state.answers.get(rkey, ""),
+                    height=120,
+                    key=f"ans_{rkey}",
+                )
 
     st.divider()
     st.subheader("STEP 6~7) 사실 기반 피드백 & 리포트")
@@ -1554,30 +2099,83 @@ if st.session_state.questions:
     items = split_essay_items(essay)
 
     if do_feedback:
-        for key in ["q1", "q2", "q3", "q4", "q5"]:
+        # Q2 답변 미리 가져오기 (Q3 분석에 필요)
+        q2_answer_for_q3 = st.session_state.answers.get("q2", "")
+
+        # 진행률 표시
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+
+        question_labels = {"q1": "Q1 공통", "q2": "Q2 검증", "q3": "Q3 꼬리", "q4": "Q4 인재상", "q5": "Q5 돌발"}
+        keys_to_process = ["q1", "q2", "q3", "q4", "q5"]
+
+        for idx, key in enumerate(keys_to_process):
+            status_text.text(f"분석 중... {question_labels.get(key, key)}")
+            progress_bar.progress((idx + 1) / len(keys_to_process))
+
             qobj = st.session_state.questions.get(key, {})
             qtype = qobj.get("type", "")
+            qtext = qobj.get("question", "")
             anchor = qobj.get("anchor", "")
             basis = qobj.get("basis", "")
             ans = st.session_state.answers.get(key, "")
-            value_meta = qobj.get("value_meta", "")
-            st.session_state.feedback[key] = build_feedback_kor(
-                qtype=qtype,
-                anchor=anchor,
-                basis=basis,
-                answer=ans,
-                risk_keywords=risk_keywords,
-                evidence=evidence,
-                value_meta=value_meta,
-            )
+
+            # 답변이 없으면 스킵
+            if not ans or not ans.strip():
+                st.session_state.feedback[key] = ""
+                continue
+
+            # 새 피드백 분석 시스템 사용
+            # Set B (Q2, Q3)에는 공격 포인트와 자소서 컨텍스트 전달
+            if key in ("q2", "q3"):
+                # 공격 포인트: anchor 또는 basis에서 추출
+                attack_point = anchor if anchor else basis
+                # 자소서 컨텍스트: 전체 에세이 요약
+                essay_context = "\n".join(evidence[:5]) if evidence else ""
+                # Q3의 경우 Q2 답변도 전달
+                q2_ans = q2_answer_for_q3 if key == "q3" else ""
+
+                st.session_state.feedback[key] = analyze_answer(
+                    question_key=key,
+                    question_text=qtext,
+                    user_answer=ans,
+                    question_type=qtype,
+                    attack_point=attack_point,
+                    essay_context=essay_context,
+                    q2_answer=q2_ans,
+                    airline=airline,
+                )
+            else:
+                # Set A (Q1, Q4, Q5)
+                st.session_state.feedback[key] = analyze_answer(
+                    question_key=key,
+                    question_text=qtext,
+                    user_answer=ans,
+                    question_type=qtype,
+                    airline=airline,
+                )
+
+        progress_bar.empty()
+        status_text.empty()
+        st.success("피드백 분석 완료!")
 
     if any(v.strip() for v in st.session_state.feedback.values()):
-        st.markdown("### 피드백")
+        st.markdown("### 피드백 분석 결과")
+        question_labels = {"q1": "Q1 공통질문", "q2": "Q2 자소서검증", "q3": "Q3 꼬리질문", "q4": "Q4 인재상", "q5": "Q5 돌발질문"}
+
         for key in ["q1", "q2", "q3", "q4", "q5"]:
             fb = st.session_state.feedback.get(key, "")
             if fb.strip():
-                st.markdown(f"**{key.upper()} 피드백**")
-                st.code(fb, language="text")
+                with st.expander(f"{question_labels.get(key, key.upper())} 피드백", expanded=True):
+                    # 피드백 내용을 섹션별로 하이라이트
+                    for line in fb.split("\n"):
+                        if line.startswith("[") and line.endswith("]"):
+                            # 섹션 헤더
+                            st.markdown(f"**{line}**")
+                        elif line.strip().startswith("-") or line.strip().startswith("•"):
+                            st.markdown(line)
+                        elif line.strip():
+                            st.markdown(line)
 
     if do_report:
         lines = []

@@ -1,0 +1,1375 @@
+# voice_utils.py
+# 음성 인식 (STT) 및 음성 평가 유틸리티
+# 네이버 클로바 더빙 + OpenAI TTS 지원
+
+import os
+import re
+import json
+import tempfile
+import requests
+from typing import Optional, Dict, Any, List, Tuple
+from io import BytesIO
+
+# OpenAI API 설정
+OPENAI_API_URL = "https://api.openai.com/v1"
+
+# 네이버 클로바 보이스 API 설정
+CLOVA_VOICE_URL = "https://naveropenapi.apigw.ntruss.com/tts-premium/v1/tts"
+
+# =====================
+# 네이버 클로바 보이스 스피커 목록
+# =====================
+# 한국어 Premium 음성 (감정 지원)
+CLOVA_SPEAKERS = {
+    # 여성 음성
+    "nara": {"name": "나라", "gender": "female", "age": "young", "emotion": True, "desc": "20대 여성, 차분함"},
+    "nara_call": {"name": "나라(상담원)", "gender": "female", "age": "young", "emotion": False, "desc": "상담원 톤"},
+    "nminsang": {"name": "민상", "gender": "female", "age": "young", "emotion": True, "desc": "20대 여성, 밝음"},
+    "nyejin": {"name": "예진", "gender": "female", "age": "young", "emotion": True, "desc": "20대 여성, 활발함"},
+    "mijin": {"name": "미진", "gender": "female", "age": "adult", "emotion": False, "desc": "성인 여성"},
+    "jinho": {"name": "진호(여)", "gender": "female", "age": "adult", "emotion": False, "desc": "성인 여성"},
+    "nsunhee": {"name": "선희", "gender": "female", "age": "middle", "emotion": True, "desc": "40-50대 여성"},
+    "nsunkyung": {"name": "선경", "gender": "female", "age": "middle", "emotion": True, "desc": "40-50대 여성, 따뜻함"},
+    "nyoungmi": {"name": "영미", "gender": "female", "age": "senior", "emotion": True, "desc": "60대 이상 여성"},
+
+    # 남성 음성
+    "njonghyun": {"name": "종현", "gender": "male", "age": "young", "emotion": True, "desc": "20대 남성"},
+    "njoonyoung": {"name": "준영", "gender": "male", "age": "young", "emotion": True, "desc": "20대 남성, 밝음"},
+    "nwontak": {"name": "원탁", "gender": "male", "age": "adult", "emotion": True, "desc": "30대 남성"},
+    "nsangdo": {"name": "상도", "gender": "male", "age": "middle", "emotion": True, "desc": "40-50대 남성"},
+    "nseungpyo": {"name": "승표", "gender": "male", "age": "middle", "emotion": True, "desc": "40-50대 남성, 권위"},
+    "nkyungtae": {"name": "경태", "gender": "male", "age": "senior", "emotion": True, "desc": "60대 이상 남성"},
+
+    # 아이/캐릭터 음성
+    "ndain": {"name": "다인", "gender": "female", "age": "child", "emotion": True, "desc": "어린이 여아"},
+    "nmeow": {"name": "야옹이", "gender": "female", "age": "child", "emotion": False, "desc": "귀여운 캐릭터"},
+}
+
+# 감정 코드
+CLOVA_EMOTIONS = {
+    "neutral": 0,   # 기본
+    "happy": 1,     # 기쁨
+    "sad": 2,       # 슬픔
+    "angry": 3,     # 화남
+}
+
+
+def get_clova_api_keys() -> Tuple[str, str]:
+    """네이버 클로바 API 키 가져오기"""
+    client_id = os.environ.get("CLOVA_CLIENT_ID", "") or os.environ.get("NCP_CLIENT_ID", "")
+    client_secret = os.environ.get("CLOVA_CLIENT_SECRET", "") or os.environ.get("NCP_CLIENT_SECRET", "")
+    return client_id, client_secret
+
+
+def is_clova_available() -> bool:
+    """클로바 API 사용 가능 여부"""
+    client_id, client_secret = get_clova_api_keys()
+    return bool(client_id and client_secret)
+
+
+def get_clova_speaker_for_persona(persona: str, escalation_level: int = 0) -> Tuple[str, str, int]:
+    """
+    페르소나에 맞는 클로바 스피커 선택
+
+    Args:
+        persona: 승객 페르소나 문자열
+        escalation_level: 감정 레벨 (0: 평상시, 1: 짜증, 2: 화남)
+
+    Returns:
+        (speaker_id, speed, emotion_code) 튜플
+    """
+    # 감정 매핑
+    emotion_map = {0: "neutral", 1: "neutral", 2: "angry"}
+    emotion = emotion_map.get(escalation_level, "neutral")
+    emotion_code = CLOVA_EMOTIONS.get(emotion, 0)
+
+    # 속도 설정 (화날수록 빠르게)
+    speed_map = {0: 0, 1: 1, 2: 2}  # -5 ~ 5 범위, 0이 기본
+    speed = speed_map.get(escalation_level, 0)
+
+    # 성별 판단
+    is_female = any(kw in persona for kw in ['여성', '엄마', '할머니', '여자', '부인', '임산부', '아줌마'])
+    is_male = any(kw in persona for kw in ['남성', '아빠', '할아버지', '남자', '사업가']) and not is_female
+
+    # 나이대 판단
+    if any(kw in persona for kw in ['60대', '70대', '어르신', '할머니', '할아버지', '노인']):
+        age = "senior"
+    elif any(kw in persona for kw in ['50대', '40대']):
+        age = "middle"
+    elif any(kw in persona for kw in ['30대', '직장인']):
+        age = "adult"
+    elif any(kw in persona for kw in ['20대', '대학생', '젊은']):
+        age = "young"
+    elif any(kw in persona for kw in ['어린이', '아동', '아이']):
+        age = "child"
+    else:
+        age = "adult"
+
+    # 스피커 선택
+    if age == "child":
+        speaker = "ndain"
+    elif is_female:
+        if age == "senior":
+            speaker = "nyoungmi"  # 60대 이상 여성
+        elif age == "middle":
+            speaker = "nsunhee"  # 40-50대 여성
+        elif age == "young":
+            speaker = "nyejin"  # 20대 여성
+        else:
+            speaker = "nara"  # 기본 여성
+    else:  # 남성 또는 기본
+        if age == "senior":
+            speaker = "nkyungtae"  # 60대 이상 남성
+        elif age == "middle":
+            speaker = "nsangdo"  # 40-50대 남성
+        elif age == "young":
+            speaker = "njonghyun"  # 20대 남성
+        else:
+            speaker = "nwontak"  # 30대 남성
+
+    return (speaker, speed, emotion_code)
+
+
+def generate_clova_tts(
+    text: str,
+    speaker: str = "nara",
+    speed: int = 0,
+    emotion: int = 0,
+    volume: int = 0,
+    pitch: int = 0,
+) -> Optional[bytes]:
+    """
+    네이버 클로바 보이스 API로 TTS 생성
+
+    Args:
+        text: 변환할 텍스트 (최대 2000자)
+        speaker: 스피커 ID
+        speed: 속도 (-5 ~ 5, 기본 0)
+        emotion: 감정 (0: 기본, 1: 슬픔, 2: 기쁨, 3: 화남)
+        volume: 볼륨 (-5 ~ 5, 기본 0)
+        pitch: 피치 (-5 ~ 5, 기본 0)
+
+    Returns:
+        MP3 오디오 바이트 또는 None
+    """
+    client_id, client_secret = get_clova_api_keys()
+    if not client_id or not client_secret:
+        return None
+
+    # 텍스트 길이 제한 (2000자)
+    if len(text) > 2000:
+        text = text[:2000]
+
+    headers = {
+        "X-NCP-APIGW-API-KEY-ID": client_id,
+        "X-NCP-APIGW-API-KEY": client_secret,
+        "Content-Type": "application/x-www-form-urlencoded",
+    }
+
+    # 감정 지원 여부 확인
+    speaker_info = CLOVA_SPEAKERS.get(speaker, {})
+    supports_emotion = speaker_info.get("emotion", False)
+
+    data = {
+        "speaker": speaker,
+        "text": text,
+        "volume": str(volume),
+        "speed": str(speed),
+        "pitch": str(pitch),
+        "format": "mp3",
+    }
+
+    # 감정 지원 스피커만 감정 파라미터 추가
+    if supports_emotion and emotion > 0:
+        data["emotion"] = str(emotion)
+        data["emotion-strength"] = "2"  # 감정 강도 (1: 약함, 2: 보통, 3: 강함)
+
+    try:
+        r = requests.post(
+            CLOVA_VOICE_URL,
+            headers=headers,
+            data=data,
+            timeout=30
+        )
+
+        if r.status_code == 200:
+            return r.content
+        else:
+            print(f"CLOVA TTS Error: {r.status_code} - {r.text}")
+            return None
+
+    except Exception as e:
+        print(f"CLOVA TTS API Error: {e}")
+        return None
+
+
+# =====================
+# 나이/성별별 TTS 음성 매핑 (OpenAI 백업용)
+# =====================
+# OpenAI TTS 음성:
+# - alloy: 중성적, 젊은 느낌
+# - echo: 남성, 중저음
+# - fable: 표현력 좋음, 이야기체
+# - onyx: 남성, 깊고 권위있는 느낌
+# - nova: 여성, 따뜻하고 친근함
+# - shimmer: 여성, 부드럽고 차분함
+
+def get_voice_for_persona(persona: str, escalation_level: int = 0) -> Tuple[str, float]:
+    """
+    승객 페르소나에서 나이/성별을 파악하여 적합한 TTS 음성과 속도 반환
+    감정 레벨에 따라 속도 조절 (화날수록 빨라짐)
+
+    Args:
+        persona: 승객 페르소나 문자열 (예: "50대 여성, 해외여행이 처음...")
+        escalation_level: 감정 레벨 (0: 평상시, 1: 짜증, 2: 화남)
+
+    Returns:
+        (voice_id, speed) 튜플
+    """
+    # 감정에 따른 속도 배율
+    emotion_speed_multiplier = {
+        0: 1.0,    # 평상시: 보통 속도
+        1: 1.08,   # 짜증: 약간 빠르게
+        2: 1.15,   # 화남: 더 빠르게
+    }
+    speed_mult = emotion_speed_multiplier.get(escalation_level, 1.0)
+
+    # 성별 판단
+    is_female = any(keyword in persona for keyword in ['여성', '엄마', '아이 엄마', '할머니', '여자', '부인', '임산부', '아줌마'])
+    is_male = any(keyword in persona for keyword in ['남성', '아빠', '할아버지', '남자', '사업가']) and not is_female
+
+    # 나이대 판단
+    age_group = "middle"  # 기본값: 중년
+
+    if any(keyword in persona for keyword in ['20대', '이십대', '대학생', '젊은']):
+        age_group = "young"
+    elif any(keyword in persona for keyword in ['30대', '삼십대', '직장인']):
+        age_group = "young_adult"
+    elif any(keyword in persona for keyword in ['40대', '사십대']):
+        age_group = "middle"
+    elif any(keyword in persona for keyword in ['50대', '오십대']):
+        age_group = "middle_aged"
+    elif any(keyword in persona for keyword in ['60대', '육십대', '70대', '칠십대', '어르신', '할머니', '할아버지', '노인']):
+        age_group = "elderly"
+
+    # 특수 페르소나 체크
+    if '어린이' in persona or '아동' in persona:
+        return ("alloy", 1.1 * speed_mult)
+
+    if '외국인' in persona:
+        return ("fable", 1.0 * speed_mult)
+
+    # 성별 + 나이 조합으로 음성 선택
+    if is_female:
+        if age_group in ["young", "young_adult"]:
+            base_speed = 1.05
+            voice = "nova"
+        elif age_group == "middle":
+            # 40대 아줌마: nova, 기본 빠름
+            base_speed = 1.1 if escalation_level > 0 else 1.0
+            voice = "nova"
+        elif age_group == "middle_aged":
+            # 50대 여성: shimmer
+            base_speed = 1.0
+            voice = "shimmer"
+        else:  # elderly
+            # 60-70대 여성: shimmer, 느리게
+            base_speed = 0.92
+            voice = "shimmer"
+    else:
+        # 남성 또는 성별 불명확
+        if age_group in ["young", "young_adult"]:
+            base_speed = 1.05
+            voice = "echo"
+        elif age_group == "middle":
+            # 40대 남성/사업가: echo
+            base_speed = 1.0
+            voice = "echo"
+        elif age_group == "middle_aged":
+            # 50대 남성: onyx
+            base_speed = 0.98
+            voice = "onyx"
+        else:  # elderly
+            # 60-70대 남성: onyx, 느리게
+            base_speed = 0.9
+            voice = "onyx"
+
+    final_speed = min(base_speed * speed_mult, 1.25)  # 최대 1.25배속
+    return (voice, final_speed)
+
+
+def get_openai_api_key() -> str:
+    """OpenAI API 키 가져오기"""
+    return (
+        os.environ.get("OPENAI_API_KEY", "")
+        or os.environ.get("OPENAI_APIKEY", "")
+        or os.environ.get("OPENAI_KEY", "")
+    )
+
+
+def transcribe_audio(audio_bytes: bytes, language: str = "ko") -> Optional[Dict[str, Any]]:
+    """
+    OpenAI Whisper API로 음성을 텍스트로 변환
+
+    Args:
+        audio_bytes: 오디오 바이트 데이터
+        language: 언어 코드 (ko, en)
+
+    Returns:
+        {
+            "text": "인식된 텍스트",
+            "duration": 10.5,  # 초 단위
+            "words": [{"word": "안녕", "start": 0.0, "end": 0.5}, ...]
+        }
+    """
+    api_key = get_openai_api_key()
+    if not api_key:
+        return None
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+    }
+
+    # 임시 파일로 저장
+    with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as f:
+        f.write(audio_bytes)
+        temp_path = f.name
+
+    try:
+        with open(temp_path, "rb") as audio_file:
+            files = {
+                "file": ("audio.webm", audio_file, "audio/webm"),
+            }
+            data = {
+                "model": "whisper-1",
+                "language": language,
+                "response_format": "verbose_json",
+                "timestamp_granularities": ["word"],
+            }
+
+            r = requests.post(
+                f"{OPENAI_API_URL}/audio/transcriptions",
+                headers=headers,
+                files=files,
+                data=data,
+                timeout=60
+            )
+            r.raise_for_status()
+            result = r.json()
+
+            return {
+                "text": result.get("text", ""),
+                "duration": result.get("duration", 0),
+                "words": result.get("words", []),
+                "language": result.get("language", language),
+            }
+
+    except Exception as e:
+        print(f"Whisper API Error: {e}")
+        return None
+
+    finally:
+        # 임시 파일 삭제
+        try:
+            os.unlink(temp_path)
+        except:
+            pass
+
+
+def analyze_voice_quality(
+    transcription: Dict[str, Any],
+    expected_duration_range: Tuple[int, int] = (60, 90),
+) -> Dict[str, Any]:
+    """
+    음성 품질 분석
+
+    Args:
+        transcription: transcribe_audio 결과
+        expected_duration_range: 적정 답변 시간 범위 (초)
+
+    Returns:
+        {
+            "speech_rate": {"wpm": 150, "score": 8, "feedback": "적절한 속도"},
+            "filler_words": {"count": 3, "list": ["음", "어"], "score": 7, "feedback": "..."},
+            "pauses": {"count": 2, "long_pauses": 1, "score": 8, "feedback": "..."},
+            "duration": {"seconds": 75, "score": 10, "feedback": "적절한 시간"},
+            "clarity": {"score": 8, "feedback": "..."},
+            "total_score": 82,
+            "total_feedback": "..."
+        }
+    """
+    text = transcription.get("text", "")
+    duration = transcription.get("duration", 0)
+    words = transcription.get("words", [])
+
+    result = {
+        "speech_rate": {},
+        "filler_words": {},
+        "pauses": {},
+        "duration": {},
+        "clarity": {},
+        "total_score": 0,
+        "total_feedback": "",
+    }
+
+    # 1. 말 속도 분석 (WPM - Words Per Minute)
+    word_count = len(text.split())
+    if duration > 0:
+        wpm = int((word_count / duration) * 60)
+    else:
+        wpm = 0
+
+    if 120 <= wpm <= 160:
+        rate_score = 10
+        rate_feedback = "적절한 말 속도입니다."
+    elif 100 <= wpm < 120 or 160 < wpm <= 180:
+        rate_score = 7
+        rate_feedback = "약간 느리거나 빠릅니다." if wpm < 120 else "약간 빠릅니다."
+    elif wpm < 100:
+        rate_score = 4
+        rate_feedback = "너무 느립니다. 자신감 있게 말해보세요."
+    else:
+        rate_score = 4
+        rate_feedback = "너무 빠릅니다. 천천히 또박또박 말해보세요."
+
+    result["speech_rate"] = {
+        "wpm": wpm,
+        "score": rate_score,
+        "feedback": rate_feedback,
+    }
+
+    # 2. 필러 단어 분석
+    filler_patterns = [
+        r'\b음+\b', r'\b어+\b', r'\b그+\b', r'\b아+\b',
+        r'\b그러니까\b', r'\b그래서\b', r'\b뭐랄까\b',
+        r'\b약간\b', r'\b좀\b', r'\b진짜\b', r'\b막\b',
+        r'\b이제\b', r'\b근데\b', r'\b그냥\b',
+    ]
+
+    filler_count = 0
+    filler_list = []
+    for pattern in filler_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            filler_count += len(matches)
+            filler_list.extend(matches)
+
+    # 1분당 필러 단어 수로 정규화
+    if duration > 0:
+        filler_per_min = (filler_count / duration) * 60
+    else:
+        filler_per_min = 0
+
+    if filler_per_min <= 3:
+        filler_score = 10
+        filler_feedback = "불필요한 추임새가 거의 없습니다."
+    elif filler_per_min <= 6:
+        filler_score = 7
+        filler_feedback = "추임새를 조금 줄이면 좋겠습니다."
+    elif filler_per_min <= 10:
+        filler_score = 4
+        filler_feedback = "추임새가 많습니다. 의식적으로 줄여보세요."
+    else:
+        filler_score = 2
+        filler_feedback = "추임새가 너무 많습니다. 침묵을 두려워하지 마세요."
+
+    result["filler_words"] = {
+        "count": filler_count,
+        "list": list(set(filler_list))[:5],  # 상위 5개만
+        "score": filler_score,
+        "feedback": filler_feedback,
+    }
+
+    # 3. 묵음/휴지 분석
+    if words:
+        pauses = []
+        long_pauses = 0
+        for i in range(1, len(words)):
+            prev_end = words[i-1].get("end", 0)
+            curr_start = words[i].get("start", 0)
+            gap = curr_start - prev_end
+            if gap > 0.5:
+                pauses.append(gap)
+                if gap > 2.0:
+                    long_pauses += 1
+
+        pause_count = len(pauses)
+
+        if pause_count <= 3 and long_pauses == 0:
+            pause_score = 10
+            pause_feedback = "자연스러운 흐름입니다."
+        elif pause_count <= 5 and long_pauses <= 1:
+            pause_score = 7
+            pause_feedback = "전반적으로 괜찮지만 긴 침묵이 있었습니다."
+        else:
+            pause_score = 4
+            pause_feedback = "답변이 자주 끊깁니다. 미리 정리해서 말해보세요."
+
+        result["pauses"] = {
+            "count": pause_count,
+            "long_pauses": long_pauses,
+            "score": pause_score,
+            "feedback": pause_feedback,
+        }
+    else:
+        result["pauses"] = {
+            "count": 0,
+            "long_pauses": 0,
+            "score": 7,
+            "feedback": "휴지 분석 데이터 없음",
+        }
+
+    # 4. 답변 시간 분석
+    min_duration, max_duration = expected_duration_range
+    if min_duration <= duration <= max_duration:
+        duration_score = 10
+        duration_feedback = f"적절한 답변 시간입니다. ({int(duration)}초)"
+    elif duration < min_duration * 0.5:
+        duration_score = 3
+        duration_feedback = f"답변이 너무 짧습니다. ({int(duration)}초) 구체적인 예시를 추가하세요."
+    elif duration < min_duration:
+        duration_score = 6
+        duration_feedback = f"조금 더 자세히 답변해도 좋습니다. ({int(duration)}초)"
+    elif duration <= max_duration * 1.3:
+        duration_score = 6
+        duration_feedback = f"약간 깁니다. ({int(duration)}초) 핵심만 전달하세요."
+    else:
+        duration_score = 3
+        duration_feedback = f"답변이 너무 깁니다. ({int(duration)}초) 간결하게 정리하세요."
+
+    result["duration"] = {
+        "seconds": int(duration),
+        "score": duration_score,
+        "feedback": duration_feedback,
+    }
+
+    # 5. 발음 명확성 (간접 측정 - 인식된 단어 수 기반)
+    if words:
+        recognized_ratio = len(words) / max(word_count, 1)
+        if recognized_ratio >= 0.9:
+            clarity_score = 10
+            clarity_feedback = "발음이 명확합니다."
+        elif recognized_ratio >= 0.7:
+            clarity_score = 7
+            clarity_feedback = "발음이 대체로 명확합니다."
+        else:
+            clarity_score = 4
+            clarity_feedback = "발음을 더 또렷하게 해주세요."
+    else:
+        clarity_score = 7
+        clarity_feedback = "발음 분석 데이터 없음"
+
+    result["clarity"] = {
+        "score": clarity_score,
+        "feedback": clarity_feedback,
+    }
+
+    # 총점 계산 (가중 평균)
+    weights = {
+        "speech_rate": 0.2,
+        "filler_words": 0.25,
+        "pauses": 0.15,
+        "duration": 0.2,
+        "clarity": 0.2,
+    }
+
+    total_score = (
+        result["speech_rate"]["score"] * weights["speech_rate"] +
+        result["filler_words"]["score"] * weights["filler_words"] +
+        result["pauses"]["score"] * weights["pauses"] +
+        result["duration"]["score"] * weights["duration"] +
+        result["clarity"]["score"] * weights["clarity"]
+    ) * 10  # 100점 만점으로 환산
+
+    result["total_score"] = int(total_score)
+
+    # 총평
+    if total_score >= 80:
+        result["total_feedback"] = "음성 전달력이 우수합니다. 자신감 있게 면접에 임하세요!"
+    elif total_score >= 60:
+        result["total_feedback"] = "기본적인 전달력은 갖추었습니다. 아래 피드백을 참고해 개선해보세요."
+    else:
+        result["total_feedback"] = "음성 전달력 개선이 필요합니다. 꾸준한 연습이 필요합니다."
+
+    return result
+
+
+def generate_tts_audio(
+    text: str,
+    voice: str = "nova",  # alloy, echo, fable, onyx, nova, shimmer
+    speed: float = 1.0,
+    use_clova: bool = True,  # 클로바 우선 사용
+    persona: str = "",  # 페르소나 (클로바용)
+    escalation_level: int = 0,  # 감정 레벨 (클로바용)
+) -> Optional[bytes]:
+    """
+    TTS로 텍스트를 음성으로 변환
+    - 클로바가 설정되어 있으면 클로바 사용 (더 자연스러운 한국어)
+    - 그렇지 않으면 OpenAI TTS 사용
+
+    Args:
+        text: 변환할 텍스트
+        voice: OpenAI 음성 종류 (클로바 미사용시)
+        speed: OpenAI 속도 (0.25 ~ 4.0)
+        use_clova: 클로바 우선 사용 여부
+        persona: 승객 페르소나 (클로바용)
+        escalation_level: 감정 레벨 (클로바용)
+
+    Returns:
+        MP3 오디오 바이트 데이터
+    """
+    # 1. 클로바 시도
+    if use_clova and is_clova_available():
+        if persona:
+            speaker, clova_speed, emotion = get_clova_speaker_for_persona(persona, escalation_level)
+        else:
+            # 페르소나 없으면 기본 설정
+            speaker = "nara"
+            clova_speed = 0
+            emotion = CLOVA_EMOTIONS.get("angry", 0) if escalation_level >= 2 else 0
+
+        audio = generate_clova_tts(
+            text=text,
+            speaker=speaker,
+            speed=clova_speed,
+            emotion=emotion,
+        )
+        if audio:
+            return audio
+        print("CLOVA TTS 실패, OpenAI로 폴백...")
+
+    # 2. OpenAI TTS 폴백
+    api_key = get_openai_api_key()
+    if not api_key:
+        return None
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "model": "tts-1-hd",
+        "input": text,
+        "voice": voice,
+        "speed": speed,
+    }
+
+    try:
+        r = requests.post(
+            f"{OPENAI_API_URL}/audio/speech",
+            headers=headers,
+            json=payload,
+            timeout=30
+        )
+        r.raise_for_status()
+        return r.content
+
+    except Exception as e:
+        print(f"OpenAI TTS API Error: {e}")
+        return None
+
+
+def generate_tts_for_passenger(
+    text: str,
+    persona: str,
+    escalation_level: int = 0,
+) -> Optional[bytes]:
+    """
+    승객 대사용 TTS 생성 (페르소나/감정 자동 매핑)
+
+    Args:
+        text: 승객 대사
+        persona: 승객 페르소나
+        escalation_level: 감정 레벨 (0: 평상시, 1: 짜증, 2: 화남)
+
+    Returns:
+        MP3 오디오 바이트 데이터
+    """
+    # 클로바 사용 가능하면 클로바 우선
+    if is_clova_available():
+        speaker, speed, emotion = get_clova_speaker_for_persona(persona, escalation_level)
+        audio = generate_clova_tts(
+            text=text,
+            speaker=speaker,
+            speed=speed,
+            emotion=emotion,
+        )
+        if audio:
+            return audio
+
+    # OpenAI 폴백
+    voice, speed = get_voice_for_persona(persona, escalation_level)
+    return generate_tts_audio(
+        text=text,
+        voice=voice,
+        speed=speed,
+        use_clova=False,  # 이미 클로바 시도했으므로 스킵
+    )
+
+
+def get_loud_audio_component(audio_bytes: bytes, autoplay: bool = True, gain: float = 10.0):
+    """
+    볼륨 증폭된 오디오 플레이어 (Streamlit components.html 사용)
+
+    Args:
+        audio_bytes: MP3 오디오 바이트
+        autoplay: 자동 재생 여부
+        gain: 볼륨 증폭 배율 (10.0 = 10배)
+    """
+    import base64
+    import streamlit.components.v1 as components
+
+    audio_b64 = base64.b64encode(audio_bytes).decode()
+
+    html_code = f"""
+    <!DOCTYPE html>
+    <html>
+    <body>
+    <button id="playBtn" style="padding: 10px 20px; font-size: 16px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 5px;">
+        🔊 재생 (볼륨 증폭)
+    </button>
+    <script>
+    var audioCtx = null;
+    var isPlaying = false;
+
+    document.getElementById('playBtn').addEventListener('click', async function() {{
+        if (isPlaying) return;
+        isPlaying = true;
+        this.textContent = '🔊 재생 중...';
+        this.style.background = '#888';
+
+        try {{
+            if (!audioCtx) {{
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }}
+            if (audioCtx.state === 'suspended') {{
+                await audioCtx.resume();
+            }}
+
+            var base64 = "{audio_b64}";
+            var binaryString = atob(base64);
+            var len = binaryString.length;
+            var bytes = new Uint8Array(len);
+            for (var i = 0; i < len; i++) {{
+                bytes[i] = binaryString.charCodeAt(i);
+            }}
+
+            var audioBuffer = await audioCtx.decodeAudioData(bytes.buffer);
+            var source = audioCtx.createBufferSource();
+            source.buffer = audioBuffer;
+
+            var gainNode = audioCtx.createGain();
+            gainNode.gain.value = {gain};
+
+            source.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            source.onended = function() {{
+                isPlaying = false;
+                document.getElementById('playBtn').textContent = '🔊 재생 (볼륨 증폭)';
+                document.getElementById('playBtn').style.background = '#4CAF50';
+            }};
+
+            source.start(0);
+        }} catch(e) {{
+            console.error('Audio error:', e);
+            isPlaying = false;
+            this.textContent = '🔊 재생 (볼륨 증폭)';
+            this.style.background = '#4CAF50';
+        }}
+    }});
+
+    {"document.getElementById('playBtn').click();" if autoplay else ""}
+    </script>
+    </body>
+    </html>
+    """
+
+    components.html(html_code, height=60)
+
+
+def get_audio_player_html(audio_bytes: bytes, autoplay: bool = False, volume_boost: float = 2.0) -> str:
+    """
+    오디오 재생용 HTML 생성 (기본 플레이어)
+
+    Args:
+        audio_bytes: MP3 오디오 바이트
+        autoplay: 자동 재생 여부
+        volume_boost: 사용하지 않음
+
+    Returns:
+        HTML 문자열
+    """
+    import base64
+
+    audio_b64 = base64.b64encode(audio_bytes).decode()
+    autoplay_attr = "autoplay" if autoplay else ""
+
+    return f"""<audio {autoplay_attr} controls style="width: 100%;"><source src="data:audio/mp3;base64,{audio_b64}" type="audio/mp3"></audio>"""
+
+
+def evaluate_answer_content(
+    question: str,
+    answer_text: str,
+    airline: str = "",
+    airline_type: str = "LCC",
+) -> Dict[str, Any]:
+    """
+    답변 내용 평가 (GPT-4o-mini)
+
+    Args:
+        question: 면접 질문
+        answer_text: 답변 텍스트
+        airline: 항공사명
+        airline_type: FSC/LCC
+
+    Returns:
+        {
+            "content_score": 35,  # /40
+            "structure_score": 25,  # /30
+            "delivery_score": 12,  # /15
+            "relevance_score": 13,  # /15
+            "total_score": 85,
+            "star_check": {...},
+            "strengths": [...],
+            "improvements": [...],
+            "sample_answer": "..."
+        }
+    """
+    api_key = get_openai_api_key()
+    if not api_key:
+        return {"error": "API 키 없음"}
+
+    system_prompt = f"""당신은 엄격한 항공사 면접관입니다.
+지원 항공사: {airline} ({airline_type})
+
+답변을 객관적으로 평가하세요. 후한 점수를 주지 마세요.
+
+JSON 형식으로만 응답하세요:
+{{
+    "content_score": 0-40,
+    "content_feedback": "내용 피드백",
+    "structure_score": 0-30,
+    "structure_feedback": "구조 피드백",
+    "delivery_score": 0-15,
+    "delivery_feedback": "전달력 피드백",
+    "relevance_score": 0-15,
+    "relevance_feedback": "질문 관련성 피드백",
+    "star_check": {{
+        "situation": true/false,
+        "task": true/false,
+        "action": true/false,
+        "result": true/false
+    }},
+    "strengths": ["강점1", "강점2"],
+    "improvements": ["개선점1", "개선점2", "개선점3"],
+    "sample_answer": "모범 답변 예시 (3-4문장)"
+}}
+
+점수 기준:
+- content (40점): 구체적 경험, 숫자/사례, 진정성
+- structure (30점): 두괄식, STAR 구조, 논리 흐름
+- delivery (15점): 자신감 있는 표현, "것 같습니다" 과다 사용 감점
+- relevance (15점): 질문 의도 파악, 핵심 답변"""
+
+    user_prompt = f"""질문: {question}
+
+답변: {answer_text}
+
+위 답변을 평가해주세요."""
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "model": "gpt-4o-mini",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ],
+        "temperature": 0.3,
+        "response_format": {"type": "json_object"},
+    }
+
+    try:
+        r = requests.post(
+            f"{OPENAI_API_URL}/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=30
+        )
+        r.raise_for_status()
+        result = r.json()
+        content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+        parsed = json.loads(content)
+
+        # 총점 계산
+        total = (
+            parsed.get("content_score", 0) +
+            parsed.get("structure_score", 0) +
+            parsed.get("delivery_score", 0) +
+            parsed.get("relevance_score", 0)
+        )
+        parsed["total_score"] = total
+
+        return parsed
+
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# =====================================================
+# Google Cloud TTS 연동 (Neural2 - 고품질 한국어)
+# =====================================================
+
+# Google Cloud TTS API 설정
+GOOGLE_TTS_URL = "https://texttospeech.googleapis.com/v1/text:synthesize"
+
+# Google Cloud TTS 한국어 음성 목록 (Neural2 = 최고 품질)
+GOOGLE_TTS_VOICES = {
+    # Neural2 (최고 품질) - 추천
+    "ko-KR-Neural2-A": {"name": "여성 A (Neural2)", "gender": "female", "quality": "neural2", "desc": "자연스러운 여성 음성"},
+    "ko-KR-Neural2-B": {"name": "여성 B (Neural2)", "gender": "female", "quality": "neural2", "desc": "부드러운 여성 음성"},
+    "ko-KR-Neural2-C": {"name": "남성 A (Neural2)", "gender": "male", "quality": "neural2", "desc": "자연스러운 남성 음성"},
+
+    # Wavenet (고품질)
+    "ko-KR-Wavenet-A": {"name": "여성 A (Wavenet)", "gender": "female", "quality": "wavenet", "desc": "여성 음성"},
+    "ko-KR-Wavenet-B": {"name": "여성 B (Wavenet)", "gender": "female", "quality": "wavenet", "desc": "여성 음성"},
+    "ko-KR-Wavenet-C": {"name": "남성 A (Wavenet)", "gender": "male", "quality": "wavenet", "desc": "남성 음성"},
+    "ko-KR-Wavenet-D": {"name": "남성 B (Wavenet)", "gender": "male", "quality": "wavenet", "desc": "남성 음성"},
+
+    # Standard (무료 할당량 많음)
+    "ko-KR-Standard-A": {"name": "여성 (Standard)", "gender": "female", "quality": "standard", "desc": "기본 여성 음성"},
+    "ko-KR-Standard-B": {"name": "여성 (Standard)", "gender": "female", "quality": "standard", "desc": "기본 여성 음성"},
+    "ko-KR-Standard-C": {"name": "남성 (Standard)", "gender": "male", "quality": "standard", "desc": "기본 남성 음성"},
+    "ko-KR-Standard-D": {"name": "남성 (Standard)", "gender": "male", "quality": "standard", "desc": "기본 남성 음성"},
+}
+
+
+def get_google_api_key() -> str:
+    """Google Cloud API 키 가져오기"""
+    return (
+        os.environ.get("GOOGLE_TTS_API_KEY", "")
+        or os.environ.get("GOOGLE_CLOUD_API_KEY", "")
+        or os.environ.get("GOOGLE_API_KEY", "")
+    )
+
+
+def is_google_tts_available() -> bool:
+    """Google Cloud TTS 사용 가능 여부"""
+    return bool(get_google_api_key())
+
+
+def get_google_voice_for_persona(persona: str, escalation_level: int = 0) -> Tuple[str, float, float]:
+    """
+    페르소나에 맞는 Google TTS 음성 선택
+
+    Args:
+        persona: 승객 페르소나
+        escalation_level: 감정 레벨 (0: 평상시, 1: 짜증, 2: 화남)
+
+    Returns:
+        (voice_name, speaking_rate, pitch) 튜플
+    """
+    # 성별 판단
+    is_female = any(kw in persona for kw in ['여성', '엄마', '할머니', '여자', '부인', '임산부', '아줌마'])
+
+    # 기본 음성 선택 (Neural2 = 최고 품질)
+    if is_female:
+        voice = "ko-KR-Neural2-A"
+    else:
+        voice = "ko-KR-Neural2-C"
+
+    # 감정에 따른 속도/피치 조절
+    if escalation_level == 0:
+        speaking_rate = 1.0
+        pitch = 0.0
+    elif escalation_level == 1:
+        speaking_rate = 1.1  # 약간 빠르게
+        pitch = 1.0  # 약간 높게
+    else:  # 화남
+        speaking_rate = 1.2  # 더 빠르게
+        pitch = 2.0  # 더 높게
+
+    return (voice, speaking_rate, pitch)
+
+
+def generate_google_tts(
+    text: str,
+    voice_name: str = "ko-KR-Neural2-A",
+    speaking_rate: float = 1.0,
+    pitch: float = 0.0,
+    volume_gain_db: float = 0.0,
+) -> Optional[bytes]:
+    """
+    Google Cloud TTS API로 음성 생성
+
+    Args:
+        text: 변환할 텍스트
+        voice_name: 음성 이름 (ko-KR-Neural2-A 등)
+        speaking_rate: 말하기 속도 (0.25 ~ 4.0, 기본 1.0)
+        pitch: 피치 (-20.0 ~ 20.0, 기본 0.0)
+        volume_gain_db: 볼륨 (-96.0 ~ 16.0, 기본 0.0)
+
+    Returns:
+        MP3 오디오 바이트 또는 None
+    """
+    api_key = get_google_api_key()
+    if not api_key:
+        print("[Google TTS] API 키 없음")
+        return None
+
+    # 텍스트 길이 제한 (5000바이트)
+    if len(text.encode('utf-8')) > 5000:
+        text = text[:1500]  # 대략적인 제한
+
+    # API 요청 URL (API 키 방식)
+    url = f"{GOOGLE_TTS_URL}?key={api_key}"
+
+    headers = {
+        "Content-Type": "application/json; charset=utf-8",
+    }
+
+    payload = {
+        "input": {
+            "text": text
+        },
+        "voice": {
+            "languageCode": "ko-KR",
+            "name": voice_name,
+        },
+        "audioConfig": {
+            "audioEncoding": "MP3",
+            "speakingRate": speaking_rate,
+            "pitch": pitch,
+            "volumeGainDb": volume_gain_db,
+        }
+    }
+
+    try:
+        r = requests.post(url, headers=headers, json=payload, timeout=30)
+
+        if r.status_code == 200:
+            result = r.json()
+            audio_content = result.get("audioContent", "")
+            if audio_content:
+                import base64
+                audio_bytes = base64.b64decode(audio_content)
+                print(f"[Google TTS] 성공 - {voice_name}, {len(audio_bytes)} bytes")
+                return audio_bytes
+            else:
+                print("[Google TTS] 오디오 컨텐츠 없음")
+                return None
+        else:
+            print(f"[Google TTS] 오류: {r.status_code} - {r.text[:200]}")
+            return None
+
+    except Exception as e:
+        print(f"[Google TTS] 예외: {e}")
+        return None
+
+
+def generate_tts_for_passenger_v2(
+    text: str,
+    persona: str,
+    escalation_level: int = 0,
+    tts_provider: str = "auto",  # "auto", "google", "clova", "openai"
+) -> Optional[bytes]:
+    """
+    승객 대사용 TTS 생성 (v2 - Google TTS 지원)
+
+    Args:
+        text: 승객 대사
+        persona: 승객 페르소나
+        escalation_level: 감정 레벨 (0: 평상시, 1: 짜증, 2: 화남)
+        tts_provider: TTS 제공자 선택
+
+    Returns:
+        MP3 오디오 바이트 데이터
+    """
+    # 1. Google TTS 시도 (auto 또는 google 선택 시)
+    if tts_provider in ["auto", "google"] and is_google_tts_available():
+        voice, rate, pitch = get_google_voice_for_persona(persona, escalation_level)
+        audio = generate_google_tts(
+            text=text,
+            voice_name=voice,
+            speaking_rate=rate,
+            pitch=pitch,
+        )
+        if audio:
+            return audio
+        if tts_provider == "google":
+            print("[TTS] Google TTS 실패")
+            return None
+
+    # 2. CLOVA 시도 (auto 또는 clova 선택 시)
+    if tts_provider in ["auto", "clova"] and is_clova_available():
+        speaker, speed, emotion = get_clova_speaker_for_persona(persona, escalation_level)
+        audio = generate_clova_tts(
+            text=text,
+            speaker=speaker,
+            speed=speed,
+            emotion=emotion,
+        )
+        if audio:
+            return audio
+        if tts_provider == "clova":
+            print("[TTS] CLOVA TTS 실패")
+            return None
+
+    # 3. OpenAI 폴백
+    voice, speed = get_voice_for_persona(persona, escalation_level)
+    return generate_tts_audio(
+        text=text,
+        voice=voice,
+        speed=speed,
+        use_clova=False,
+    )
+
+
+# =====================================================
+# Edge TTS 연동 (Microsoft Edge 브라우저 TTS - 무료/무제한)
+# =====================================================
+
+# Edge TTS 한국어 음성 목록
+EDGE_TTS_VOICES = {
+    # 여성 음성
+    "ko-KR-SunHiNeural": {"name": "선희", "gender": "female", "age": "adult", "desc": "밝고 친근한 여성 음성"},
+    "ko-KR-YuJinNeural": {"name": "유진", "gender": "female", "age": "young", "desc": "젊고 활기찬 여성 음성"},
+
+    # 남성 음성
+    "ko-KR-InJoonNeural": {"name": "인준", "gender": "male", "age": "adult", "desc": "차분한 남성 음성"},
+    "ko-KR-HyunsuNeural": {"name": "현수", "gender": "male", "age": "adult", "desc": "신뢰감 있는 남성 음성"},
+    "ko-KR-GookMinNeural": {"name": "국민", "gender": "male", "age": "adult", "desc": "표준 남성 음성"},
+}
+
+
+def is_edge_tts_available() -> bool:
+    """Edge TTS 사용 가능 여부 (항상 True - API 키 불필요)"""
+    try:
+        import edge_tts
+        return True
+    except ImportError:
+        return False
+
+
+def get_edge_voice_for_persona(persona: str, escalation_level: int = 0) -> Tuple[str, str, str]:
+    """
+    페르소나에 맞는 Edge TTS 음성 선택
+
+    Args:
+        persona: 승객 페르소나
+        escalation_level: 감정 레벨 (0: 평상시, 1: 짜증, 2: 화남)
+
+    Returns:
+        (voice_name, rate, pitch) 튜플 (rate/pitch는 문자열: "+10%", "-5Hz" 등)
+    """
+    # 성별 판단
+    is_female = any(kw in persona for kw in ['여성', '엄마', '할머니', '여자', '부인', '임산부', '아줌마'])
+    is_male = any(kw in persona for kw in ['남성', '아빠', '할아버지', '남자', '사업가']) and not is_female
+
+    # 나이대 판단
+    if any(kw in persona for kw in ['20대', '대학생', '젊은']):
+        age = "young"
+    else:
+        age = "adult"
+
+    # 음성 선택
+    if is_female:
+        if age == "young":
+            voice = "ko-KR-YuJinNeural"  # 젊은 여성
+        else:
+            voice = "ko-KR-SunHiNeural"  # 성인 여성
+    else:
+        voice = "ko-KR-InJoonNeural"  # 남성
+
+    # 감정에 따른 속도/피치 조절
+    if escalation_level == 0:
+        rate = "+0%"
+        pitch = "+0Hz"
+    elif escalation_level == 1:
+        rate = "+10%"  # 약간 빠르게
+        pitch = "+5Hz"  # 약간 높게
+    else:  # 화남
+        rate = "+20%"  # 더 빠르게
+        pitch = "+10Hz"  # 더 높게
+
+    return (voice, rate, pitch)
+
+
+def generate_edge_tts(
+    text: str,
+    voice: str = "ko-KR-SunHiNeural",
+    rate: str = "+0%",
+    pitch: str = "+0Hz",
+) -> Optional[bytes]:
+    """
+    Edge TTS로 음성 생성 (무료/무제한)
+
+    Args:
+        text: 변환할 텍스트
+        voice: 음성 이름
+        rate: 말하기 속도 (예: "+10%", "-5%")
+        pitch: 피치 (예: "+5Hz", "-10Hz")
+
+    Returns:
+        MP3 오디오 바이트 또는 None
+    """
+    try:
+        import edge_tts
+        import asyncio
+
+        async def _generate():
+            communicate = edge_tts.Communicate(text, voice, rate=rate, pitch=pitch)
+            audio_data = b""
+            async for chunk in communicate.stream():
+                if chunk["type"] == "audio":
+                    audio_data += chunk["data"]
+            return audio_data
+
+        # 이벤트 루프 처리 (Streamlit 환경 고려)
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop and loop.is_running():
+            # 이미 이벤트 루프가 실행 중인 경우 (Streamlit)
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, _generate())
+                audio_bytes = future.result(timeout=30)
+        else:
+            # 새 이벤트 루프 생성
+            audio_bytes = asyncio.run(_generate())
+
+        if audio_bytes:
+            print(f"[Edge TTS] 성공 - {voice}, {len(audio_bytes)} bytes")
+            return audio_bytes
+        else:
+            print("[Edge TTS] 오디오 데이터 없음")
+            return None
+
+    except ImportError:
+        print("[Edge TTS] edge-tts 패키지가 설치되지 않았습니다. pip install edge-tts")
+        return None
+    except Exception as e:
+        print(f"[Edge TTS] 예외: {e}")
+        return None
+
+
+def generate_tts_for_passenger_v3(
+    text: str,
+    persona: str,
+    escalation_level: int = 0,
+    tts_provider: str = "edge",  # "edge", "clova", "openai", "auto"
+) -> Optional[bytes]:
+    """
+    승객 대사용 TTS 생성 (v3 - Edge TTS 우선)
+
+    Args:
+        text: 승객 대사
+        persona: 승객 페르소나
+        escalation_level: 감정 레벨 (0: 평상시, 1: 짜증, 2: 화남)
+        tts_provider: TTS 제공자 선택 (기본: edge)
+
+    Returns:
+        MP3 오디오 바이트 데이터
+    """
+    # 1. Edge TTS 시도 (무료, 우선 사용)
+    if tts_provider in ["auto", "edge"] and is_edge_tts_available():
+        voice, rate, pitch = get_edge_voice_for_persona(persona, escalation_level)
+        audio = generate_edge_tts(
+            text=text,
+            voice=voice,
+            rate=rate,
+            pitch=pitch,
+        )
+        if audio:
+            return audio
+        if tts_provider == "edge":
+            print("[TTS] Edge TTS 실패")
+            # 폴백 없이 None 반환하지 않고 다음으로 진행
+
+    # 2. CLOVA 시도
+    if tts_provider in ["auto", "clova"] and is_clova_available():
+        speaker, speed, emotion = get_clova_speaker_for_persona(persona, escalation_level)
+        audio = generate_clova_tts(
+            text=text,
+            speaker=speaker,
+            speed=speed,
+            emotion=emotion,
+        )
+        if audio:
+            return audio
+        if tts_provider == "clova":
+            print("[TTS] CLOVA TTS 실패")
+            return None
+
+    # 3. OpenAI 폴백
+    voice, speed = get_voice_for_persona(persona, escalation_level)
+    return generate_tts_audio(
+        text=text,
+        voice=voice,
+        speed=speed,
+        use_clova=False,
+    )
+
+
+# =====================================================
+# TTS 테스트 함수
+# =====================================================
+def test_edge_tts():
+    """Edge TTS 테스트"""
+    test_text = "안녕하세요, 저는 마이크로소프트 Edge TTS입니다. 자연스러운 한국어 음성을 무료로 들려드립니다."
+
+    print("=== Edge TTS 테스트 ===")
+    print(f"Edge TTS 사용 가능: {is_edge_tts_available()}")
+
+    if not is_edge_tts_available():
+        print("edge-tts 패키지를 설치하세요: pip install edge-tts")
+        return
+
+    # 각 음성 테스트
+    for voice_id, voice_info in EDGE_TTS_VOICES.items():
+        print(f"\n테스트 음성: {voice_info['name']} ({voice_id})")
+        audio = generate_edge_tts(test_text, voice=voice_id)
+        if audio:
+            filename = f"test_{voice_id}.mp3"
+            with open(filename, "wb") as f:
+                f.write(audio)
+            print(f"저장 완료: {filename} ({len(audio)} bytes)")
+        else:
+            print("실패")
+
+
+def test_google_tts():
+    """Google TTS 테스트"""
+    test_text = "안녕하세요, 저는 구글 클라우드 TTS입니다. 자연스러운 한국어 음성을 들려드립니다."
+
+    print("=== Google TTS 테스트 ===")
+    print(f"API 키 설정: {is_google_tts_available()}")
+
+    if not is_google_tts_available():
+        print("Google API 키가 설정되지 않았습니다.")
+        print("환경변수 GOOGLE_TTS_API_KEY를 설정하세요.")
+        return
+
+    # Neural2 테스트
+    for voice in ["ko-KR-Neural2-A", "ko-KR-Neural2-C"]:
+        print(f"\n테스트 음성: {voice}")
+        audio = generate_google_tts(test_text, voice_name=voice)
+        if audio:
+            filename = f"test_{voice}.mp3"
+            with open(filename, "wb") as f:
+                f.write(audio)
+            print(f"저장 완료: {filename}")
+        else:
+            print("실패")
+
+
+if __name__ == "__main__":
+    test_edge_tts()

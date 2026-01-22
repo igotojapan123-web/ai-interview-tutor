@@ -1,0 +1,446 @@
+{
+  "scores": [
+    {
+      "date": "2026-01-16",
+      "time": "15:25",
+      "type": "자소서",
+      "score": 72,
+      "memo": "",
+      "scenario": "문항1: 동료 승무원들이 함께 근무하고 싶어하는 승무원이 되기 "
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:25",
+      "type": "자소서",
+      "score": 78,
+      "memo": "",
+      "scenario": "문항2: 자신의 인생을 한 편의 영화로 제작한다면, \n어떤 장르"
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:28",
+      "type": "자소서",
+      "score": 72,
+      "memo": "",
+      "scenario": "문항1: 동료 승무원들이 함께 근무하고 싶어하는 승무원이 되기 "
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:34",
+      "type": "자소서",
+      "score": 72,
+      "memo": "",
+      "scenario": "문항1: 동료 승무원들이 함께 근무하고 싶어하는 승무원이 되기 "
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:34",
+      "type": "자소서",
+      "score": 78,
+      "memo": "",
+      "scenario": "문항2: 자신의 인생을 한 편의 영화로 제작한다면, \n어떤 장르"
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:41",
+      "type": "자소서",
+      "score": 72,
+      "memo": "",
+      "scenario": "문항1 (1차): 동료 승무원들이 함께 근무하고 싶어하는 승무원"
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:41",
+      "type": "자소서",
+      "score": 78,
+      "memo": "",
+      "scenario": "문항2 (1차): \n자신의 인생을 한 편의 영화로 제작한다면, "
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:45",
+      "type": "자소서",
+      "score": 70,
+      "memo": "",
+      "scenario": "문항1 (1차): 동료 승무원들이 함께 근무하고 싶어하는 승무원"
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:46",
+      "type": "자소서",
+      "score": 72,
+      "memo": "",
+      "scenario": "문항2 (1차): \n자신의 인생을 한 편의 영화로 제작한다면, "
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:49",
+      "type": "자소서",
+      "score": 70,
+      "memo": "",
+      "scenario": "문항1 (1차): 동료 승무원들이 함께 근무하고 싶어하는 승무원"
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:50",
+      "type": "자소서",
+      "score": 75,
+      "memo": "",
+      "scenario": "문항2 (1차): \n자신의 인생을 한 편의 영화로 제작한다면, "
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:53",
+      "type": "자소서",
+      "score": 78,
+      "memo": "",
+      "scenario": "문항2 (1차): \n자신의 인생을 한 편의 영화로 제작한다면, "
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:54",
+      "type": "자소서",
+      "score": 72,
+      "memo": "",
+      "scenario": "문항1 (1차): 동료 승무원들이 함께 근무하고 싶어하는 승무원"
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:54",
+      "type": "자소서",
+      "score": 78,
+      "memo": "",
+      "scenario": "문항2 (2차): \n자신의 인생을 한 편의 영화로 제작한다면, "
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:55",
+      "type": "자소서",
+      "score": 70,
+      "memo": "",
+      "scenario": "문항1 (2차): 동료 승무원들이 함께 근무하고 싶어하는 승무원"
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:55",
+      "type": "자소서",
+      "score": 75,
+      "memo": "",
+      "scenario": "문항2 (3차): \n자신의 인생을 한 편의 영화로 제작한다면, "
+    },
+    {
+      "date": "2026-01-19",
+      "time": "15:43",
+      "type": "롤플레잉",
+      "score": 30,
+      "memo": "",
+      "scenario": "마스크 착용 거부 (감염병 시)"
+    },
+    {
+      "date": "2026-01-19",
+      "time": "15:53",
+      "type": "롤플레잉",
+      "score": 55,
+      "memo": "",
+      "scenario": "음식에 이물질 발견"
+    },
+    {
+      "date": "2026-01-19",
+      "time": "16:01",
+      "type": "롤플레잉",
+      "score": 20,
+      "memo": "",
+      "scenario": "만석인데 좌석 변경 요청"
+    },
+    {
+      "date": "2026-01-19",
+      "time": "16:11",
+      "type": "롤플레잉",
+      "score": 55,
+      "memo": "",
+      "scenario": "옆자리 승객 코골이 불만"
+    },
+    {
+      "date": "2026-01-19",
+      "time": "16:38",
+      "type": "자소서",
+      "score": 72,
+      "memo": "",
+      "scenario": "문항1 (1차): 동료 승무원들이 함께 근무하고 싶어하는 승무원"
+    },
+    {
+      "date": "2026-01-19",
+      "time": "16:38",
+      "type": "자소서",
+      "score": 75,
+      "memo": "",
+      "scenario": "문항2 (1차): \n자신의 인생을 한 편의 영화로 제작한다면, "
+    }
+  ],
+  "detailed_scores": [
+    {
+      "date": "2026-01-16",
+      "time": "15:25",
+      "type": "자소서",
+      "scores": {
+        "structure": 70,
+        "specificity": 50,
+        "airline_fit": 60,
+        "star": 50
+      },
+      "total": 72
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:25",
+      "type": "자소서",
+      "scores": {
+        "structure": 70,
+        "specificity": 70,
+        "airline_fit": 80,
+        "star": 50
+      },
+      "total": 78
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:28",
+      "type": "자소서",
+      "scores": {
+        "structure": 70,
+        "specificity": 50,
+        "airline_fit": 60,
+        "star": 50
+      },
+      "total": 72
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:34",
+      "type": "자소서",
+      "scores": {
+        "structure": 70,
+        "specificity": 50,
+        "airline_fit": 60,
+        "star": 50
+      },
+      "total": 72
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:34",
+      "type": "자소서",
+      "scores": {
+        "structure": 70,
+        "specificity": 70,
+        "airline_fit": 80,
+        "star": 50
+      },
+      "total": 78
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:41",
+      "type": "자소서",
+      "scores": {
+        "structure": 70,
+        "specificity": 50,
+        "airline_fit": 60,
+        "star": 50
+      },
+      "total": 72
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:41",
+      "type": "자소서",
+      "scores": {
+        "structure": 70,
+        "specificity": 70,
+        "airline_fit": 80,
+        "star": 50
+      },
+      "total": 78
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:45",
+      "type": "자소서",
+      "scores": {
+        "structure": 70,
+        "specificity": 50,
+        "airline_fit": 60,
+        "star": 50
+      },
+      "total": 70
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:46",
+      "type": "자소서",
+      "scores": {
+        "structure": 70,
+        "specificity": 60,
+        "airline_fit": 60,
+        "star": 50
+      },
+      "total": 72
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:49",
+      "type": "자소서",
+      "scores": {
+        "structure": 70,
+        "specificity": 50,
+        "airline_fit": 60,
+        "star": 50
+      },
+      "total": 70
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:50",
+      "type": "자소서",
+      "scores": {
+        "structure": 80,
+        "specificity": 60,
+        "airline_fit": 70,
+        "star": 50
+      },
+      "total": 75
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:53",
+      "type": "자소서",
+      "scores": {
+        "structure": 70,
+        "specificity": 70,
+        "airline_fit": 80,
+        "star": 50
+      },
+      "total": 78
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:54",
+      "type": "자소서",
+      "scores": {
+        "structure": 70,
+        "specificity": 50,
+        "airline_fit": 60,
+        "star": 50
+      },
+      "total": 72
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:54",
+      "type": "자소서",
+      "scores": {
+        "structure": 70,
+        "specificity": 70,
+        "airline_fit": 80,
+        "star": 50
+      },
+      "total": 78
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:55",
+      "type": "자소서",
+      "scores": {
+        "structure": 70,
+        "specificity": 50,
+        "airline_fit": 60,
+        "star": 50
+      },
+      "total": 70
+    },
+    {
+      "date": "2026-01-16",
+      "time": "15:55",
+      "type": "자소서",
+      "scores": {
+        "structure": 80,
+        "specificity": 60,
+        "airline_fit": 70,
+        "star": 50
+      },
+      "total": 75
+    },
+    {
+      "date": "2026-01-19",
+      "time": "15:43",
+      "type": "롤플레잉",
+      "scores": {
+        "empathy": 40,
+        "solution": 40,
+        "professionalism": 20,
+        "attitude": 20
+      },
+      "total": 30
+    },
+    {
+      "date": "2026-01-19",
+      "time": "15:53",
+      "type": "롤플레잉",
+      "scores": {
+        "empathy": 60,
+        "solution": 80,
+        "professionalism": 40,
+        "attitude": 40
+      },
+      "total": 55
+    },
+    {
+      "date": "2026-01-19",
+      "time": "16:01",
+      "type": "롤플레잉",
+      "scores": {
+        "empathy": 0,
+        "solution": 0,
+        "professionalism": 40,
+        "attitude": 40
+      },
+      "total": 20
+    },
+    {
+      "date": "2026-01-19",
+      "time": "16:11",
+      "type": "롤플레잉",
+      "scores": {
+        "empathy": 60,
+        "solution": 80,
+        "professionalism": 40,
+        "attitude": 40
+      },
+      "total": 55
+    },
+    {
+      "date": "2026-01-19",
+      "time": "16:38",
+      "type": "자소서",
+      "scores": {
+        "structure": 70,
+        "specificity": 50,
+        "airline_fit": 60,
+        "star": 50
+      },
+      "total": 72
+    },
+    {
+      "date": "2026-01-19",
+      "time": "16:38",
+      "type": "자소서",
+      "scores": {
+        "structure": 80,
+        "specificity": 60,
+        "airline_fit": 70,
+        "star": 50
+      },
+      "total": 75
+    }
+  ]
+}

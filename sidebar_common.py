@@ -4,7 +4,6 @@
 import streamlit as st
 import base64
 from pathlib import Path
-from env_config import ADMIN_PASSWORD
 
 def get_logo_base64():
     logo_path = Path(__file__).parent / "logo.png"
@@ -197,26 +196,4 @@ def render_sidebar(current_page=""):
                 active_class = "active" if item["page"] == current_page else ""
                 nav_html += f'<a href="/{item["page"]}" class="sidebar-nav-item {active_class}">{item["icon"]} {item["name"]}</a>'
 
-        # 관리자 모드 활성화 시 관리자 링크 추가
-        if st.session_state.get("admin_authenticated", False):
-            nav_html += '<div class="sidebar-category">관리자</div>'
-            active_class = "active" if current_page == "관리자" else ""
-            nav_html += f'<a href="/관리자" class="sidebar-nav-item {active_class}">🔐 관리자 모드</a>'
-
         st.markdown(nav_html, unsafe_allow_html=True)
-
-        # 관리자 접근 (숨겨진 expander)
-        st.markdown("<div style='margin-top:40px;'></div>", unsafe_allow_html=True)
-        with st.expander("⚙️", expanded=False):
-            if not st.session_state.get("admin_authenticated", False):
-                admin_pw = st.text_input("비밀번호", type="password", key="admin_pw_input")
-                if admin_pw == ADMIN_PASSWORD:
-                    st.session_state["admin_authenticated"] = True
-                    st.rerun()
-                elif admin_pw:
-                    st.error("비밀번호 오류")
-            else:
-                st.success("관리자 모드 ✓")
-                if st.button("로그아웃", key="admin_logout_btn"):
-                    st.session_state["admin_authenticated"] = False
-                    st.rerun()

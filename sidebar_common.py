@@ -49,6 +49,10 @@ def render_sidebar(current_page=""):
     Args:
         current_page: 현재 페이지 이름 (예: "모의면접", "롤플레잉" 등)
     """
+    # 비밀번호 인증 체크 (미인증 시 접근 차단)
+    from auth_utils import check_tester_password
+    check_tester_password("flyready_lab 베타 테스트")
+
     with st.sidebar:
         # 사이드바 CSS
         st.markdown("""

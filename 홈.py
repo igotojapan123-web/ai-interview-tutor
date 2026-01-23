@@ -27,6 +27,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# 비밀번호 보호 (베타 테스트)
+from auth_utils import check_tester_password
+check_tester_password("flyready_lab 베타 테스트")
+
 # 세션 시간 초기화
 try:
     from motivation import init_session_time, check_and_show_motivation

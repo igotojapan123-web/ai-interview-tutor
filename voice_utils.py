@@ -535,7 +535,7 @@ def analyze_voice_quality(
         result["pauses"] = {
             "count": 0,
             "long_pauses": 0,
-            "score": 7,
+            "score": 5,
             "feedback": "휴지 분석 데이터 없음",
         }
 
@@ -704,7 +704,7 @@ def analyze_voice_with_gpt(transcription: Dict[str, Any]) -> Dict[str, Any]:
     filler_patterns = ['음', '어', '그', '아', '그러니까', '뭐랄까', '약간', '좀', '진짜', '막', '이제', '근데', '그냥']
     found_fillers = [f for f in filler_patterns if f in text]
 
-    system_prompt = """당신은 항공사 면접 음성 분석 전문가입니다.
+    system_prompt = """당신은 항공사 면접 음성 분석 전문가입니다. 매우 엄격하게 평가하세요.
 주어진 텍스트와 말하기 데이터를 기반으로 음성 품질을 평가하세요.
 
 JSON으로만 응답하세요:
@@ -716,12 +716,14 @@ JSON으로만 응답하세요:
     "composure": {"score": 1-10, "feedback": "침착함 피드백"}
 }
 
-점수 기준:
-- tremor: 말 속도 변동, 필러 빈도로 떨림 추정. 필러 많으면 긴장=떨림
-- ending_clarity: 문장 끝이 흐릿한지 (말끝 흐림). "~요", "~다" 등 명확한 종결이면 높은 점수
-- pitch_variation: 억양이 단조로운지 생동감 있는지
-- service_tone: 밝은 인사, 공손한 표현, "감사합니다" 등 서비스 톤
-- composure: 전반적 침착함 (속도 일정, 필러 적음)"""
+엄격한 점수 기준 (8점 이상은 정말 잘한 경우에만):
+- tremor: 필러 2개 이상이면 최대 6점. 필러 3개 이상이면 최대 4점. 속도 변동 크면 감점.
+- ending_clarity: 문장이 완결되지 않으면 최대 5점. 짧은 답변은 최대 6점.
+- pitch_variation: 텍스트에 감정 표현/강조가 없으면 최대 5점. 단조롭게 읽은 느낌이면 4-5점.
+- service_tone: "감사합니다", "안녕하세요" 등 서비스 표현이 없으면 최대 5점. 건조한 톤이면 4점.
+- composure: 필러 많거나 속도 불안정하면 최대 5점. 답변이 짧으면 최대 6점.
+
+중요: 평범한 답변은 5-6점, 좋은 답변은 7점, 매우 우수해야 8점 이상입니다."""
 
     user_prompt = f"""분석 데이터:
 - 전체 텍스트: {text[:500]}
@@ -761,23 +763,30 @@ JSON으로만 응답하세요:
         content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
         parsed = json.loads(content)
 
-        # 결과 정규화
+        # 결과 정규화 (기본값을 5점으로 - 보통 수준)
         analysis = {
-            "tremor": parsed.get("tremor", {"score": 7, "level": "보통", "feedback": ""}),
-            "ending_clarity": parsed.get("ending_clarity", {"score": 7, "issue": "보통", "feedback": ""}),
-            "pitch_variation": parsed.get("pitch_variation", {"score": 7, "type": "보통", "feedback": ""}),
-            "energy_consistency": {"score": 7, "feedback": "GPT 기반 분석"},
-            "service_tone": parsed.get("service_tone", {"score": 7, "feedback": ""}),
-            "composure": parsed.get("composure", {"score": 7, "feedback": ""}),
+            "tremor": parsed.get("tremor", {"score": 5, "level": "보통", "feedback": "분석 데이터 부족"}),
+            "ending_clarity": parsed.get("ending_clarity", {"score": 5, "issue": "보통", "feedback": "분석 데이터 부족"}),
+            "pitch_variation": parsed.get("pitch_variation", {"score": 5, "type": "보통", "feedback": "분석 데이터 부족"}),
+            "energy_consistency": {"score": 5, "feedback": "GPT 기반 분석"},
+            "service_tone": parsed.get("service_tone", {"score": 5, "feedback": "분석 데이터 부족"}),
+            "composure": parsed.get("composure", {"score": 5, "feedback": "분석 데이터 부족"}),
         }
+
+        # 각 점수가 10을 초과하지 않도록 클램핑
+        for key in ["tremor", "ending_clarity", "pitch_variation", "service_tone", "composure"]:
+            if analysis[key].get("score", 5) > 10:
+                analysis[key]["score"] = 10
+            elif analysis[key].get("score", 5) < 1:
+                analysis[key]["score"] = 1
 
         # confidence_score 계산
         scores = [
-            analysis["tremor"].get("score", 7),
-            analysis["ending_clarity"].get("score", 7),
-            analysis["pitch_variation"].get("score", 7),
-            analysis["service_tone"].get("score", 7),
-            analysis["composure"].get("score", 7),
+            analysis["tremor"].get("score", 5),
+            analysis["ending_clarity"].get("score", 5),
+            analysis["pitch_variation"].get("score", 5),
+            analysis["service_tone"].get("score", 5),
+            analysis["composure"].get("score", 5),
         ]
         avg_score = sum(scores) / len(scores)
         analysis["confidence_score"] = int(avg_score * 10)
@@ -818,13 +827,13 @@ def analyze_voice_advanced(audio_bytes: bytes, transcription: Dict[str, Any] = N
         }
     """
     result = {
-        "tremor": {"score": 7, "level": "보통", "feedback": "기본 분석 수행"},
-        "ending_clarity": {"score": 7, "issue": "보통", "feedback": "기본 분석 수행"},
-        "pitch_variation": {"score": 7, "type": "보통", "feedback": "기본 분석 수행"},
-        "energy_consistency": {"score": 7, "feedback": "기본 분석 수행"},
-        "service_tone": {"score": 7, "greeting_bright": False, "ending_soft": False, "feedback": "기본 분석 수행"},
-        "composure": {"score": 7, "speed_stable": True, "filler_stable": True, "feedback": "기본 분석 수행"},
-        "confidence_score": 70,
+        "tremor": {"score": 5, "level": "보통", "feedback": "분석 대기"},
+        "ending_clarity": {"score": 5, "issue": "보통", "feedback": "분석 대기"},
+        "pitch_variation": {"score": 5, "type": "보통", "feedback": "분석 대기"},
+        "energy_consistency": {"score": 5, "feedback": "분석 대기"},
+        "service_tone": {"score": 5, "greeting_bright": False, "ending_soft": False, "feedback": "분석 대기"},
+        "composure": {"score": 5, "speed_stable": True, "filler_stable": True, "feedback": "분석 대기"},
+        "confidence_score": 50,
         "confidence_feedback": "기본 분석만 수행되었습니다.",
     }
 
@@ -1133,12 +1142,12 @@ def analyze_voice_advanced(audio_bytes: bytes, transcription: Dict[str, Any] = N
 
         # 7. 자신감 종합 점수 (모든 항목 포함)
         scores = [
-            result["tremor"].get("score", 7),
-            result["ending_clarity"].get("score", 7),
-            result["pitch_variation"].get("score", 7),
-            result["energy_consistency"].get("score", 7),
-            result["service_tone"].get("score", 7),
-            result["composure"].get("score", 7),
+            result["tremor"].get("score", 5),
+            result["ending_clarity"].get("score", 5),
+            result["pitch_variation"].get("score", 5),
+            result["energy_consistency"].get("score", 5),
+            result["service_tone"].get("score", 5),
+            result["composure"].get("score", 5),
         ]
 
         confidence_score = int(np.mean(scores) * 10)
@@ -1204,8 +1213,8 @@ def analyze_voice_complete(
     else:
         text_analysis = {
             "speech_rate": {"score": 5, "wpm": 0, "feedback": "음성 인식 실패 - 조용한 환경에서 다시 녹음해보세요"},
-            "filler_words": {"score": 7, "count": 0, "list": [], "feedback": "녹음을 다시 시도해주세요"},
-            "pauses": {"score": 7, "count": 0, "long_pauses": 0, "feedback": "녹음을 다시 시도해주세요"},
+            "filler_words": {"score": 5, "count": 0, "list": [], "feedback": "녹음을 다시 시도해주세요"},
+            "pauses": {"score": 5, "count": 0, "long_pauses": 0, "feedback": "녹음을 다시 시도해주세요"},
             "duration": {"score": 5, "seconds": 0, "feedback": "녹음 시간이 너무 짧거나 음성이 감지되지 않았습니다"},
             "clarity": {"score": 5, "feedback": "마이크 권한을 확인하고 다시 녹음해주세요"},
             "total_score": 50,
@@ -1217,7 +1226,7 @@ def analyze_voice_complete(
 
     # 3. 응답 시간 분석
     response_time_analysis = {
-        "score": 7,
+        "score": 5,
         "avg_time": 0,
         "feedback": "응답 시간 데이터 없음",
     }
@@ -1253,8 +1262,8 @@ def analyze_voice_complete(
 
     # 4. 종합 점수 계산
     text_score = text_analysis.get("total_score", 50)
-    voice_score = voice_analysis.get("confidence_score", 70)
-    rt_score = response_time_analysis.get("score", 7)
+    voice_score = voice_analysis.get("confidence_score", 50)
+    rt_score = response_time_analysis.get("score", 5)
 
     # 텍스트 내용 50%, 음성 품질 35%, 응답 시간 15% 가중치
     total_score = int(text_score * 0.50 + voice_score * 0.35 + rt_score * 10 * 0.15)

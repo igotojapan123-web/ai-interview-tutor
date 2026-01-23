@@ -196,22 +196,28 @@ AIRLINE_SPECIFIC_QUESTIONS = {
             "제주항공의 '7C'에 대해 알고 계신가요?",
             "LCC 승무원에게 가장 중요한 자질은 무엇이라고 생각하시나요?",
             "본인의 강점과 약점을 말씀해주세요.",
+            "제주항공의 5대 핵심가치 중 본인과 가장 맞는 것은 무엇인가요?",
+            "LCC와 FSC의 서비스 차이를 어떻게 생각하시나요?",
         ],
         "values": [
             # 안전
             "안전 규정을 철저히 지킨 경험을 말씀해주세요.",
+            "LCC에서 안전과 효율을 동시에 지키려면 어떻게 해야 할까요?",
             # 저비용/효율
             "비용을 절감하면서도 품질을 유지한 경험이 있나요?",
             "효율적으로 일을 처리한 경험을 말씀해주세요.",
+            "제한된 자원으로 최대 성과를 낸 경험이 있나요?",
             # 신뢰
             "신뢰를 쌓기 위해 어떤 노력을 하셨나요?",
             # 팀워크
             "팀원들과 협력하여 어려움을 극복한 경험을 말씀해주세요.",
+            "소수 인원으로 팀을 운영한 경험이 있나요?",
             # 도전
             "새로운 도전을 두려워하지 않은 경험이 있나요?",
             "실패를 두려워하지 않고 시도한 경험을 말씀해주세요.",
             # Customer oriented
             "고객 관점에서 생각하고 행동한 경험을 말씀해주세요.",
+            "빠른 시간 내에 고객 만족을 이끌어낸 경험이 있나요?",
         ],
         "situational": [
             "LCC 특성상 빠른 턴어라운드가 필요한데, 어떻게 대처하시겠습니까?",
@@ -219,6 +225,9 @@ AIRLINE_SPECIFIC_QUESTIONS = {
             "좌석이 좁다고 불평하는 승객을 어떻게 응대하시겠습니까?",
             "서비스 시간이 부족할 때 우선순위를 어떻게 정하시겠습니까?",
             "동료가 업무를 제대로 못할 때 어떻게 하시겠습니까?",
+            "사전좌석 미배정 승객이 불만을 제기하면 어떻게 하시겠습니까?",
+            "수하물 추가 요금에 대해 항의하는 승객을 어떻게 응대하시겠습니까?",
+            "기내식이 유료라는 것에 불만인 승객에게 어떻게 설명하시겠습니까?",
         ],
         "personality": [
             "왜 FSC가 아닌 LCC 제주항공인가요?",
@@ -226,6 +235,8 @@ AIRLINE_SPECIFIC_QUESTIONS = {
             "'Confident'한 모습을 보여준 경험을 말씀해주세요.",
             "빠른 환경 변화에 어떻게 적응하시나요?",
             "제주항공 승무원으로서 5년 후 목표는 무엇인가요?",
+            "멀티태스킹을 잘 해낸 경험을 말씀해주세요.",
+            "체력적으로 힘든 상황에서도 서비스를 유지한 경험이 있나요?",
         ],
     },
 
@@ -537,6 +548,10 @@ COMMON_QUESTIONS = {
         "왜 승무원이 되고 싶으신가요?",
         "본인의 강점과 약점을 말씀해주세요.",
         "승무원에게 가장 중요한 자질은 무엇이라고 생각하시나요?",
+        "서비스 직종 경험이 있다면 말씀해주세요.",
+        "지금까지 어떤 준비를 해오셨나요?",
+        "본인을 한마디로 표현한다면?",
+        "마지막으로 하고 싶은 말씀이 있으신가요?",
     ],
     "experience": [
         "팀워크를 발휘했던 경험을 말씀해주세요.",
@@ -544,6 +559,10 @@ COMMON_QUESTIONS = {
         "갈등을 해결했던 경험을 말씀해주세요.",
         "실패했던 경험과 그로부터 배운 점은 무엇인가요?",
         "리더십을 발휘한 경험을 말씀해주세요.",
+        "타인을 배려한 경험을 구체적으로 말씀해주세요.",
+        "위기 상황에서 침착하게 대처한 경험이 있나요?",
+        "의사소통 능력을 발휘한 경험을 말씀해주세요.",
+        "체력적으로 힘든 상황을 극복한 경험이 있나요?",
     ],
     "situational": [
         "기내에서 승객이 쓰러지면 어떻게 하시겠습니까?",
@@ -551,6 +570,9 @@ COMMON_QUESTIONS = {
         "동료와 의견 충돌이 생기면 어떻게 하시겠습니까?",
         "비행 중 공황 상태의 승객을 어떻게 도우시겠습니까?",
         "안전규정을 거부하는 승객을 어떻게 설득하시겠습니까?",
+        "기내에서 음주 소란 승객이 있으면 어떻게 하시겠습니까?",
+        "장시간 지연으로 승객들이 불만일 때 어떻게 대처하시겠습니까?",
+        "언어가 통하지 않는 외국인 승객을 어떻게 도우시겠습니까?",
     ],
     "personality": [
         "스트레스를 어떻게 관리하시나요?",
@@ -558,6 +580,9 @@ COMMON_QUESTIONS = {
         "10년 후 본인의 모습은 어떨 것 같나요?",
         "왜 다른 직업이 아닌 승무원인가요?",
         "이 직업의 어려운 점은 무엇이라고 생각하시나요?",
+        "불규칙한 생활 패턴에 어떻게 적응하시겠습니까?",
+        "본인의 서비스 철학은 무엇인가요?",
+        "최근 항공업계 이슈 중 관심 있는 것이 있나요?",
     ],
 }
 
@@ -588,9 +613,9 @@ def get_airline_questions(airline: str, count: int = 6) -> list:
         # 질문 수에 따라 각 카테고리에서 선택
         if count <= 4:
             # 4개: common 2, values 1, situational 1
-            questions.extend(random.sample(airline_qs.get("common", [])[:3], min(2, len(airline_qs.get("common", [])))))
-            questions.extend(random.sample(airline_qs.get("values", [])[:4], min(1, len(airline_qs.get("values", [])))))
-            questions.extend(random.sample(airline_qs.get("situational", [])[:4], min(1, len(airline_qs.get("situational", [])))))
+            questions.extend(random.sample(airline_qs.get("common", []), min(2, len(airline_qs.get("common", [])))))
+            questions.extend(random.sample(airline_qs.get("values", []), min(1, len(airline_qs.get("values", [])))))
+            questions.extend(random.sample(airline_qs.get("situational", []), min(1, len(airline_qs.get("situational", [])))))
         elif count <= 6:
             # 5-6개: common 2, values 2, situational 1, personality 1
             questions.extend(random.sample(airline_qs.get("common", []), min(2, len(airline_qs.get("common", [])))))

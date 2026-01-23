@@ -163,7 +163,7 @@ Shortly, we will be showing our safety demonstration.
 Thank you for flying with us today.""",
         "tips": ["밝고 따뜻한 톤으로", "적절한 속도 (너무 빠르지 않게)", "숫자는 또박또박", "미소 띤 목소리"],
         "key_points": ["환영 인사", "편명/목적지", "비행시간", "짐 정리 안내"],
-        "pronunciation_kr": {"탑승해": "탑�윩해 (X) → 탑승해 (O)", "비행시간": "비-행-시-간 천천히"},
+        "pronunciation_kr": {"탑승해": "탑-승-해 또박또박", "비행시간": "비-행-시-간 천천히"},
         "pronunciation_en": {"approximately": "uh-PROK-suh-muht-lee", "overhead": "OH-ver-hed"},
     },
 

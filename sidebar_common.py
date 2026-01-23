@@ -62,6 +62,27 @@ def render_sidebar(current_page=""):
         [data-testid="stSidebar"] nav { display: none !important; }
         [data-testid="stSidebarUserContent"] > div:first-child > ul { display: none !important; }
         .st-emotion-cache-16tkqhc { display: none !important; }
+
+        /* 탭 오버플로우 방지 - 스크롤 가능한 탭 바 */
+        .stTabs [data-baseweb="tab-list"] {
+            overflow-x: auto;
+            flex-wrap: nowrap !important;
+            gap: 2px;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            padding-bottom: 4px;
+        }
+        .stTabs [data-baseweb="tab-list"] button {
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar {
+            height: 4px;
+        }
+        .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.2);
+            border-radius: 2px;
+        }
         .st-emotion-cache-eczf16 { display: none !important; }
         [data-testid="stSidebar"] [data-testid="stPageLink"] { display: none !important; }
         [data-testid="stSidebar"] button[kind="header"] { display: none !important; }
@@ -205,11 +226,12 @@ def render_sidebar(current_page=""):
 
         st.markdown(nav_html, unsafe_allow_html=True)
 
-        # 관리자 접근 (숨겨진 expander)
-        st.markdown("<div style='margin-top:40px;'></div>", unsafe_allow_html=True)
-        with st.expander("⚙️", expanded=False):
+        # 관리자 접근 (URL에 ?admin=1 추가 시에만 표시)
+        show_admin = st.query_params.get("admin") == "1"
+        if show_admin:
+            st.markdown("<div style='margin-top:40px;'></div>", unsafe_allow_html=True)
             if not st.session_state.get("admin_authenticated", False):
-                admin_pw = st.text_input("비밀번호", type="password", key="admin_pw_input")
+                admin_pw = st.text_input("🔐 관리자 비밀번호", type="password", key="admin_pw_input")
                 if admin_pw == ADMIN_PASSWORD:
                     st.session_state["admin_authenticated"] = True
                     st.rerun()
@@ -217,6 +239,8 @@ def render_sidebar(current_page=""):
                     st.error("비밀번호 오류")
             else:
                 st.success("관리자 모드 ✓")
-                if st.button("로그아웃", key="admin_logout_btn"):
+                confirm = st.checkbox("로그아웃", key="admin_logout_check")
+                if confirm:
                     st.session_state["admin_authenticated"] = False
+                    st.session_state["admin_logout_check"] = False
                     st.rerun()

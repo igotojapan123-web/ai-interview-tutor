@@ -232,14 +232,22 @@ class EnglishInterviewReportPDF(FPDF):
         else:
             self.set_font("Helvetica", "", 11)
         self.set_text_color(50, 50, 50)
-        self.multi_cell(0, 7, text)
+        self.set_x(self.l_margin)
+        try:
+            self.multi_cell(0, 7, text or "")
+        except Exception:
+            self.ln(7)
         self.ln(2)
 
     def english_text(self, text: str):
         """영어 텍스트 (이탤릭)"""
         self.set_font("Helvetica", "I", 11)
         self.set_text_color(70, 70, 70)
-        self.multi_cell(0, 7, text)
+        self.set_x(self.l_margin)
+        try:
+            self.multi_cell(0, 7, text or "")
+        except Exception:
+            self.ln(7)
         self.ln(2)
 
     def score_box(self, label: str, score: int, max_score: int = 10, feedback: str = ""):
@@ -255,14 +263,22 @@ class EnglishInterviewReportPDF(FPDF):
         else:
             color = (244, 67, 54)
 
+        label_safe = label[:15] if len(label) > 15 else label
         self.set_text_color(50, 50, 50)
-        self.cell(60, 8, label, border=0)
+        self.cell(50, 8, label_safe, border=0)
 
         self.set_text_color(*color)
-        self.cell(30, 8, f"{score}/{max_score}", border=0)
+        self.cell(20, 8, f"{score}/{max_score}", border=0)
 
         self.set_text_color(100, 100, 100)
-        self.multi_cell(0, 8, feedback[:50] + "..." if len(feedback) > 50 else feedback)
+        feedback_safe = (feedback or "")[:40]
+        if feedback_safe:
+            try:
+                self.multi_cell(0, 8, feedback_safe)
+            except Exception:
+                self.ln(8)
+        else:
+            self.ln(8)
 
 
 def generate_english_interview_report(

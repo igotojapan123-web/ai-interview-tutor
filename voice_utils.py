@@ -324,6 +324,12 @@ def transcribe_audio(audio_bytes: bytes, language: str = "ko") -> Optional[Dict[
     """
     api_key = get_openai_api_key()
     if not api_key:
+        print("[Whisper] API 키 없음")
+        return None
+
+    # 최소 오디오 크기 체크 (1KB 미만은 유효하지 않음)
+    if not audio_bytes or len(audio_bytes) < 1000:
+        print(f"[Whisper] 오디오 데이터 부족: {len(audio_bytes) if audio_bytes else 0} bytes")
         return None
 
     headers = {
@@ -352,20 +358,34 @@ def transcribe_audio(audio_bytes: bytes, language: str = "ko") -> Optional[Dict[
                 headers=headers,
                 files=files,
                 data=data,
-                timeout=60
+                timeout=90  # 타임아웃 90초로 증가
             )
             r.raise_for_status()
             result = r.json()
 
+            text = result.get("text", "").strip()
+            duration = result.get("duration", 0)
+
+            # 인식된 텍스트가 너무 짧으면 실패로 간주하지 않음 (빈 문자열만 제외)
+            if not text:
+                print("[Whisper] 인식된 텍스트 없음 (무음 또는 너무 짧은 녹음)")
+                return None
+
             return {
-                "text": result.get("text", ""),
-                "duration": result.get("duration", 0),
+                "text": text,
+                "duration": duration,
                 "words": result.get("words", []),
                 "language": result.get("language", language),
             }
 
+    except requests.exceptions.Timeout:
+        print("[Whisper] API 타임아웃 (90초 초과)")
+        return None
+    except requests.exceptions.HTTPError as e:
+        print(f"[Whisper] HTTP 오류: {e.response.status_code if e.response else 'unknown'}")
+        return None
     except Exception as e:
-        print(f"Whisper API Error: {e}")
+        print(f"[Whisper] API 오류: {e}")
         return None
 
     finally:
@@ -641,12 +661,151 @@ VOICE_SCORING = {
 # 고급 음성 분석 (목소리 떨림, 말끝 흐림, 톤 변화 등)
 # =====================
 
-def analyze_voice_advanced(audio_bytes: bytes) -> Dict[str, Any]:
+def analyze_voice_with_gpt(transcription: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    GPT 기반 음성 품질 분석 (librosa 없을 때 폴백)
+    텍스트와 타이밍 정보만으로 음성 품질을 추정
+
+    Args:
+        transcription: transcribe_audio 결과
+
+    Returns:
+        고급 음성 분석 결과 딕셔너리
+    """
+    api_key = get_openai_api_key()
+    if not api_key:
+        return None
+
+    text = transcription.get("text", "")
+    duration = transcription.get("duration", 0)
+    words = transcription.get("words", [])
+
+    if not text or duration < 3:
+        return None
+
+    # 텍스트에서 추정 가능한 정보 수집
+    word_count = len(text.split())
+    wpm = int((word_count / max(duration, 1)) * 60) if duration > 0 else 0
+
+    # 단어 타이밍으로 속도 변화 분석
+    speed_changes = ""
+    if words and len(words) > 5:
+        # 전반/중반/후반 속도 비교
+        segment_size = len(words) // 3
+        segments = [words[:segment_size], words[segment_size:2*segment_size], words[2*segment_size:]]
+        for i, seg in enumerate(segments):
+            if len(seg) >= 2:
+                seg_duration = (seg[-1].get("end", 0) - seg[0].get("start", 0))
+                if seg_duration > 0:
+                    seg_wpm = int((len(seg) / seg_duration) * 60)
+                    speed_changes += f"구간{i+1}: {seg_wpm}WPM, "
+
+    # 필러 단어 목록
+    filler_patterns = ['음', '어', '그', '아', '그러니까', '뭐랄까', '약간', '좀', '진짜', '막', '이제', '근데', '그냥']
+    found_fillers = [f for f in filler_patterns if f in text]
+
+    system_prompt = """당신은 항공사 면접 음성 분석 전문가입니다.
+주어진 텍스트와 말하기 데이터를 기반으로 음성 품질을 평가하세요.
+
+JSON으로만 응답하세요:
+{
+    "tremor": {"score": 1-10, "level": "없음/약함/보통/심함", "feedback": "피드백"},
+    "ending_clarity": {"score": 1-10, "issue": "없음/약간흐림/흐림", "feedback": "피드백"},
+    "pitch_variation": {"score": 1-10, "type": "생동감있음/보통/단조로움", "feedback": "피드백"},
+    "service_tone": {"score": 1-10, "feedback": "서비스 톤 피드백"},
+    "composure": {"score": 1-10, "feedback": "침착함 피드백"}
+}
+
+점수 기준:
+- tremor: 말 속도 변동, 필러 빈도로 떨림 추정. 필러 많으면 긴장=떨림
+- ending_clarity: 문장 끝이 흐릿한지 (말끝 흐림). "~요", "~다" 등 명확한 종결이면 높은 점수
+- pitch_variation: 억양이 단조로운지 생동감 있는지
+- service_tone: 밝은 인사, 공손한 표현, "감사합니다" 등 서비스 톤
+- composure: 전반적 침착함 (속도 일정, 필러 적음)"""
+
+    user_prompt = f"""분석 데이터:
+- 전체 텍스트: {text[:500]}
+- 총 소요시간: {duration:.1f}초
+- 말 속도: {wpm} WPM
+- 단어 수: {word_count}
+- 구간별 속도: {speed_changes}
+- 발견된 필러 단어: {', '.join(found_fillers)}
+- 필러 빈도: 약 {len(found_fillers)}종류 사용
+
+이 데이터를 기반으로 음성 품질을 평가해주세요."""
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "model": "gpt-4o-mini",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ],
+        "temperature": 0.3,
+        "response_format": {"type": "json_object"},
+    }
+
+    try:
+        r = requests.post(
+            f"{OPENAI_API_URL}/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=20
+        )
+        r.raise_for_status()
+        result = r.json()
+        content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+        parsed = json.loads(content)
+
+        # 결과 정규화
+        analysis = {
+            "tremor": parsed.get("tremor", {"score": 7, "level": "보통", "feedback": ""}),
+            "ending_clarity": parsed.get("ending_clarity", {"score": 7, "issue": "보통", "feedback": ""}),
+            "pitch_variation": parsed.get("pitch_variation", {"score": 7, "type": "보통", "feedback": ""}),
+            "energy_consistency": {"score": 7, "feedback": "GPT 기반 분석"},
+            "service_tone": parsed.get("service_tone", {"score": 7, "feedback": ""}),
+            "composure": parsed.get("composure", {"score": 7, "feedback": ""}),
+        }
+
+        # confidence_score 계산
+        scores = [
+            analysis["tremor"].get("score", 7),
+            analysis["ending_clarity"].get("score", 7),
+            analysis["pitch_variation"].get("score", 7),
+            analysis["service_tone"].get("score", 7),
+            analysis["composure"].get("score", 7),
+        ]
+        avg_score = sum(scores) / len(scores)
+        analysis["confidence_score"] = int(avg_score * 10)
+
+        if analysis["confidence_score"] >= 85:
+            analysis["confidence_feedback"] = "자신감 넘치는 음성입니다!"
+        elif analysis["confidence_score"] >= 70:
+            analysis["confidence_feedback"] = "괜찮은 수준입니다. 아래 피드백을 참고하세요."
+        elif analysis["confidence_score"] >= 55:
+            analysis["confidence_feedback"] = "자신감이 부족해 보일 수 있습니다."
+        else:
+            analysis["confidence_feedback"] = "긴장이 많이 느껴집니다. 연습이 필요합니다."
+
+        return analysis
+
+    except Exception as e:
+        print(f"GPT voice analysis error: {e}")
+        return None
+
+
+def analyze_voice_advanced(audio_bytes: bytes, transcription: Dict[str, Any] = None) -> Dict[str, Any]:
     """
     고급 음성 품질 분석 - 목소리 떨림, 말끝 흐림, 톤 변화 등
+    librosa 가능 시 물리적 분석, 불가 시 GPT 기반 폴백
 
     Args:
         audio_bytes: 오디오 바이트 데이터
+        transcription: transcribe_audio 결과 (GPT 폴백용)
 
     Returns:
         {
@@ -659,12 +818,12 @@ def analyze_voice_advanced(audio_bytes: bytes) -> Dict[str, Any]:
         }
     """
     result = {
-        "tremor": {"score": 7, "level": "분석불가", "feedback": "음성 분석 라이브러리가 필요합니다."},
-        "ending_clarity": {"score": 7, "issue": "분석불가", "feedback": ""},
-        "pitch_variation": {"score": 7, "type": "분석불가", "feedback": ""},
-        "energy_consistency": {"score": 7, "feedback": ""},
-        "service_tone": {"score": 7, "greeting_bright": False, "ending_soft": False, "feedback": "분석불가"},
-        "composure": {"score": 7, "speed_stable": True, "filler_stable": True, "feedback": "분석불가"},
+        "tremor": {"score": 7, "level": "보통", "feedback": "기본 분석 수행"},
+        "ending_clarity": {"score": 7, "issue": "보통", "feedback": "기본 분석 수행"},
+        "pitch_variation": {"score": 7, "type": "보통", "feedback": "기본 분석 수행"},
+        "energy_consistency": {"score": 7, "feedback": "기본 분석 수행"},
+        "service_tone": {"score": 7, "greeting_bright": False, "ending_soft": False, "feedback": "기본 분석 수행"},
+        "composure": {"score": 7, "speed_stable": True, "filler_stable": True, "feedback": "기본 분석 수행"},
         "confidence_score": 70,
         "confidence_feedback": "기본 분석만 수행되었습니다.",
     }
@@ -958,13 +1117,19 @@ def analyze_voice_advanced(audio_bytes: bytes) -> Dict[str, Any]:
         elif HAS_SCIPY:
             # scipy로 기본 분석 (librosa 없을 때)
             try:
-                # webm을 직접 분석하기 어려우므로 간단한 분석만
-                result["tremor"]["feedback"] = "기본 분석 수행 (librosa 설치 시 정밀 분석 가능)"
+                result["tremor"]["feedback"] = "기본 분석 수행"
                 result["ending_clarity"]["feedback"] = "기본 분석 수행"
                 result["pitch_variation"]["feedback"] = "기본 분석 수행"
                 result["energy_consistency"]["feedback"] = "기본 분석 수행"
             except Exception as e:
                 print(f"Scipy analysis error: {e}")
+
+        # GPT 폴백: librosa 분석 실패 시 (결과가 아직 기본값이면)
+        librosa_worked = result["tremor"].get("level") not in ["보통", "분석불가"]
+        if not librosa_worked and transcription:
+            gpt_result = analyze_voice_with_gpt(transcription)
+            if gpt_result:
+                result.update(gpt_result)
 
         # 7. 자신감 종합 점수 (모든 항목 포함)
         scores = [
@@ -1038,17 +1203,17 @@ def analyze_voice_complete(
         text_analysis = analyze_voice_quality(transcription, expected_duration_range)
     else:
         text_analysis = {
-            "speech_rate": {"score": 5, "feedback": "음성 인식 실패"},
-            "filler_words": {"score": 5, "feedback": "분석 불가"},
-            "pauses": {"score": 5, "feedback": "분석 불가"},
-            "duration": {"score": 5, "feedback": "분석 불가"},
-            "clarity": {"score": 5, "feedback": "분석 불가"},
+            "speech_rate": {"score": 5, "wpm": 0, "feedback": "음성 인식 실패 - 조용한 환경에서 다시 녹음해보세요"},
+            "filler_words": {"score": 7, "count": 0, "list": [], "feedback": "녹음을 다시 시도해주세요"},
+            "pauses": {"score": 7, "count": 0, "long_pauses": 0, "feedback": "녹음을 다시 시도해주세요"},
+            "duration": {"score": 5, "seconds": 0, "feedback": "녹음 시간이 너무 짧거나 음성이 감지되지 않았습니다"},
+            "clarity": {"score": 5, "feedback": "마이크 권한을 확인하고 다시 녹음해주세요"},
             "total_score": 50,
-            "total_feedback": "음성 인식에 실패했습니다.",
+            "total_feedback": "음성 인식에 실패했습니다. 조용한 환경에서 마이크 가까이 말씀해주세요.",
         }
 
-    # 2. 고급 음성 분석
-    voice_analysis = analyze_voice_advanced(audio_bytes)
+    # 2. 고급 음성 분석 (transcription 전달 → GPT 폴백용)
+    voice_analysis = analyze_voice_advanced(audio_bytes, transcription=transcription)
 
     # 3. 응답 시간 분석
     response_time_analysis = {

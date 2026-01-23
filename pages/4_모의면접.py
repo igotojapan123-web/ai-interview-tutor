@@ -560,7 +560,7 @@ elif not st.session_state.mock_completed:
         with col_rec2:
             st.markdown("""
             **💡 녹음 팁**
-            - 빨간 버튼 클릭 → 말하기 → 다시 클릭
+            - 🎙️ 마이크 아이콘 클릭 → 답변 → 정지
             - 조용한 환경에서 녹음
             - 60~90초 내 답변 권장
             """)

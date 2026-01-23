@@ -100,11 +100,42 @@ def evaluate_english_answer(question: str, answer: str, key_points: list = None)
     if not api_key:
         return {"error": "API 키 없음"}
 
+    # 최소 답변 길이 체크 - 너무 짧으면 즉시 낮은 점수
+    answer_stripped = answer.strip() if answer else ""
+    if len(answer_stripped) < 5:
+        return {
+            "result": f"""### 점수: 1/10
+
+### 발견된 오류 목록
+1. 답변이 너무 짧거나 유효하지 않습니다. ("{answer_stripped}")
+
+### 문법 & 어휘 평가
+- 답변이 없거나 의미 없는 입력입니다. 영어 문장으로 답변해주세요.
+
+### 내용 & 구성 평가
+- 질문에 대한 답변이 전혀 이루어지지 않았습니다.
+
+### 개선할 점
+- 최소 2-3문장 이상의 영어 답변을 작성하세요.
+- 질문의 핵심을 파악하고 구체적인 경험이나 의견을 영어로 표현하세요.
+
+### 수정된 모범 답변
+"(답변을 영어로 작성해주세요)"
+"""
+        }
+
     key_points_text = ", ".join(key_points) if key_points else "N/A"
 
-    system_prompt = """You are a STRICT airline interview examiner evaluating a candidate's English response.
-You must be very strict about grammar, spelling, and pronunciation-related errors.
-Provide feedback in Korean. Be honest and direct - do not give undeserved high scores.
+    system_prompt = """You are a VERY STRICT airline interview examiner evaluating a candidate's English response.
+You must be extremely strict. Do NOT give undeserved scores.
+Provide feedback in Korean. Be honest and harsh when needed.
+
+CRITICAL SCORING RULES:
+- If the answer is NOT in English: maximum 2/10
+- If the answer has NO relation to the question: maximum 3/10
+- If the answer is just random characters or meaningless: 1/10
+- If the answer is too short (under 2 sentences): maximum 5/10
+- Only give 8+ when the answer is genuinely good with proper grammar and content
 
 IMPORTANT: Since this is spoken English transcribed by speech recognition, pay special attention to:
 1. Words that might be mispronounced (transcribed incorrectly)
@@ -122,11 +153,13 @@ IMPORTANT: Since this is spoken English transcribed by speech recognition, pay s
 
 ## STRICT Evaluation Criteria
 
-### 점수 산정 기준 (10점 만점)
-- **문법/철자 오류 1개당 -1점** (기본 점수 10점에서 차감)
+### 점수 산정 기준 (10점 만점) - 엄격 적용!
+- 의미 없는 답변 (숫자, 무관한 텍스트): 1-2점
+- 질문과 무관한 답변: 최대 3점
+- 짧은 답변 (2문장 미만): 최대 5점
+- **문법/철자 오류 1개당 -1점** (기본 점수에서 차감)
 - 내용이 부실하면 추가 -1~2점
-- 답변이 너무 짧으면 추가 -1점
-- 질문과 관련 없는 답변이면 추가 -2점
+- 완벽한 답변만 9-10점 가능
 
 ### 엄격하게 체크해야 할 항목
 1. **Grammar (문법)** - 시제, 주어-동사 일치, 관사(a/an/the), 전치사 오류 모두 체크
@@ -656,10 +689,10 @@ elif st.session_state.eng_mode == "mock":
                     placeholder="Type your answer in English..."
                 )
 
-            col1, col2, col3 = st.columns([1, 1, 2])
+            col1, col_sp, col2 = st.columns([2, 1, 2])
 
             with col1:
-                if st.button("다음 질문 →", disabled=not (answer and answer.strip()), type="primary"):
+                if st.button("다음 질문 →", disabled=not (answer and answer.strip()), type="primary", use_container_width=True):
                     # 응답 시간 기록
                     if st.session_state.eng_question_start_time:
                         response_time = time.time() - st.session_state.eng_question_start_time
@@ -681,7 +714,7 @@ elif st.session_state.eng_mode == "mock":
                     st.rerun()
 
             with col2:
-                if st.button("모의면접 중단"):
+                if st.button("모의면접 중단", use_container_width=True):
                     st.session_state.eng_mode = None
                     st.session_state.eng_questions = []
                     st.session_state.eng_answers = {}
@@ -738,33 +771,64 @@ elif st.session_state.eng_mode == "mock":
                     st.warning(f"음성 분석 중 오류: {e}")
 
         # 종합 점수 표시
+        # 텍스트 기반 평균 점수 계산 (음성 분석 없을 때 사용)
+        text_avg_score = 0
+        if "mock_final_feedback" in st.session_state:
+            _scores = []
+            for _fb in st.session_state.mock_final_feedback.values():
+                if "result" in _fb:
+                    import re as _re
+                    _match = _re.search(r'점수[:\s]*(\d+)\s*/\s*10', _fb["result"])
+                    if _match:
+                        _scores.append(int(_match.group(1)) * 10)
+            if _scores:
+                text_avg_score = sum(_scores) // len(_scores)
+
+        # 표시할 점수/등급 결정
         if st.session_state.eng_voice_analysis:
-            va = st.session_state.eng_voice_analysis
+            display_score = st.session_state.eng_voice_analysis.get("total_score", 0)
+            display_grade = st.session_state.eng_voice_analysis.get("grade", "N/A")
+            display_summary = st.session_state.eng_voice_analysis.get("summary", "")
+            display_improvements = st.session_state.eng_voice_analysis.get("top_improvements", [])
+        elif text_avg_score > 0:
+            display_score = text_avg_score
+            if display_score >= 90: display_grade = "S"
+            elif display_score >= 80: display_grade = "A"
+            elif display_score >= 70: display_grade = "B"
+            elif display_score >= 60: display_grade = "C"
+            else: display_grade = "D"
+            display_summary = f"영어 답변 평균 {display_score}점 (텍스트 평가 기준)"
+            display_improvements = []
+        else:
+            display_score = 0
+            display_grade = "N/A"
+            display_summary = ""
+            display_improvements = []
+
+        if display_score > 0:
             col_score1, col_score2 = st.columns([1, 2])
 
             with col_score1:
-                grade = va.get("grade", "N/A")
-                total_score = va.get("total_score", 0)
-
                 grade_colors = {"S": "#FFD700", "A": "#4CAF50", "B": "#2196F3", "C": "#FF9800", "D": "#F44336"}
-                color = grade_colors.get(grade, "#888")
+                color = grade_colors.get(display_grade, "#888")
 
                 st.markdown(f"""
                 <div style="text-align:center; padding:20px; background:linear-gradient(135deg, {color}22, {color}44); border-radius:15px; border:2px solid {color};">
-                    <h1 style="color:{color}; margin:0; font-size:3em;">{grade}</h1>
-                    <p style="font-size:1.5em; margin:5px 0;">{total_score}점</p>
+                    <h1 style="color:{color}; margin:0; font-size:3em;">{display_grade}</h1>
+                    <p style="font-size:1.5em; margin:5px 0;">{display_score}점</p>
                 </div>
                 """, unsafe_allow_html=True)
 
             with col_score2:
-                st.markdown(f"**{va.get('summary', '')}**")
+                st.markdown(f"**{display_summary}**")
 
-                # 주요 개선점
-                improvements = va.get("top_improvements", [])
-                if improvements:
+                if display_improvements:
                     st.markdown("**🔧 우선 개선 포인트:**")
-                    for imp in improvements[:3]:
+                    for imp in display_improvements[:3]:
                         st.write(f"• {imp}")
+
+                if not st.session_state.eng_voice_analysis:
+                    st.caption("💡 음성 녹음 모드를 사용하면 발음/음성 전달력 분석도 제공됩니다.")
 
         # PDF 다운로드 버튼
         if REPORT_AVAILABLE:
@@ -791,11 +855,18 @@ elif st.session_state.eng_mode == "mock":
             except Exception as e:
                 st.error(f"PDF 생성 오류: {e}")
 
-        # 약점 기반 추천
-        if REPORT_AVAILABLE and st.session_state.eng_voice_analysis:
+        # 약점 기반 추천 (음성 분석 없어도 텍스트 피드백 기반으로 추천)
+        if REPORT_AVAILABLE:
+            # 전체 피드백 텍스트 결합 (약점 키워드 추출용)
+            combined_feedback = ""
+            if "mock_final_feedback" in st.session_state:
+                for _fb in st.session_state.mock_final_feedback.values():
+                    if "result" in _fb:
+                        combined_feedback += _fb["result"] + "\n"
+
             recommendations = get_weakness_recommendations_english(
                 st.session_state.eng_voice_analysis,
-                "",
+                combined_feedback,
                 3
             )
 

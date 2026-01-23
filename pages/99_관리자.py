@@ -10,23 +10,26 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import AIRLINES
-from auth_utils import check_tester_password
+from env_config import ADMIN_PASSWORD
+from sidebar_common import render_sidebar
 
 st.set_page_config(
     page_title="관리자 모드",
     page_icon="🔐",
     layout="wide"
 )
+render_sidebar("관리자")
 
-# ----------------------------
-# 비밀번호 보호 (테스터)
-# ----------------------------
-check_tester_password()
-
-# ----------------------------
-# 관리자 비밀번호
-# ----------------------------
-ADMIN_PASSWORD = "admin2024"
+# 관리자 인증 체크
+if not st.session_state.get("admin_authenticated", False):
+    st.warning("🔐 관리자 전용 페이지입니다.")
+    pw = st.text_input("관리자 비밀번호를 입력하세요", type="password")
+    if pw == ADMIN_PASSWORD:
+        st.session_state["admin_authenticated"] = True
+        st.rerun()
+    elif pw:
+        st.error("비밀번호가 틀렸습니다.")
+    st.stop()
 
 # ----------------------------
 # 파일 경로
@@ -34,8 +37,8 @@ ADMIN_PASSWORD = "admin2024"
 DATA_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HIRING_DATA_FILE = os.path.join(DATA_DIR, "hiring_data.json")
 SUCCESS_STORIES_FILE = os.path.join(DATA_DIR, "data", "success_stories.json")
-HALL_OF_FAME_FILE = os.path.join(DATA_DIR, "data", "hall_of_fame.json")
 PROOF_DIR = os.path.join(DATA_DIR, "data", "proofs")
+SUBSCRIBERS_FILE = os.path.join(DATA_DIR, "data", "subscribers.json")
 
 # 공식 채용사이트
 CAREER_SITES = {
@@ -112,6 +115,39 @@ def get_dday(end_date_str):
 
 
 # ----------------------------
+# 구독자 데이터 함수
+# ----------------------------
+def load_subscribers():
+    """구독자 데이터 로드"""
+    if os.path.exists(SUBSCRIBERS_FILE):
+        try:
+            with open(SUBSCRIBERS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            pass
+    return {"subscribers": [], "total_count": 0}
+
+
+def save_subscribers(data):
+    """구독자 데이터 저장"""
+    os.makedirs(os.path.dirname(SUBSCRIBERS_FILE), exist_ok=True)
+    with open(SUBSCRIBERS_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def get_active_subscribers(airline=None):
+    """활성 구독자 목록 (특정 항공사 필터 가능)"""
+    data = load_subscribers()
+    active = [s for s in data["subscribers"] if s.get("active", True)]
+
+    if airline:
+        # 해당 항공사 선택했거나, 전체 선택한 구독자
+        active = [s for s in active if not s.get("airlines") or airline in s.get("airlines", [])]
+
+    return active
+
+
+# ----------------------------
 # 합격자 데이터 함수
 # ----------------------------
 def load_stories():
@@ -128,22 +164,6 @@ def save_stories(stories):
     os.makedirs(os.path.dirname(SUCCESS_STORIES_FILE), exist_ok=True)
     with open(SUCCESS_STORIES_FILE, "w", encoding="utf-8") as f:
         json.dump(stories, f, ensure_ascii=False, indent=2)
-
-
-def load_hall_of_fame():
-    if os.path.exists(HALL_OF_FAME_FILE):
-        try:
-            with open(HALL_OF_FAME_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except:
-            pass
-    return []
-
-
-def save_hall_of_fame(hof):
-    os.makedirs(os.path.dirname(HALL_OF_FAME_FILE), exist_ok=True)
-    with open(HALL_OF_FAME_FILE, "w", encoding="utf-8") as f:
-        json.dump(hof, f, ensure_ascii=False, indent=2)
 
 
 def get_proof_image(story_id):
@@ -171,7 +191,7 @@ def get_reward(stage, airline):
             return {"type": "gifticon", "name": "스타벅스", "icon": "☕", "description": "스타벅스 아메리카노"}
         return None
     elif stage == "final":
-        return {"type": "premium", "name": "프리미엄", "icon": "👑", "description": "명예의전당 + 프리미엄 1주일"}
+        return {"type": "premium", "name": "프리미엄", "icon": "👑", "description": "프리미엄 멤버십 1주일"}
     return None
 
 
@@ -182,39 +202,10 @@ def get_reward(stage, airline):
 st.title("🔐 관리자 모드")
 st.caption("채용 정보 및 합격자 DB 관리")
 
-# ----------------------------
-# 관리자 로그인
-# ----------------------------
-if "admin_mode" not in st.session_state:
-    st.session_state.admin_mode = False
-
-if not st.session_state.admin_mode:
-    st.warning("🔐 이 페이지는 관리자 전용입니다.")
-
-    with st.form("admin_login"):
-        admin_pw = st.text_input("관리자 비밀번호", type="password")
-        login_btn = st.form_submit_button("로그인", use_container_width=True)
-
-        if login_btn:
-            if admin_pw == ADMIN_PASSWORD:
-                st.session_state.admin_mode = True
-                st.rerun()
-            else:
-                st.error("비밀번호가 틀렸습니다.")
-
-    st.stop()
-
-# 관리자 로그아웃
-with st.sidebar:
-    st.success("🔓 관리자 모드 활성화")
-    if st.button("로그아웃", use_container_width=True):
-        st.session_state.admin_mode = False
-        st.rerun()
-
 # =====================
 # 탭 구성
 # =====================
-tab1, tab2, tab3 = st.tabs(["📅 채용 관리", "🏆 합격자 관리", "🔗 채용사이트"])
+tab1, tab2, tab3, tab4 = st.tabs(["📅 채용 관리", "🏆 합격자 관리", "📬 구독자 관리", "🔗 채용사이트"])
 
 # ========== 탭1: 채용 관리 ==========
 with tab1:
@@ -437,16 +428,6 @@ with tab2:
                                 if s.get("id") == story.get("id"):
                                     s["approved"] = True
                                     s["reward"] = reward
-                                    # 최종합격이면 명예의전당
-                                    if stage == "final":
-                                        hof = load_hall_of_fame()
-                                        hof.append({
-                                            "nickname": story.get("nickname"),
-                                            "airline": story.get("airline"),
-                                            "year": story.get("year"),
-                                            "date": datetime.now().isoformat()
-                                        })
-                                        save_hall_of_fame(hof)
                             save_stories(stories)
                             st.success("승인 완료!")
                             st.rerun()
@@ -471,8 +452,8 @@ with tab2:
                         st.rerun()
 
 
-# ========== 탭3: 채용사이트 ==========
-with tab3:
+# ========== 탭4: 채용사이트 ==========
+with tab4:
     st.subheader("🔗 공식 채용사이트 바로가기")
     st.caption("채용 공고 확인 후 '채용 관리' 탭에서 등록하세요")
 
@@ -506,3 +487,116 @@ with tab3:
                 name, url = lcc_list[i + j]
                 with col:
                     st.link_button(name, url, use_container_width=True)
+
+# ========== 탭3: 구독자 관리 ==========
+with tab3:
+    st.subheader("📬 채용 알림 구독자 관리")
+
+    subscribers_data = load_subscribers()
+    all_subscribers = subscribers_data.get("subscribers", [])
+    active_subscribers = [s for s in all_subscribers if s.get("active", True)]
+    inactive_subscribers = [s for s in all_subscribers if not s.get("active", True)]
+
+    # 통계
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("전체 구독자", f"{len(all_subscribers)}명")
+    with col2:
+        st.metric("활성 구독자", f"{len(active_subscribers)}명", delta=f"+{len(active_subscribers)}")
+    with col3:
+        st.metric("해지 구독자", f"{len(inactive_subscribers)}명")
+
+    st.markdown("---")
+
+    # 서브탭
+    sub_tab1, sub_tab2 = st.tabs(["📋 구독자 목록", "📊 항공사별 현황"])
+
+    with sub_tab1:
+        if not all_subscribers:
+            st.info("등록된 구독자가 없습니다.")
+        else:
+            # 필터
+            status_filter = st.radio("필터", ["활성", "해지", "전체"], horizontal=True, key="sub_filter")
+
+            if status_filter == "활성":
+                filtered = active_subscribers
+            elif status_filter == "해지":
+                filtered = inactive_subscribers
+            else:
+                filtered = all_subscribers
+
+            st.caption(f"총 {len(filtered)}명")
+
+            # 목록
+            for sub in filtered:
+                with st.container():
+                    col1, col2, col3 = st.columns([3, 2, 1])
+
+                    with col1:
+                        status_emoji = "🟢" if sub.get("active", True) else "⚫"
+                        st.markdown(f"**{status_emoji} {sub.get('name', '이름없음')}**")
+                        st.caption(f"📧 {sub.get('email', '')}")
+                        if sub.get("phone"):
+                            st.caption(f"📱 {sub.get('phone')}")
+
+                    with col2:
+                        airlines = sub.get("airlines", [])
+                        if airlines:
+                            st.caption(f"관심: {', '.join(airlines[:3])}{'...' if len(airlines) > 3 else ''}")
+                        else:
+                            st.caption("관심: 전체 항공사")
+                        st.caption(f"등록일: {sub.get('created_at', '-')}")
+
+                    with col3:
+                        if sub.get("active", True):
+                            if st.button("해지", key=f"unsub_{sub.get('id')}"):
+                                for s in subscribers_data["subscribers"]:
+                                    if s.get("id") == sub.get("id"):
+                                        s["active"] = False
+                                save_subscribers(subscribers_data)
+                                st.rerun()
+                        else:
+                            if st.button("복원", key=f"restore_{sub.get('id')}"):
+                                for s in subscribers_data["subscribers"]:
+                                    if s.get("id") == sub.get("id"):
+                                        s["active"] = True
+                                save_subscribers(subscribers_data)
+                                st.rerun()
+
+                    st.markdown("---")
+
+    with sub_tab2:
+        st.markdown("### 📊 항공사별 관심 구독자")
+
+        airline_counts = {}
+        no_preference = 0
+
+        for sub in active_subscribers:
+            airlines = sub.get("airlines", [])
+            if not airlines:
+                no_preference += 1
+            else:
+                for airline in airlines:
+                    airline_counts[airline] = airline_counts.get(airline, 0) + 1
+
+        # 전체 선택
+        st.info(f"📢 **전체 항공사 알림 수신:** {no_preference}명")
+
+        # 항공사별
+        if airline_counts:
+            sorted_airlines = sorted(airline_counts.items(), key=lambda x: x[1], reverse=True)
+            for airline, count in sorted_airlines:
+                st.markdown(f"✈️ **{airline}:** {count}명")
+        else:
+            st.caption("특정 항공사 선택 구독자가 없습니다.")
+
+        st.markdown("---")
+
+        # 알림 발송 안내
+        st.markdown("### 📧 알림 발송")
+        st.warning("""
+        **알림 발송 방법:**
+        1. 새 채용 공고 등록 시 자동으로 구독자 목록 확인
+        2. 해당 항공사 관심 구독자 + 전체 구독자에게 발송
+        3. 이메일 발송은 외부 서비스 연동 필요 (Mailchimp, SendGrid 등)
+        """)

@@ -14,7 +14,6 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import LLM_MODEL_NAME, LLM_API_URL, LLM_TIMEOUT_SEC, AIRLINES, AIRLINE_TYPE
-from auth_utils import check_tester_password
 from env_config import OPENAI_API_KEY
 
 # 음성/영상 유틸리티 import
@@ -28,6 +27,7 @@ try:
     from voice_utils import (
         transcribe_audio,
         analyze_voice_quality,
+        analyze_voice_complete,
         evaluate_answer_content,
         generate_tts_audio,
         get_audio_player_html,
@@ -44,25 +44,39 @@ try:
 except ImportError:
     SCORE_UTILS_AVAILABLE = False
 
-# 사용량 제한 시스템
+# 항공사별 맞춤 질문 import
 try:
-    from usage_limiter import check_and_use, show_usage_status, render_beta_banner, get_remaining
-    USAGE_LIMITER_AVAILABLE = True
+    from airline_questions import (
+        get_airline_questions,
+        get_airline_values,
+        get_airline_keywords,
+        AIRLINE_VALUES,
+    )
+    AIRLINE_QUESTIONS_AVAILABLE = True
 except ImportError:
-    USAGE_LIMITER_AVAILABLE = False
+    AIRLINE_QUESTIONS_AVAILABLE = False
+
+# PDF 리포트 생성 import
+try:
+    from mock_interview_report import (
+        generate_mock_interview_report,
+        get_mock_interview_report_filename,
+    )
+    REPORT_AVAILABLE = True
+except ImportError:
+    REPORT_AVAILABLE = False
+
+
+from sidebar_common import render_sidebar
 
 st.set_page_config(
     page_title="모의면접",
     page_icon="🎙️",
     layout="wide"
 )
+render_sidebar("모의면접")
 
-# 깔끔한 네비게이션 적용
-try:
-    from nav_utils import render_sidebar
-    render_sidebar(current_page="모의면접")
-except ImportError:
-    pass
+
 
 # 구글 번역 방지
 st.markdown(
@@ -76,10 +90,9 @@ st.markdown(
 # ----------------------------
 # 비밀번호 보호
 # ----------------------------
-check_tester_password()
 
 # =====================
-# 면접 질문 풀
+# 면접 질문 풀 (폴백용 기본 질문)
 # =====================
 
 INTERVIEW_QUESTIONS = {
@@ -113,6 +126,21 @@ INTERVIEW_QUESTIONS = {
     ],
 }
 
+# 항공사별 핵심가치 요약 (UI 표시용)
+AIRLINE_VALUE_SUMMARY = {
+    "대한항공": "KE Way: Beyond Excellence, Journey Together, Better Tomorrow | 인재상: 진취성, 국제감각, 서비스정신, 성실, 팀워크",
+    "아시아나항공": "Beautiful People | 핵심가치: 안전, 서비스, 지속가능성 | ESG: Better flight, Better tomorrow",
+    "제주항공": "Fun & Fly | 7C 정신 | 핵심가치: 안전, 저비용, 신뢰, 팀워크, 도전",
+    "진에어": "Fly, better fly | 5 JINISM: JINIABLE, JINIFUL, JINIVELY, JINISH, JINIQUE",
+    "티웨이항공": "I want T'way | 5S: Safety, Smart, Satisfaction, Sharing, Sustainability",
+    "에어부산": "FLY SMART | 안전운항, 지역친화, 효율성",
+    "에어서울": "It's mint time | 최고안전, 행복서비스, 신뢰",
+    "이스타항공": "Fly with EASTAR | 항공여행 대중화, 사회공익, 글로벌 국민항공사",
+    "에어로케이": "새로운 하늘길 | 도전정신, 유연성, 성장지향",
+    "에어프레미아": "Premium for all | HSC (Hybrid Service Carrier) | 프리미엄 서비스, 글로벌역량",
+    "파라타항공": "Fly new | 핵심가치: 안전과 정시성, 투명함, 쾌적함, 고객가치 최우선 | 인재상: 신뢰 구축, 변화 적응력, 도전",
+}
+
 # =====================
 # 세션 상태 초기화
 # =====================
@@ -135,6 +163,11 @@ defaults = {
     "recorded_audio": None,
     "video_generated": False,
     "current_video_url": None,
+    # 음성 분석용 추가 변수
+    "mock_audio_bytes_list": [],  # 각 질문별 음성 데이터 저장
+    "mock_combined_voice_analysis": None,  # 종합 음성 분석 결과
+    "mock_processed_audio_id": None,  # 오디오 중복 처리 방지
+    "mock_response_times": [],  # 각 질문별 응답 시간
 }
 
 for key, value in defaults.items():
@@ -151,23 +184,24 @@ def get_api_key():
 
 
 def generate_questions(airline: str, count: int = 6) -> list:
-    """면접 질문 생성 - count에 맞춰 동적으로 생성"""
+    """면접 질문 생성 - 항공사별 맞춤 질문 사용"""
+    # 항공사별 맞춤 질문 모듈이 있으면 사용
+    if AIRLINE_QUESTIONS_AVAILABLE:
+        return get_airline_questions(airline, count)
+
+    # 폴백: 기존 공통 질문 사용
     questions = []
 
-    # count에 따라 각 카테고리에서 뽑을 개수 결정
     if count <= 4:
-        # 4개: common 2, experience 1, situational 1
         questions.extend(random.sample(INTERVIEW_QUESTIONS["common"], 2))
         questions.extend(random.sample(INTERVIEW_QUESTIONS["experience"], 1))
         questions.extend(random.sample(INTERVIEW_QUESTIONS["situational"], 1))
     elif count <= 6:
-        # 5-6개: common 2, experience 1, situational 2, personality 1
         questions.extend(random.sample(INTERVIEW_QUESTIONS["common"], 2))
         questions.extend(random.sample(INTERVIEW_QUESTIONS["experience"], 1))
         questions.extend(random.sample(INTERVIEW_QUESTIONS["situational"], 2))
         questions.extend(random.sample(INTERVIEW_QUESTIONS["personality"], 1))
     else:
-        # 7-8개: common 2, experience 2, situational 2, personality 2
         questions.extend(random.sample(INTERVIEW_QUESTIONS["common"], 2))
         questions.extend(random.sample(INTERVIEW_QUESTIONS["experience"], 2))
         questions.extend(random.sample(INTERVIEW_QUESTIONS["situational"], 2))
@@ -212,8 +246,20 @@ def evaluate_interview_combined(
     avg_voice = total_voice_score // max(len(questions), 1)
     avg_content = total_content_score // max(len(questions), 1)
 
-    system_prompt = """당신은 엄격한 항공사 면접관입니다.
+    # 항공사별 평가 기준 추가
+    airline_criteria = ""
+    if AIRLINE_QUESTIONS_AVAILABLE and airline in AIRLINE_VALUES:
+        values = AIRLINE_VALUES[airline]
+        인재상 = values.get("인재상", [])
+        keywords = values.get("keywords", [])
+        if 인재상:
+            airline_criteria = f"\n\n이 항공사의 인재상: {', '.join(인재상)}"
+        if keywords:
+            airline_criteria += f"\n핵심 키워드: {', '.join(keywords)}"
+
+    system_prompt = f"""당신은 엄격한 항공사 면접관입니다.
 음성 평가와 내용 평가를 종합하여 최종 피드백을 제공하세요.
+해당 항공사의 인재상과 핵심가치에 맞는지도 평가해주세요.{airline_criteria}
 한국어로 상세하게 작성하세요."""
 
     user_prompt = f"""## 지원 항공사: {airline}
@@ -243,6 +289,9 @@ def evaluate_interview_combined(
 
 #### 반드시 개선해야 할 점 (3-4개)
 - ...
+
+#### {airline} 인재상 부합도
+(해당 항공사의 인재상/핵심가치와 얼마나 맞는지 평가)
 
 #### 합격 가능성
 (솔직하게)
@@ -283,117 +332,6 @@ def evaluate_interview_combined(
 
 
 # =====================
-# 음성 녹음 컴포넌트 (JavaScript)
-# =====================
-
-def get_audio_recorder_html():
-    """JavaScript 기반 음성 녹음 컴포넌트"""
-    return """
-    <div id="recorder-container" style="text-align: center; padding: 20px;">
-        <div id="status" style="margin-bottom: 15px; font-size: 18px; color: #333;">
-            🎤 녹음 준비 완료
-        </div>
-        <div id="timer" style="font-size: 48px; font-weight: bold; color: #28a745; margin: 20px 0;">
-            00:00
-        </div>
-        <div style="margin: 20px 0;">
-            <button id="startBtn" onclick="startRecording()"
-                style="padding: 15px 40px; font-size: 18px; background: #28a745; color: white; border: none; border-radius: 25px; cursor: pointer; margin: 5px;">
-                🎬 녹음 시작
-            </button>
-            <button id="stopBtn" onclick="stopRecording()" disabled
-                style="padding: 15px 40px; font-size: 18px; background: #dc3545; color: white; border: none; border-radius: 25px; cursor: pointer; margin: 5px;">
-                ⏹️ 녹음 종료
-            </button>
-        </div>
-        <div id="audioContainer" style="margin-top: 20px;"></div>
-    </div>
-
-    <script>
-    let mediaRecorder;
-    let audioChunks = [];
-    let startTime;
-    let timerInterval;
-
-    async function startRecording() {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
-            audioChunks = [];
-
-            mediaRecorder.ondataavailable = (event) => {
-                audioChunks.push(event.data);
-            };
-
-            mediaRecorder.onstop = () => {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                const audioUrl = URL.createObjectURL(audioBlob);
-
-                // 오디오 플레이어 표시
-                document.getElementById('audioContainer').innerHTML =
-                    '<audio controls src="' + audioUrl + '" style="width: 100%;"></audio>';
-
-                // Streamlit에 데이터 전송
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    const base64data = reader.result.split(',')[1];
-                    window.parent.postMessage({
-                        type: 'audio_data',
-                        data: base64data
-                    }, '*');
-                };
-                reader.readAsDataURL(audioBlob);
-            };
-
-            mediaRecorder.start();
-            startTime = Date.now();
-
-            document.getElementById('startBtn').disabled = true;
-            document.getElementById('stopBtn').disabled = false;
-            document.getElementById('status').innerHTML = '🔴 녹음 중...';
-            document.getElementById('status').style.color = '#dc3545';
-
-            // 타이머 시작
-            timerInterval = setInterval(() => {
-                const elapsed = Math.floor((Date.now() - startTime) / 1000);
-                const mins = Math.floor(elapsed / 60);
-                const secs = elapsed % 60;
-                const timerEl = document.getElementById('timer');
-                timerEl.textContent = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
-
-                // 색상 변경
-                if (elapsed < 60) {
-                    timerEl.style.color = '#28a745';
-                } else if (elapsed < 90) {
-                    timerEl.style.color = '#ffc107';
-                } else {
-                    timerEl.style.color = '#dc3545';
-                }
-            }, 1000);
-
-        } catch (err) {
-            alert('마이크 접근 권한이 필요합니다: ' + err.message);
-        }
-    }
-
-    function stopRecording() {
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-            mediaRecorder.stop();
-            mediaRecorder.stream.getTracks().forEach(track => track.stop());
-
-            clearInterval(timerInterval);
-
-            document.getElementById('startBtn').disabled = false;
-            document.getElementById('stopBtn').disabled = true;
-            document.getElementById('status').innerHTML = '✅ 녹음 완료';
-            document.getElementById('status').style.color = '#28a745';
-        }
-    }
-    </script>
-    """
-
-
-# =====================
 # UI
 # =====================
 
@@ -425,6 +363,10 @@ if not st.session_state.mock_started:
             help="음성 녹음 시 마이크 권한이 필요합니다"
         )
 
+    # 항공사 핵심가치 표시
+    if airline in AIRLINE_VALUE_SUMMARY:
+        st.info(f"**{airline} 핵심가치**\n\n{AIRLINE_VALUE_SUMMARY[airline]}")
+
     st.divider()
 
     # 안내 박스
@@ -446,15 +388,10 @@ if not st.session_state.mock_started:
         """)
 
     # 남은 사용량 표시
-    if USAGE_LIMITER_AVAILABLE:
-        remaining = get_remaining("모의면접")
-        st.markdown(f"오늘 남은 횟수: **{remaining}회**")
 
     # 시작 버튼
     if st.button("모의면접 시작", type="primary", use_container_width=True):
         # 사용량 체크
-        if USAGE_LIMITER_AVAILABLE and not check_and_use("모의면접"):
-            st.stop()
 
         st.session_state.mock_started = True
         st.session_state.mock_questions = generate_questions(airline, question_count)
@@ -471,6 +408,11 @@ if not st.session_state.mock_started:
         st.session_state.answer_start_time = None
         st.session_state.timer_running = False
         st.session_state.recorded_audio = None
+        # 음성 분석용 변수 초기화
+        st.session_state.mock_audio_bytes_list = []
+        st.session_state.mock_combined_voice_analysis = None
+        st.session_state.mock_processed_audio_id = None
+        st.session_state.mock_response_times = []
         st.rerun()
 
 
@@ -526,73 +468,159 @@ elif not st.session_state.mock_completed:
         # 음성 녹음 모드
         st.subheader("🎤 음성으로 답변하세요")
 
-        # 음성 녹음 컴포넌트
-        components.html(get_audio_recorder_html(), height=300)
+        # 타이머 시작 (음성 모드에서도 시간 측정)
+        if st.session_state.answer_start_time is None:
+            st.session_state.answer_start_time = time.time()
 
-        st.warning("⚠️ 녹음 후 '답변 제출' 버튼을 눌러주세요")
+        # 경과 시간 표시
+        elapsed_display = int(time.time() - st.session_state.answer_start_time) if st.session_state.answer_start_time else 0
+        timer_color = "#28a745" if elapsed_display < 60 else "#ffc107" if elapsed_display < 90 else "#dc3545"
+        st.markdown(f"""
+        <div style="text-align: center; margin: 15px 0;">
+            <div style="font-size: 36px; font-weight: bold; color: {timer_color};">
+                ⏱️ {elapsed_display // 60:02d}:{elapsed_display % 60:02d}
+            </div>
+            <div style="font-size: 12px; color: #666;">적정 답변 시간: 60~90초</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # 음성 녹음 (st.audio_input 사용 - 롤플레잉과 동일)
+        col_rec1, col_rec2 = st.columns([2, 1])
+
+        with col_rec1:
+            try:
+                # 처리된 오디오 ID 추적 (중복 처리 방지)
+                if "mock_processed_audio_id" not in st.session_state:
+                    st.session_state.mock_processed_audio_id = None
+
+                audio_data = st.audio_input("🎤 녹음 버튼을 클릭하고 답변하세요", key=f"voice_input_{current_idx}")
+
+                if audio_data:
+                    # 오디오 ID로 중복 체크
+                    audio_id = f"{audio_data.name}_{audio_data.size}"
+
+                    if audio_id != st.session_state.mock_processed_audio_id:
+                        with st.spinner("🔊 음성 인식 중..."):
+                            # 음성 데이터 읽기
+                            audio_bytes = audio_data.read()
+
+                            # STT (음성 → 텍스트)
+                            result = transcribe_audio(audio_bytes, language="ko")
+
+                            if result and result.get("text"):
+                                transcribed_text = result["text"]
+                                st.success(f"✅ 인식됨: {transcribed_text[:100]}{'...' if len(transcribed_text) > 100 else ''}")
+
+                                # 응답 시간 계산
+                                elapsed = int(time.time() - st.session_state.answer_start_time) if st.session_state.answer_start_time else 60
+
+                                # 음성 데이터 저장 (종합 분석용)
+                                st.session_state.mock_audio_bytes_list.append(audio_bytes)
+                                st.session_state.mock_response_times.append(elapsed)
+
+                                # 개별 음성 분석
+                                try:
+                                    voice_analysis = analyze_voice_quality(result, expected_duration_range=(30, 90))
+                                except Exception as e:
+                                    voice_analysis = {"total_score": 70, "error": str(e)}
+
+                                # 내용 분석
+                                if VIDEO_UTILS_AVAILABLE:
+                                    content_analysis = evaluate_answer_content(
+                                        question, transcribed_text, airline, airline_type
+                                    )
+                                else:
+                                    content_analysis = {"total_score": 0, "error": "분석 불가"}
+
+                                # 세션에 저장
+                                st.session_state.mock_answers.append(transcribed_text)
+                                st.session_state.mock_transcriptions.append(result)
+                                st.session_state.mock_times.append(elapsed)
+                                st.session_state.mock_voice_analyses.append(voice_analysis)
+                                st.session_state.mock_content_analyses.append(content_analysis)
+
+                                # 처리 완료 표시
+                                st.session_state.mock_processed_audio_id = audio_id
+                                st.session_state.answer_start_time = None  # 타이머 리셋
+
+                                # 다음 질문으로
+                                if current_idx + 1 >= total:
+                                    st.session_state.mock_completed = True
+                                else:
+                                    st.session_state.mock_current_idx += 1
+                                    st.session_state.mock_processed_audio_id = None  # 다음 질문용 리셋
+
+                                st.rerun()
+                            else:
+                                st.error("❌ 음성 인식 실패 - 다시 녹음하거나 아래 텍스트로 입력하세요")
+                                st.session_state.mock_processed_audio_id = audio_id
+            except Exception as e:
+                st.warning(f"음성 입력 기능을 사용할 수 없습니다: {e}")
+
+        with col_rec2:
+            st.markdown("""
+            **💡 녹음 팁**
+            - 빨간 버튼 클릭 → 말하기 → 다시 클릭
+            - 조용한 환경에서 녹음
+            - 60~90초 내 답변 권장
+            """)
+
+        st.divider()
 
         # 텍스트 폴백 (음성 인식 실패 시)
-        with st.expander("📝 텍스트로 입력하기 (음성 인식 실패 시)"):
+        with st.expander("📝 텍스트로 직접 입력하기"):
             fallback_answer = st.text_area(
-                "답변을 직접 입력하세요",
+                "음성 인식이 안 될 경우 여기에 입력하세요",
                 height=150,
                 key=f"fallback_{current_idx}"
             )
 
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("답변 제출", type="primary", use_container_width=True):
-                # 현재는 폴백 텍스트 사용 (실제 구현 시 음성 데이터 처리)
-                answer = fallback_answer.strip() if fallback_answer else "[음성 답변]"
+            if st.button("텍스트 답변 제출", type="secondary", use_container_width=True):
+                if fallback_answer.strip():
+                    elapsed = int(time.time() - st.session_state.answer_start_time) if st.session_state.answer_start_time else 60
 
-                # 시간 기록 (임시)
-                elapsed = 60  # 실제로는 녹음 시간
+                    # 텍스트 모드는 음성 분석 없음
+                    voice_analysis = {"total_score": 0, "note": "텍스트 입력 (음성 분석 없음)"}
 
-                # 음성 분석 (데모용 더미 데이터)
-                voice_analysis = {
-                    "speech_rate": {"wpm": 135, "score": 8, "feedback": "적절한 말 속도"},
-                    "filler_words": {"count": 2, "score": 8, "feedback": "추임새 적음"},
-                    "pauses": {"count": 1, "score": 9, "feedback": "자연스러운 흐름"},
-                    "duration": {"seconds": elapsed, "score": 10, "feedback": "적절한 시간"},
-                    "clarity": {"score": 8, "feedback": "발음 명확"},
-                    "total_score": 82,
-                    "total_feedback": "음성 전달력이 우수합니다."
-                }
+                    # 내용 분석
+                    if VIDEO_UTILS_AVAILABLE:
+                        with st.spinner("답변 분석 중..."):
+                            content_analysis = evaluate_answer_content(
+                                question, fallback_answer.strip(), airline, airline_type
+                            )
+                    else:
+                        content_analysis = {"total_score": 0, "error": "분석 불가"}
 
-                # 내용 분석
-                if VIDEO_UTILS_AVAILABLE and answer != "[음성 답변]":
-                    with st.spinner("답변 분석 중..."):
-                        content_analysis = evaluate_answer_content(
-                            question, answer, airline, airline_type
-                        )
+                    st.session_state.mock_answers.append(fallback_answer.strip())
+                    st.session_state.mock_times.append(elapsed)
+                    st.session_state.mock_voice_analyses.append(voice_analysis)
+                    st.session_state.mock_content_analyses.append(content_analysis)
+                    st.session_state.answer_start_time = None
+
+                    if current_idx + 1 >= total:
+                        st.session_state.mock_completed = True
+                    else:
+                        st.session_state.mock_current_idx += 1
+
+                    st.rerun()
                 else:
-                    content_analysis = {"total_score": 0, "error": "분석 불가"}
+                    st.warning("답변을 입력해주세요.")
 
-                st.session_state.mock_answers.append(answer)
-                st.session_state.mock_times.append(elapsed)
-                st.session_state.mock_voice_analyses.append(voice_analysis)
-                st.session_state.mock_content_analyses.append(content_analysis)
+        # 패스 버튼
+        st.divider()
+        if st.button("⏭️ 이 질문 패스", use_container_width=True):
+            st.session_state.mock_answers.append("[답변 못함]")
+            st.session_state.mock_times.append(0)
+            st.session_state.mock_voice_analyses.append({"total_score": 0})
+            st.session_state.mock_content_analyses.append({"total_score": 0})
+            st.session_state.answer_start_time = None
 
-                if current_idx + 1 >= total:
-                    st.session_state.mock_completed = True
-                else:
-                    st.session_state.mock_current_idx += 1
+            if current_idx + 1 >= total:
+                st.session_state.mock_completed = True
+            else:
+                st.session_state.mock_current_idx += 1
 
-                st.rerun()
-
-        with col2:
-            if st.button("패스 (답변 못함)", use_container_width=True):
-                st.session_state.mock_answers.append("[답변 못함]")
-                st.session_state.mock_times.append(0)
-                st.session_state.mock_voice_analyses.append({"total_score": 0})
-                st.session_state.mock_content_analyses.append({"total_score": 0})
-
-                if current_idx + 1 >= total:
-                    st.session_state.mock_completed = True
-                else:
-                    st.session_state.mock_current_idx += 1
-
-                st.rerun()
+            st.rerun()
 
     else:
         # 텍스트 입력 모드 (기존 방식)
@@ -696,6 +724,21 @@ else:
     total_time = sum(st.session_state.mock_times)
     st.markdown(f"**총 소요 시간:** {total_time // 60}분 {total_time % 60}초")
 
+    # 종합 음성 분석 수행 (음성 모드이고, 음성 데이터가 있는 경우)
+    if st.session_state.mock_mode == "voice" and st.session_state.mock_audio_bytes_list and VIDEO_UTILS_AVAILABLE:
+        if st.session_state.mock_combined_voice_analysis is None:
+            try:
+                with st.spinner("🎤 종합 음성 분석 중..."):
+                    # 모든 음성 데이터 합쳐서 분석
+                    combined_audio = b''.join(st.session_state.mock_audio_bytes_list)
+                    voice_result = analyze_voice_complete(
+                        combined_audio,
+                        response_times=st.session_state.mock_response_times
+                    )
+                    st.session_state.mock_combined_voice_analysis = voice_result
+            except Exception as e:
+                st.session_state.mock_combined_voice_analysis = {"error": str(e)}
+
     st.divider()
 
     # 질문별 결과 탭
@@ -738,10 +781,119 @@ else:
 
     with tab2:
         if st.session_state.mock_mode == "voice":
+            # 종합 음성 분석 결과 표시
+            voice_analysis = st.session_state.mock_combined_voice_analysis
+
+            if voice_analysis and "error" not in voice_analysis:
+                # 종합 점수 표시
+                total_score = voice_analysis.get("total_score", 0)
+                grade = voice_analysis.get("grade", "N/A")
+
+                grade_colors = {"S": "#FFD700", "A": "#4CAF50", "B": "#2196F3", "C": "#FF9800", "D": "#F44336"}
+                grade_color = grade_colors.get(grade, "#666")
+
+                st.markdown(f"""
+                <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #1e3a5f, #2d5a87); border-radius: 15px; margin-bottom: 20px;">
+                    <div style="font-size: 48px; font-weight: bold; color: {grade_color};">{grade}</div>
+                    <div style="font-size: 24px; color: #fff;">{total_score}/100점</div>
+                    <div style="font-size: 14px; color: #ccc; margin-top: 10px;">{voice_analysis.get('summary', '')}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # 텍스트 분석 (말 속도, 필러, 휴지, 발음)
+                st.subheader("📝 텍스트 분석")
+                text_analysis = voice_analysis.get("text_analysis", {})
+
+                col1, col2, col3, col4 = st.columns(4)
+
+                with col1:
+                    rate = text_analysis.get("speech_rate", {})
+                    st.metric("말 속도", f"{rate.get('wpm', 0)} WPM", help="적정: 120-150 WPM")
+                    st.progress(min(rate.get("score", 0) / 10, 1.0))
+                    st.caption(rate.get("feedback", ""))
+
+                with col2:
+                    filler = text_analysis.get("filler_words", {})
+                    st.metric("필러 단어", f"{filler.get('count', 0)}개", help="음, 어, 그 등")
+                    st.progress(min(filler.get("score", 0) / 10, 1.0))
+                    st.caption(filler.get("feedback", ""))
+
+                with col3:
+                    pauses = text_analysis.get("pauses", {})
+                    st.metric("긴 휴지", f"{pauses.get('long_pauses', 0)}회", help="2초 이상 멈춤")
+                    st.progress(min(pauses.get("score", 0) / 10, 1.0))
+                    st.caption(pauses.get("feedback", ""))
+
+                with col4:
+                    clarity = text_analysis.get("clarity", {})
+                    st.metric("발음 명확도", f"{clarity.get('score', 0)}/10")
+                    st.progress(min(clarity.get("score", 0) / 10, 1.0))
+                    st.caption(clarity.get("feedback", ""))
+
+                st.divider()
+
+                # 음성 분석 (떨림, 말끝, 억양, 서비스톤)
+                st.subheader("🎤 음성 전달력 분석")
+                voice_detail = voice_analysis.get("voice_analysis", {})
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    tremor = voice_detail.get("tremor", {})
+                    st.markdown(f"**목소리 떨림**: {tremor.get('level', 'N/A')}")
+                    st.progress(min(tremor.get("score", 0) / 10, 1.0))
+                    st.caption(tremor.get("feedback", ""))
+
+                    pitch = voice_detail.get("pitch_variation", {})
+                    st.markdown(f"**억양 변화**: {pitch.get('type', 'N/A')}")
+                    st.progress(min(pitch.get("score", 0) / 10, 1.0))
+                    st.caption(pitch.get("feedback", ""))
+
+                with col2:
+                    ending = voice_detail.get("ending_clarity", {})
+                    st.markdown(f"**말끝 처리**: {ending.get('issue', 'N/A')}")
+                    st.progress(min(ending.get("score", 0) / 10, 1.0))
+                    st.caption(ending.get("feedback", ""))
+
+                    service = voice_detail.get("service_tone", {})
+                    st.markdown(f"**서비스 톤**: {'밝음' if service.get('greeting_bright') else '개선 필요'}")
+                    st.progress(min(service.get("score", 0) / 10, 1.0))
+                    st.caption(service.get("feedback", ""))
+
+                # 응답 시간 분석
+                rt_analysis = voice_analysis.get("response_time_analysis", {})
+                if rt_analysis:
+                    st.divider()
+                    st.subheader("⏱️ 응답 시간 분석")
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("평균 응답 시간", f"{rt_analysis.get('avg_time', 0):.1f}초")
+                    with col2:
+                        st.metric("응답 시간 점수", f"{rt_analysis.get('score', 0)}/10")
+                    with col3:
+                        st.caption(rt_analysis.get("feedback", ""))
+
+                # 개선 포인트
+                improvements = voice_analysis.get("top_improvements", [])
+                if improvements:
+                    st.divider()
+                    st.subheader("🎯 우선 개선 포인트")
+                    for i, imp in enumerate(improvements, 1):
+                        st.markdown(f"{i}. {imp}")
+
+            elif voice_analysis and "error" in voice_analysis:
+                st.warning(f"음성 분석 오류: {voice_analysis.get('error')}")
+
+            elif not st.session_state.mock_audio_bytes_list:
+                st.info("💡 음성 모드로 녹음한 데이터가 없습니다. 텍스트 입력을 사용한 경우 음성 분석이 제공되지 않습니다.")
+
+            # 질문별 음성 분석 (개별)
+            st.divider()
+            st.subheader("📋 질문별 음성 분석")
             for i, voice in enumerate(st.session_state.mock_voice_analyses, 1):
                 if voice and voice.get("total_score", 0) > 0:
                     with st.expander(f"질문 {i} 음성 분석", expanded=False):
-                        col1, col2 = st.columns(2)
+                        col1, col2, col3 = st.columns(3)
 
                         with col1:
                             st.metric("말 속도", f"{voice.get('speech_rate', {}).get('wpm', 0)} WPM")
@@ -751,9 +903,11 @@ else:
                             st.metric("필러 단어", f"{voice.get('filler_words', {}).get('count', 0)}개")
                             st.caption(voice.get('filler_words', {}).get('feedback', ''))
 
-                        st.metric("음성 점수", f"{voice.get('total_score', 0)}/100")
+                        with col3:
+                            st.metric("음성 점수", f"{voice.get('total_score', 0)}/100")
+
         else:
-            st.info("텍스트 모드에서는 음성 평가가 제공되지 않습니다.")
+            st.info("텍스트 모드에서는 음성 평가가 제공되지 않습니다. 음성 모드로 면접을 진행하면 상세한 음성 분석을 받을 수 있습니다.")
 
     with tab3:
         if st.session_state.mock_evaluation is None:
@@ -808,6 +962,41 @@ else:
                 st.markdown("---")
                 st.markdown(eval_result.get("result", ""))
 
+    # =====================
+    # PDF 리포트 다운로드
+    # =====================
+    if REPORT_AVAILABLE:
+        st.divider()
+        st.subheader("📄 리포트 다운로드")
+
+        col_pdf1, col_pdf2 = st.columns([2, 1])
+        with col_pdf1:
+            st.caption("면접 결과를 PDF로 저장하여 나중에 확인하거나 멘토에게 공유할 수 있습니다.")
+        with col_pdf2:
+            try:
+                pdf_bytes = generate_mock_interview_report(
+                    airline=st.session_state.mock_airline,
+                    questions=st.session_state.mock_questions,
+                    answers=st.session_state.mock_answers,
+                    times=st.session_state.mock_times,
+                    voice_analyses=st.session_state.mock_voice_analyses,
+                    content_analyses=st.session_state.mock_content_analyses,
+                    combined_voice_analysis=st.session_state.mock_combined_voice_analysis,
+                    evaluation_result=st.session_state.mock_evaluation,
+                )
+                filename = get_mock_interview_report_filename(st.session_state.mock_airline)
+
+                st.download_button(
+                    label="📥 PDF 다운로드",
+                    data=pdf_bytes,
+                    file_name=filename,
+                    mime="application/pdf",
+                    use_container_width=True,
+                    type="primary"
+                )
+            except Exception as e:
+                st.error(f"PDF 생성 오류: {e}")
+
     st.divider()
 
     col1, col2 = st.columns(2)
@@ -815,6 +1004,11 @@ else:
         if st.button("다시 도전하기", type="primary", use_container_width=True):
             st.session_state.mock_started = False
             st.session_state.mock_evaluation = None
+            # 음성 분석 변수도 초기화
+            st.session_state.mock_audio_bytes_list = []
+            st.session_state.mock_combined_voice_analysis = None
+            st.session_state.mock_processed_audio_id = None
+            st.session_state.mock_response_times = []
             st.rerun()
 
     with col2:

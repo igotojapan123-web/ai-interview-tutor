@@ -1,17 +1,20 @@
 # pages/8_면접꿀팁.py
-# 면접 꿀팁 모음 페이지 - 2026 채용 트렌드 및 합격 노하우
+# 면접 꿀팁 모음 페이지 - 2026 채용 트렌드 및 합격 노하우 + 자가진단
 
 import streamlit as st
+import os
+import sys
+import json
+from datetime import datetime
+import random
 
-# 구글 번역 방지
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from sidebar_common import render_sidebar
+
 st.set_page_config(page_title="면접 꿀팁", page_icon="💡", layout="wide")
+render_sidebar("면접꿀팁")
 
-# 깔끔한 네비게이션 적용
-try:
-    from nav_utils import render_sidebar
-    render_sidebar(current_page="면접 꿀팁")
-except ImportError:
-    pass
+
 
 
 st.markdown(
@@ -34,11 +37,109 @@ from config import (
     FSC_VS_LCC_INTERVIEW,
     COMMON_INTERVIEW_MISTAKES,
     CREW_ESSENTIAL_QUALITIES,
-    KOREAN_AIR_INTERVIEW_INFO,
     HIRING_TRENDS_2026,
     AIRLINE_PREFERRED_TYPE,
     ENGLISH_INTERVIEW_AIRLINES,
 )
+
+# =====================
+# 데이터 경로 및 유틸리티
+# =====================
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(BASE_DIR, "data")
+ASSESSMENT_FILE = os.path.join(DATA_DIR, "interview_assessment.json")
+
+def load_assessment():
+    if os.path.exists(ASSESSMENT_FILE):
+        try:
+            with open(ASSESSMENT_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            pass
+    return {"results": [], "bookmarks": []}
+
+def save_assessment(data):
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(ASSESSMENT_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+# 오늘의 팁 데이터 (매일 다른 팁 표시)
+DAILY_TIPS = [
+    {"category": "첫인상", "tip": "면접관과 눈을 마주치며 인사할 때, 고개를 15도만 숙이세요. 너무 깊은 인사는 오히려 자신감 없어 보입니다.", "icon": "👁️"},
+    {"category": "목소리", "tip": "답변 시작 전 0.5초 멈추고 시작하세요. 급하게 시작하면 긴장해 보이고, 잠깐의 여유가 프로페셔널한 인상을 줍니다.", "icon": "🎤"},
+    {"category": "답변법", "tip": "답변은 30초~1분이 적정합니다. 타이머로 연습해보세요. 너무 짧으면 준비 부족, 너무 길면 핵심 전달력이 떨어집니다.", "icon": "⏱️"},
+    {"category": "서류", "tip": "자소서에 쓴 경험은 반드시 면접에서 물어봅니다. 자소서를 외우지 말고, 그 경험의 '감정'을 기억하세요.", "icon": "📝"},
+    {"category": "영어", "tip": "영어면접에서 'I think...'보다 'In my experience...'로 시작하면 더 구체적이고 설득력 있는 답변이 됩니다.", "icon": "🌐"},
+    {"category": "이미지", "tip": "면접 당일 옷은 전날 밤에 완벽히 준비하세요. 아침에 허둥대면 컨디션과 표정에 그대로 드러납니다.", "icon": "👗"},
+    {"category": "체력", "tip": "면접 전날 가벼운 스트레칭과 30분 산책을 추천합니다. 과한 운동은 피로감을, 적당한 활동은 자신감을 줍니다.", "icon": "🏋️"},
+    {"category": "긴장관리", "tip": "대기실에서 손을 따뜻하게 유지하세요. 차가운 손은 긴장의 신호입니다. 핫팩이나 손 비비기가 도움됩니다.", "icon": "💆"},
+    {"category": "태도", "tip": "면접관의 질문을 듣다가 끄덕이세요. 경청하는 태도는 소통 능력의 첫 번째 증거입니다.", "icon": "🙂"},
+    {"category": "마무리", "tip": "면접 마지막 '하고 싶은 말' 기회를 절대 놓치지 마세요. 30초짜리 클로징 멘트를 미리 준비하세요.", "icon": "🎯"},
+    {"category": "FSC", "tip": "대한항공/아시아나 면접에서는 '글로벌 서비스 마인드'를 강조하세요. FSC는 '품격'있는 서비스를 원합니다.", "icon": "✈️"},
+    {"category": "LCC", "tip": "LCC 면접에서는 '밝은 에너지'와 '팀워크'를 강조하세요. LCC는 적극적이고 활기찬 승무원을 원합니다.", "icon": "🛩️"},
+    {"category": "그룹면접", "tip": "그룹면접에서 다른 지원자 답변 시 적절히 고개를 끄덕이세요. 경쟁자가 아닌 동료로 보는 시선이 좋은 인상을 줍니다.", "icon": "👥"},
+    {"category": "꼬리질문", "tip": "꼬리질문은 당신의 답변에 관심이 있다는 신호입니다. 당황하지 말고 '좋은 질문 감사합니다'하고 차분히 답하세요.", "icon": "🔄"},
+    {"category": "실수대처", "tip": "답변 중 실수했을 때 '다시 정리해서 말씀드리겠습니다'라고 자연스럽게 리커버리하세요. 당황하는 것보다 대처력이 중요합니다.", "icon": "🔧"},
+]
+
+# 자가진단 항목
+ASSESSMENT_CATEGORIES = {
+    "image": {
+        "name": "이미지/첫인상",
+        "icon": "👗",
+        "items": [
+            "면접 복장(정장/블라우스)을 완벽히 준비했다",
+            "헤어스타일을 단정하게 정돈할 수 있다",
+            "자연스러운 미소 연습을 꾸준히 하고 있다",
+            "바른 자세와 워킹 연습을 했다",
+            "메이크업/그루밍 스타일을 결정했다",
+        ]
+    },
+    "answer": {
+        "name": "답변 준비",
+        "icon": "💬",
+        "items": [
+            "자기소개를 1분 내로 자연스럽게 할 수 있다",
+            "지원동기를 구체적으로 설명할 수 있다",
+            "STAR 기법으로 경험을 정리했다 (3개 이상)",
+            "상황별 대처 답변을 준비했다 (5개 이상)",
+            "꼬리질문에 당황하지 않고 대응할 수 있다",
+        ]
+    },
+    "english": {
+        "name": "영어 면접",
+        "icon": "🌐",
+        "items": [
+            "영어 자기소개를 2분 내로 할 수 있다",
+            "기본 영어 질문 5개 이상 답변을 준비했다",
+            "영어 발음과 억양 연습을 하고 있다",
+            "영어 기내방송문을 읽을 수 있다",
+            "서비스 관련 영어 표현을 10개 이상 알고 있다",
+        ]
+    },
+    "fitness": {
+        "name": "체력/수영",
+        "icon": "🏋️",
+        "items": [
+            "국민체력100 종목별 기준을 알고 있다",
+            "현재 체력 등급이 3등급 이상이다",
+            "수영 25m를 완주할 수 있다 (해당 시)",
+            "꾸준한 운동 루틴이 있다 (주 3회 이상)",
+            "체력시험 당일 복장과 준비물을 알고 있다",
+        ]
+    },
+    "knowledge": {
+        "name": "항공 지식",
+        "icon": "✈️",
+        "items": [
+            "지원 항공사의 인재상을 정확히 알고 있다",
+            "FSC와 LCC의 차이점을 설명할 수 있다",
+            "최근 항공 업계 뉴스를 3개 이상 알고 있다",
+            "기내 안전장비의 종류와 위치를 알고 있다",
+            "지원 항공사의 취항 노선을 알고 있다",
+        ]
+    },
+}
 
 # ----------------------------
 # 커스텀 CSS
@@ -189,28 +290,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ----------------------------
-# 비밀번호 보호
-# ----------------------------
-def _check_password():
-    """비밀번호 확인 - 인증된 사용자만 앱 사용 가능"""
-    if "authenticated" not in st.session_state:
-        st.session_state.authenticated = False
-
-    if not st.session_state.authenticated:
-        st.title("AI 면접 코칭")
-        st.markdown("---")
-        password = st.text_input("테스터 비밀번호를 입력하세요", type="password")
-        if password == "crew2024":
-            st.session_state.authenticated = True
-            st.rerun()
-        elif password:
-            st.error("비밀번호가 틀렸습니다")
-        st.info("이 서비스는 현재 비공개 테스트 중입니다.")
-        st.stop()
-
-_check_password()
-
-# ----------------------------
 # 페이지 제목
 # ----------------------------
 st.markdown("""
@@ -225,9 +304,25 @@ st.markdown("""
 st.markdown("---")
 
 # ----------------------------
-# 탭 구성 (10개 탭)
+# 오늘의 팁 (매일 다른 팁 표시)
 # ----------------------------
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
+today_idx = datetime.now().timetuple().tm_yday % len(DAILY_TIPS)
+daily_tip = DAILY_TIPS[today_idx]
+
+st.markdown(f"""
+<div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border: 2px solid #667eea40; border-radius: 16px; padding: 20px 25px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+    <div style="font-size: 2.5rem;">{daily_tip["icon"]}</div>
+    <div>
+        <div style="font-size: 0.75rem; color: #667eea; font-weight: 700; margin-bottom: 4px;">TODAY'S TIP - {daily_tip["category"]}</div>
+        <div style="font-size: 0.95rem; color: #334155; font-weight: 500; line-height: 1.5;">{daily_tip["tip"]}</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# ----------------------------
+# 탭 구성 (14개 탭)
+# ----------------------------
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12, tab13, tab14 = st.tabs([
     "🎯 첫인상",
     "👗 복장가이드",
     "❓ 빈출질문",
@@ -237,7 +332,11 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
     "✈️ FSC/LCC",
     "⚠️ 탈락사유",
     "💆 긴장관리",
-    "📈 트렌드"
+    "📈 트렌드",
+    "🤖 AI면접",
+    "📹 영상면접",
+    "🏢 항공사별",
+    "✅ 자가진단"
 ])
 
 # ----------------------------
@@ -1562,47 +1661,897 @@ with tab10:
                 """, unsafe_allow_html=True)
 
 # ----------------------------
-# 대한항공 특화 정보 (보너스)
+# 탭 11: AI면접 대비
 # ----------------------------
-st.markdown("---")
-with st.expander("🌟 대한항공 면접 특화 정보", expanded=False):
-    kal = KOREAN_AIR_INTERVIEW_INFO
+with tab11:
+    st.markdown('<div class="section-header"><h2>🤖 AI 면접 완벽 대비</h2></div>', unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="tip-card">
+        <h3 style="margin:0;">AI 면접, 두려워하지 마세요!</h3>
+        <p style="margin: 10px 0 0 0; opacity: 0.9;">AI 면접은 공정한 기회입니다. 핵심 포인트만 알면 충분히 준비할 수 있습니다.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # AI 면접 도입 항공사
+    st.info("✈️ **AI 면접 도입 항공사:** 대한항공, 아시아나항공, 제주항공, 진에어, 티웨이항공 등 대부분의 항공사가 1차 면접에 AI 역량 검사 도입")
+
+    st.markdown("---")
+
+    # AI 면접 유형
+    st.markdown("### 📋 AI 면접 유형")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown("""
+        <div class="dress-card">
+            <div style="font-size: 40px;">🎤</div>
+            <h4>음성 답변형</h4>
+            <hr/>
+            <p style="font-size: 14px; text-align: left;">
+            • 주어진 질문에 음성으로 답변<br/>
+            • 1~2분 내외 답변 시간<br/>
+            • 목소리 톤/속도/명확성 분석<br/>
+            • 대표 플랫폼: 마이다스인, 뷰인터HR
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown("""
+        <div class="dress-card">
+            <div style="font-size: 40px;">🎮</div>
+            <h4>게임형 역량검사</h4>
+            <hr/>
+            <p style="font-size: 14px; text-align: left;">
+            • 미니 게임 형태의 인지 능력 검사<br/>
+            • 집중력, 판단력, 기억력 측정<br/>
+            • 스트레스 상황 대처 능력<br/>
+            • 대표: NCS게임, 역량게임
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col3:
+        st.markdown("""
+        <div class="dress-card">
+            <div style="font-size: 40px;">📝</div>
+            <h4>상황판단형</h4>
+            <hr/>
+            <p style="font-size: 14px; text-align: left;">
+            • 기내 상황 시나리오 제시<br/>
+            • 최적의 대처 방안 선택<br/>
+            • 서비스 마인드/협업 능력<br/>
+            • 정답보다 일관성이 중요
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # AI 분석 항목
+    st.markdown("### 🔍 AI가 분석하는 항목")
 
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("### 📊 스펙 기준")
-        specs = kal.get("specs", {})
-        st.markdown(f"""
+        st.markdown("""
         <div class="info-card">
-            <p>• <strong>토익:</strong> {specs.get('toeic_range', '580~990점')}</p>
-            <p>• <strong>학점:</strong> {specs.get('gpa_range', '2.8~4.5')}</p>
-            <p>• <strong>신장:</strong> {specs.get('height_min', '163cm 이상')}</p>
+            <h4>😊 표정 분석</h4>
+            <ul style="font-size: 14px; margin: 10px 0;">
+                <li>자연스러운 미소 유지</li>
+                <li>눈 깜빡임 빈도 (너무 잦으면 긴장)</li>
+                <li>시선 처리 (카메라 응시)</li>
+                <li>표정 변화의 자연스러움</li>
+            </ul>
         </div>
         """, unsafe_allow_html=True)
-        st.info(f"💡 {specs.get('note', '스펙보다 지원자의 태도가 중요')}")
 
-        st.markdown("### 👨 남성 승무원")
-        male = kal.get("male_crew", {})
-        st.markdown(f"• **토익:** {male.get('toeic', '850점 이상')}")
-        st.markdown(f"• **신장:** {male.get('height', '175cm 이상')}")
-        st.markdown(f"• **특징:** {male.get('note', '')}")
+        st.markdown("""
+        <div class="info-card">
+            <h4>🎤 음성 분석</h4>
+            <ul style="font-size: 14px; margin: 10px 0;">
+                <li>말의 속도 (너무 빠르거나 느림)</li>
+                <li>목소리 크기와 안정성</li>
+                <li>발음의 명확성</li>
+                <li>침묵 시간 (Um, 어... 줄이기)</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
 
     with col2:
-        st.markdown("### 📋 면접 프로세스")
-        for i, step in enumerate(kal.get("interview_process", []), 1):
-            st.markdown(f"{i}. {step}")
+        st.markdown("""
+        <div class="info-card">
+            <h4>💬 내용 분석</h4>
+            <ul style="font-size: 14px; margin: 10px 0;">
+                <li>답변의 논리적 구조</li>
+                <li>핵심 키워드 포함 여부</li>
+                <li>구체적 사례 유무</li>
+                <li>질문과의 연관성</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
 
-        st.markdown("### 🎯 핵심 평가 요소")
-        for factor in kal.get("key_factors", []):
-            st.markdown(f"• {factor}")
+        st.markdown("""
+        <div class="info-card">
+            <h4>🧠 성향 분석</h4>
+            <ul style="font-size: 14px; margin: 10px 0;">
+                <li>외향성 / 내향성</li>
+                <li>안정성 / 민감성</li>
+                <li>성실성 / 유연성</li>
+                <li>조직 적합도</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
 
-    st.markdown("### 💡 면접 팁")
-    tips = kal.get("tips", [])
+    st.markdown("---")
+
+    # AI 면접 핵심 팁
+    st.markdown("### 💡 AI 면접 핵심 팁")
+
     col1, col2 = st.columns(2)
-    for i, tip in enumerate(tips):
+
+    with col1:
+        st.markdown("""
+        <div class="success-card">
+            <h4>✅ 이렇게 하세요</h4>
+            <ul style="margin: 10px 0;">
+                <li><strong>카메라 정면 응시</strong> - 렌즈가 면접관 눈</li>
+                <li><strong>밝은 조명</strong> - 얼굴이 잘 보이게</li>
+                <li><strong>단정한 배경</strong> - 흰 벽 or 정리된 공간</li>
+                <li><strong>헤드셋 사용</strong> - 음질 향상</li>
+                <li><strong>미소 유지</strong> - 말 안 해도 표정 관리</li>
+                <li><strong>두괄식 답변</strong> - 결론부터 명확하게</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown("""
+        <div class="warning-card">
+            <h4>❌ 이것만은 피하세요</h4>
+            <ul style="margin: 10px 0;">
+                <li><strong>화면 외 시선</strong> - 대본 보는 듯한 인상</li>
+                <li><strong>역광 조명</strong> - 얼굴 어두워짐</li>
+                <li><strong>어지러운 배경</strong> - 집중도 저하</li>
+                <li><strong>내장 마이크</strong> - 음질 불량</li>
+                <li><strong>무표정</strong> - 성의 없어 보임</li>
+                <li><strong>장황한 답변</strong> - 핵심이 묻힘</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # 환경 체크리스트
+    st.markdown("### 🖥️ AI 면접 환경 체크리스트")
+
+    env_checks = [
+        ("💻 노트북/PC", "카메라 눈높이에 위치, 배터리 충분히 충전"),
+        ("📶 인터넷", "유선 연결 권장, Wi-Fi는 안정적인지 확인"),
+        ("💡 조명", "얼굴 정면에서 밝게, 역광 절대 금지"),
+        ("🔇 소음", "조용한 공간, 알람/알림 모두 끄기"),
+        ("🎧 오디오", "헤드셋 or 이어폰 권장, 마이크 테스트 필수"),
+        ("👔 복장", "상의는 면접 복장, 하의도 만약을 대비해"),
+    ]
+
+    col1, col2 = st.columns(2)
+    for i, (item, desc) in enumerate(env_checks):
         with col1 if i % 2 == 0 else col2:
-            st.markdown(f"• {tip}")
+            st.markdown(f"""
+            <div class="calm-tip">
+                <strong>{item}</strong><br/>
+                <span style="font-size: 14px; color: #666;">{desc}</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    st.info("💡 **팁:** AI 면접 전에 해당 플랫폼의 연습 모드를 꼭 활용하세요! 실전처럼 여러 번 연습하면 훨씬 자연스러워집니다.")
+
+# ----------------------------
+# 탭 12: 영상면접 팁
+# ----------------------------
+with tab12:
+    st.markdown('<div class="section-header"><h2>📹 영상 면접 완벽 가이드</h2></div>', unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="tip-card">
+        <h3 style="margin:0;">화면 속에서도 빛나는 법!</h3>
+        <p style="margin: 10px 0 0 0; opacity: 0.9;">비대면 면접은 대면보다 준비가 더 중요합니다. 기술적인 부분까지 완벽히 준비하세요.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # 영상 면접 유형
+    st.markdown("### 📋 영상 면접 유형")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("""
+        <div class="dress-card">
+            <div style="font-size: 40px;">🔴</div>
+            <h4>실시간 화상 면접</h4>
+            <hr/>
+            <p style="font-size: 14px; text-align: left;">
+            • Zoom, Teams, Google Meet 등 활용<br/>
+            • 면접관과 실시간 소통<br/>
+            • 대면과 유사한 형태<br/>
+            • 즉각적인 반응과 대화 필요<br/>
+            <br/>
+            <strong>특징:</strong> 긴장감 높지만 소통 가능
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown("""
+        <div class="dress-card">
+            <div style="font-size: 40px;">⏺️</div>
+            <h4>녹화형 면접</h4>
+            <hr/>
+            <p style="font-size: 14px; text-align: left;">
+            • 질문이 화면에 표시되면 답변 녹화<br/>
+            • 준비 시간 + 답변 시간 제한<br/>
+            • 1회 기회 (재촬영 불가가 대부분)<br/>
+            • AI 분석과 함께 진행되기도<br/>
+            <br/>
+            <strong>특징:</strong> 혼자서 카메라에 말하는 연습 필수
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # 카메라 앵글 가이드
+    st.markdown("### 📐 완벽한 카메라 앵글")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown("""
+        <div class="success-card">
+            <h4>✅ Good</h4>
+            <p style="font-size: 14px;">
+            • 카메라가 눈높이<br/>
+            • 얼굴~가슴 상단 보임<br/>
+            • 머리 위 여백 적당히<br/>
+            • 정면 또는 살짝 각도
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown("""
+        <div class="warning-card">
+            <h4>❌ 위에서 내려다봄</h4>
+            <p style="font-size: 14px;">
+            • 이마가 커보임<br/>
+            • 턱이 돌출되어 보임<br/>
+            • 자신감 없어 보임<br/>
+            • 노트북 기본 위치 주의!
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col3:
+        st.markdown("""
+        <div class="warning-card">
+            <h4>❌ 아래에서 올려다봄</h4>
+            <p style="font-size: 14px;">
+            • 콧구멍이 보임<br/>
+            • 턱살이 강조됨<br/>
+            • 위압적으로 보일 수 있음<br/>
+            • 스마트폰 손에 들고 X
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="info-card">
+        <strong>💡 꿀팁:</strong> 노트북은 책이나 박스 위에 올려 카메라가 눈높이에 오도록 하세요.
+        스마트폰의 경우 삼각대 사용을 권장합니다.
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # 조명 가이드
+    st.markdown("### 💡 조명 세팅 가이드")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("""
+        <div class="success-card">
+            <h4>✅ 좋은 조명</h4>
+            <ul style="font-size: 14px;">
+                <li><strong>3점 조명:</strong> 정면 + 양옆 45도</li>
+                <li><strong>자연광:</strong> 창문을 정면에 두기</li>
+                <li><strong>링라이트:</strong> 카메라 뒤에 설치</li>
+                <li><strong>밝기:</strong> 얼굴이 환하게</li>
+                <li><strong>색온도:</strong> 따뜻한 빛 (너무 푸르면 창백)</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown("""
+        <div class="warning-card">
+            <h4>❌ 나쁜 조명</h4>
+            <ul style="font-size: 14px;">
+                <li><strong>역광:</strong> 창문을 등 뒤에 두면 실루엣만</li>
+                <li><strong>위에서만:</strong> 눈 밑 그림자 생김</li>
+                <li><strong>한쪽만:</strong> 얼굴 반이 어두움</li>
+                <li><strong>형광등:</strong> 피부가 창백해 보임</li>
+                <li><strong>너무 밝음:</strong> 하얗게 날아감</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # 배경 가이드
+    st.markdown("### 🖼️ 배경 세팅")
+
+    bg_options = [
+        ("✅ 흰 벽", "가장 무난하고 깔끔한 선택"),
+        ("✅ 정돈된 책장", "지적인 이미지, 단 너무 화려하지 않게"),
+        ("✅ 단색 커튼", "깔끔하고 집중도 높음"),
+        ("❌ 침대/이불", "비전문적인 이미지"),
+        ("❌ 지저분한 방", "정리정돈 능력 의심"),
+        ("❌ 가상 배경", "부자연스러움, 움직이면 깨짐"),
+    ]
+
+    col1, col2 = st.columns(2)
+    for i, (item, desc) in enumerate(bg_options):
+        with col1 if i < 3 else col2:
+            is_good = item.startswith("✅")
+            card_class = "success-card" if is_good else "warning-card"
+            st.markdown(f"""
+            <div class="{card_class}" style="padding: 10px 15px; margin: 5px 0;">
+                <strong>{item}</strong>: {desc}
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # 영상 면접 체크리스트
+    st.markdown("### ✅ 영상 면접 D-1 체크리스트")
+
+    checklist = [
+        "카메라/마이크 테스트 완료",
+        "인터넷 속도 확인 (업로드 최소 10Mbps)",
+        "면접 플랫폼 설치 및 로그인 테스트",
+        "배경 정리 및 조명 세팅",
+        "복장 준비 (상하의 모두)",
+        "스마트폰 무음/방해금지 설정",
+        "가족에게 면접 시간 알리기",
+        "비상 연락처 (채용담당자) 확인",
+    ]
+
+    col1, col2 = st.columns(2)
+    for i, item in enumerate(checklist):
+        with col1 if i % 2 == 0 else col2:
+            st.markdown(f'<div class="checklist-item">☐ {item}</div>', unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # 비상 상황 대처
+    st.markdown("### 🆘 비상 상황 대처법")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("""
+        <div class="info-card">
+            <h4>📶 인터넷이 끊겼을 때</h4>
+            <ul style="font-size: 14px;">
+                <li>당황하지 말고 재접속 시도</li>
+                <li>스마트폰 테더링으로 전환</li>
+                <li>채팅창에 상황 설명</li>
+                <li>안 되면 전화로 연락</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown("""
+        <div class="info-card">
+            <h4>🔊 소음이 발생했을 때</h4>
+            <ul style="font-size: 14px;">
+                <li>"죄송합니다, 잠시만요"</li>
+                <li>마이크 일시 음소거</li>
+                <li>소음 제거 후 재개</li>
+                <li>사과하고 답변 이어가기</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.info("💡 **핵심:** 기술적 문제가 생겨도 침착하게 대처하는 모습이 오히려 플러스가 될 수 있습니다!")
+
+# ----------------------------
+# 탭 13: 항공사별 특화 정보
+# ----------------------------
+with tab13:
+    st.markdown('<div class="section-header"><h2>🏢 항공사별 면접 특화 정보</h2></div>', unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="tip-card">
+        <h3 style="margin:0;">항공사마다 원하는 인재상이 다릅니다!</h3>
+        <p style="margin: 10px 0 0 0; opacity: 0.9;">지원하는 항공사의 특성을 파악하고 맞춤 전략을 세우세요.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # 항공사 선택
+    airline_choice = st.selectbox(
+        "항공사를 선택하세요",
+        ["대한항공", "아시아나항공", "제주항공", "진에어", "티웨이항공", "에어부산", "에어서울", "이스타항공", "에어프레미아", "에어로케이", "파라타항공"]
+    )
+
+    st.markdown("---")
+
+    # 항공사별 상세 정보
+    airline_data = {
+        "대한항공": {
+            "type": "FSC",
+            "slogan": "Excellence in Flight",
+            "values": ["안전", "신뢰", "품격", "혁신"],
+            "image": "품격 있고 우아한 이미지, 클래식한 스타일",
+            "process": ["서류전형", "1차 면접 (AI역량검사)", "2차 면접 (실무진)", "3차 면접 (임원)", "신체검사/신원조회"],
+            "questions": [
+                "대한항공 승무원이 갖춰야 할 가장 중요한 자질은?",
+                "글로벌 항공사로서 대한항공의 경쟁력은?",
+                "외국어 능력을 활용한 경험이 있나요?",
+                "팀에서 갈등이 생겼을 때 어떻게 해결했나요?"
+            ],
+            "tips": [
+                "품격과 전문성을 강조하는 답변 준비",
+                "글로벌 마인드와 어학 능력 어필",
+                "차분하고 논리적인 답변 스타일",
+                "대한항공 최근 뉴스/이슈 숙지 필수"
+            ],
+            "color": "#003876"
+        },
+        "아시아나항공": {
+            "type": "FSC",
+            "slogan": "Always with you",
+            "values": ["안전", "고객감동", "신뢰", "도전"],
+            "image": "따뜻하고 세련된 이미지, 부드러운 미소",
+            "process": ["서류전형", "1차 면접 (AI/인적성)", "2차 면접 (실무진)", "3차 면접 (임원)", "신체검사"],
+            "questions": [
+                "아시아나항공을 선택한 이유는?",
+                "고객 감동 서비스 경험을 말해주세요",
+                "힘든 상황에서 어떻게 극복했나요?",
+                "아시아나의 서비스 특징은 무엇이라 생각하나요?"
+            ],
+            "tips": [
+                "따뜻한 서비스 마인드 강조",
+                "'고객감동' 키워드 활용",
+                "친근하면서도 프로페셔널한 태도",
+                "아시아나의 서비스 차별점 숙지"
+            ],
+            "color": "#ED1C24"
+        },
+        "제주항공": {
+            "type": "LCC",
+            "slogan": "New Paradigm Airline",
+            "values": ["안전", "효율", "고객중심", "혁신"],
+            "image": "밝고 활기찬 이미지, 환한 미소",
+            "process": ["서류전형", "1차 면접 (AI역량)", "2차 면접 (실무+임원)", "신체검사"],
+            "questions": [
+                "LCC를 선택한 이유는?",
+                "제주항공의 강점은 무엇이라 생각하나요?",
+                "체력 관리는 어떻게 하시나요?",
+                "스트레스 상황에서 어떻게 대처하나요?"
+            ],
+            "tips": [
+                "밝고 에너지 넘치는 모습 어필",
+                "LCC의 특성과 장점 이해",
+                "체력과 긍정적 마인드 강조",
+                "효율적인 서비스 마인드"
+            ],
+            "color": "#FF6600"
+        },
+        "진에어": {
+            "type": "LCC",
+            "slogan": "Fly, better fly JIN AIR",
+            "values": ["안전", "젊음", "도전", "즐거움"],
+            "image": "젊고 트렌디한 이미지, 자유로운 분위기",
+            "process": ["서류전형", "1차 면접 (인적성/AI)", "2차 면접 (실무+임원)", "신체검사"],
+            "questions": [
+                "진에어의 이미지는 어떻다고 생각하나요?",
+                "젊은 감각을 살린 서비스 아이디어가 있나요?",
+                "팀원들과 즐겁게 일한 경험은?",
+                "SNS나 트렌드에 관심이 많으신가요?"
+            ],
+            "tips": [
+                "젊고 트렌디한 이미지 강조",
+                "창의적인 아이디어 준비",
+                "팀워크와 유연성 어필",
+                "진에어 SNS 콘텐츠 확인"
+            ],
+            "color": "#00A651"
+        },
+        "티웨이항공": {
+            "type": "LCC",
+            "slogan": "함께라서 행복한 하늘길",
+            "values": ["안전", "친근함", "신뢰", "함께"],
+            "image": "친근하고 건강한 이미지, 따뜻한 미소",
+            "process": ["서류전형", "1차 면접 (AI역량)", "2차 면접 (실무+임원)", "신체검사"],
+            "questions": [
+                "티웨이항공의 슬로건에 대해 어떻게 생각하나요?",
+                "고객에게 친근함을 줄 수 있는 방법은?",
+                "건강 관리는 어떻게 하시나요?",
+                "함께 일하고 싶은 동료상은?"
+            ],
+            "tips": [
+                "친근하고 따뜻한 이미지 강조",
+                "'함께'라는 가치 어필",
+                "건강하고 활기찬 모습",
+                "티웨이의 가족적인 분위기 이해"
+            ],
+            "color": "#E4002B"
+        },
+        "에어부산": {
+            "type": "LCC",
+            "slogan": "Fun & Fresh",
+            "values": ["안전", "즐거움", "신선함", "부산"],
+            "image": "발랄하고 시원한 이미지, 부산 느낌",
+            "process": ["서류전형", "1차 면접", "2차 면접 (최종)", "신체검사"],
+            "questions": [
+                "부산에 대해 얼마나 알고 계신가요?",
+                "에어부산만의 특색은 무엇이라 생각하나요?",
+                "Fun & Fresh를 어떻게 표현할 수 있을까요?",
+                "지방 기반 항공사의 장점은?"
+            ],
+            "tips": [
+                "부산/지역 연고에 대한 이해",
+                "발랄하고 시원한 이미지",
+                "아시아나 계열사 특성 파악",
+                "부산 사투리 친근하게 활용 가능"
+            ],
+            "color": "#0066B3"
+        },
+        "에어서울": {
+            "type": "LCC",
+            "slogan": "Always Fresh",
+            "values": ["안전", "신선함", "세련됨", "글로벌"],
+            "image": "세련되고 신선한 이미지",
+            "process": ["서류전형", "1차 면접", "2차 면접 (최종)", "신체검사"],
+            "questions": [
+                "에어서울의 노선 특징을 알고 계신가요?",
+                "젊은 여행객 대상 서비스 아이디어는?",
+                "세련된 서비스란 무엇이라 생각하나요?",
+                "아시아나항공과의 차이점은?"
+            ],
+            "tips": [
+                "아시아나 계열 특성 이해",
+                "세련되고 도시적인 이미지",
+                "동남아 단거리 노선 특화",
+                "젊은 층 타겟 마케팅 이해"
+            ],
+            "color": "#FF69B4"
+        },
+        "이스타항공": {
+            "type": "LCC",
+            "slogan": "희망의 날개",
+            "values": ["안전", "희망", "도전", "성장"],
+            "image": "희망차고 도전적인 이미지",
+            "process": ["서류전형", "면접 (통합)", "신체검사"],
+            "questions": [
+                "이스타항공에 대해 알고 있는 것은?",
+                "회사가 어려운 시기를 겪었을 때 어떻게 대처했나요?",
+                "새로운 시작에 대한 각오는?",
+                "이스타항공의 미래 전망은?"
+            ],
+            "tips": [
+                "회사 현황과 재도약 상황 파악",
+                "도전 정신과 긍정적 마인드",
+                "함께 성장하겠다는 의지",
+                "진정성 있는 지원동기"
+            ],
+            "color": "#0033A0"
+        },
+        "에어프레미아": {
+            "type": "HSC",
+            "slogan": "합리적인 프리미엄",
+            "values": ["안전", "합리", "프리미엄", "혁신"],
+            "image": "세련되고 전문적인 이미지",
+            "process": ["서류전형", "1차 면접 (실무)", "2차 면접 (임원)", "신체검사"],
+            "questions": [
+                "HSC(하이브리드 항공사)의 특징은?",
+                "에어프레미아의 차별점은 무엇이라 생각하나요?",
+                "합리적인 프리미엄 서비스란?",
+                "중장거리 노선의 어려움은?"
+            ],
+            "tips": [
+                "HSC 컨셉 명확히 이해",
+                "중장거리 노선 특화",
+                "합리적 프리미엄 개념",
+                "경영진 인터뷰/뉴스 확인"
+            ],
+            "color": "#1E3A5F"
+        },
+        "에어로케이": {
+            "type": "LCC",
+            "slogan": "K-Spirit Airline",
+            "values": ["안전", "한국", "청춘", "도전"],
+            "image": "젊고 한국적인 이미지",
+            "process": ["서류전형", "면접", "신체검사"],
+            "questions": [
+                "신생 항공사에 지원한 이유는?",
+                "K-Spirit을 어떻게 표현할 수 있을까요?",
+                "청주 기반 항공사의 장점은?",
+                "새로운 항공사와 함께 성장하고 싶은 이유는?"
+            ],
+            "tips": [
+                "신생 항공사 특성 이해",
+                "도전 정신과 성장 의지",
+                "청주/충청권 이해",
+                "한국적 서비스 아이디어"
+            ],
+            "color": "#003DA5"
+        },
+        "파라타항공": {
+            "type": "LCC",
+            "slogan": "Paradise in the Sky",
+            "values": ["안전", "휴양", "프리미엄", "새로움"],
+            "image": "프리미엄 휴양지 느낌, 세련된 이미지",
+            "process": ["서류전형", "면접", "신체검사"],
+            "questions": [
+                "신생 항공사인 파라타항공에 지원한 이유는?",
+                "파라타항공의 컨셉에 대해 어떻게 생각하나요?",
+                "휴양지 노선 특화 서비스 아이디어가 있나요?",
+                "새로운 항공사와 함께 성장할 각오는?"
+            ],
+            "tips": [
+                "신생 항공사 특성과 비전 이해",
+                "휴양지/리조트 서비스 마인드",
+                "프리미엄 서비스에 대한 이해",
+                "함께 성장하겠다는 의지 표현"
+            ],
+            "color": "#00CED1"
+        }
+    }
+
+    data = airline_data.get(airline_choice, airline_data["대한항공"])
+
+    # 기본 정보
+    col1, col2 = st.columns([1, 2])
+
+    with col1:
+        type_color = {"FSC": "#003876", "LCC": "#FF6600", "HSC": "#1E3A5F"}.get(data["type"], "#666")
+        st.markdown(f"""
+        <div style="background: {data['color']}; padding: 30px; border-radius: 15px; color: white; text-align: center;">
+            <h2 style="margin: 0;">✈️ {airline_choice}</h2>
+            <p style="font-size: 14px; opacity: 0.9; margin: 10px 0;">{data['slogan']}</p>
+            <span style="background: white; color: {data['color']}; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold;">{data['type']}</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown(f"""
+        <div class="info-card">
+            <h4>🎯 인재상</h4>
+            <p>{', '.join(data['values'])}</p>
+            <h4>👤 선호 이미지</h4>
+            <p>{data['image']}</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # 면접 프로세스
+    st.markdown(f"### 📋 {airline_choice} 면접 프로세스")
+
+    process_cols = st.columns(len(data['process']))
+    for i, step in enumerate(data['process']):
+        with process_cols[i]:
+            st.markdown(f"""
+            <div style="text-align: center; padding: 15px; background: {'#f0f0f0' if i % 2 == 0 else '#e8e8e8'}; border-radius: 10px;">
+                <div style="background: {data['color']}; color: white; width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: bold;">{i+1}</div>
+                <p style="margin: 10px 0 0 0; font-size: 13px;">{step}</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # 예상 질문
+    st.markdown(f"### ❓ {airline_choice} 예상 질문")
+
+    for i, q in enumerate(data['questions'], 1):
+        st.markdown(f"""
+        <div class="info-card" style="border-left-color: {data['color']};">
+            <strong>Q{i}.</strong> {q}
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # 면접 팁
+    st.markdown(f"### 💡 {airline_choice} 면접 팁")
+
+    col1, col2 = st.columns(2)
+    for i, tip in enumerate(data['tips']):
+        with col1 if i % 2 == 0 else col2:
+            st.markdown(f"""
+            <div class="success-card">
+                ✅ {tip}
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    st.info(f"💡 **최종 팁:** {airline_choice}의 공식 홈페이지, 인스타그램, 최근 뉴스를 반드시 확인하세요. 면접관은 지원자가 회사에 대해 얼마나 알고 있는지 궁금해합니다!")
+
+# ----------------------------
+# 탭 14: 자가진단
+# ----------------------------
+with tab14:
+    st.markdown('<div class="section-header"><h2>✅ 면접 준비도 자가진단</h2></div>', unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="tip-card">
+        <h3 style="margin:0;">📋 나의 면접 준비 수준을 체크해보세요</h3>
+        <p style="margin: 10px 0 0 0; opacity: 0.9;">5개 분야별로 준비 상태를 점검하고, 부족한 부분을 집중 보강하세요.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("")
+
+    # 이전 진단 결과 로드
+    assessment_data = load_assessment()
+
+    # 분야별 체크리스트
+    st.markdown("### 📝 분야별 준비도 체크")
+    st.markdown("각 항목을 읽고 현재 준비 상태에 체크하세요.")
+
+    results = {}
+    for cat_key, cat_info in ASSESSMENT_CATEGORIES.items():
+        with st.expander(f"{cat_info['icon']} {cat_info['name']}", expanded=False):
+            checked = 0
+            for i, item in enumerate(cat_info["items"]):
+                key = f"assess_{cat_key}_{i}"
+                if st.checkbox(item, key=key):
+                    checked += 1
+            results[cat_key] = {
+                "name": cat_info["name"],
+                "checked": checked,
+                "total": len(cat_info["items"]),
+                "pct": int((checked / len(cat_info["items"])) * 100)
+            }
+
+    # 결과 분석
+    st.markdown("---")
+    st.markdown("### 📊 진단 결과")
+
+    total_checked = sum(r["checked"] for r in results.values())
+    total_items = sum(r["total"] for r in results.values())
+    overall_pct = int((total_checked / total_items) * 100) if total_items > 0 else 0
+
+    # 종합 점수
+    if overall_pct >= 80:
+        grade = "A"
+        grade_color = "#10b981"
+        grade_msg = "훌륭합니다! 면접 준비가 잘 되어 있어요."
+    elif overall_pct >= 60:
+        grade = "B"
+        grade_color = "#3b82f6"
+        grade_msg = "좋습니다! 조금만 더 보강하면 완벽해요."
+    elif overall_pct >= 40:
+        grade = "C"
+        grade_color = "#f59e0b"
+        grade_msg = "기본기는 있지만, 약한 분야 보강이 필요해요."
+    else:
+        grade = "D"
+        grade_color = "#ef4444"
+        grade_msg = "아직 준비할 것이 많아요. 하나씩 차근차근!"
+
+    st.markdown(f"""
+    <div style="background: white; border-radius: 16px; padding: 25px; box-shadow: 0 2px 15px rgba(0,0,0,0.05); text-align: center; margin-bottom: 20px;">
+        <div style="font-size: 3rem; font-weight: 800; color: {grade_color};">{grade}</div>
+        <div style="font-size: 1.5rem; font-weight: 700; color: #1e3a5f; margin: 5px 0;">종합 준비도 {overall_pct}%</div>
+        <div style="font-size: 0.9rem; color: #64748b;">{grade_msg}</div>
+        <div style="margin-top: 15px; height: 12px; background: #e2e8f0; border-radius: 6px; overflow: hidden;">
+            <div style="height: 100%; width: {overall_pct}%; background: {grade_color}; border-radius: 6px;"></div>
+        </div>
+        <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 8px;">{total_checked}/{total_items} 항목 완료</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # 분야별 결과 바
+    cols = st.columns(5)
+    for idx, (cat_key, result) in enumerate(results.items()):
+        with cols[idx]:
+            pct = result["pct"]
+            cat_info = ASSESSMENT_CATEGORIES[cat_key]
+            if pct >= 80:
+                bar_color = "#10b981"
+            elif pct >= 60:
+                bar_color = "#3b82f6"
+            elif pct >= 40:
+                bar_color = "#f59e0b"
+            else:
+                bar_color = "#ef4444"
+
+            st.markdown(f"""
+            <div style="text-align: center; padding: 15px 5px;">
+                <div style="font-size: 1.5rem;">{cat_info["icon"]}</div>
+                <div style="font-size: 0.75rem; font-weight: 600; color: #334155; margin: 5px 0;">{cat_info["name"]}</div>
+                <div style="height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+                    <div style="height: 100%; width: {pct}%; background: {bar_color}; border-radius: 4px;"></div>
+                </div>
+                <div style="font-size: 0.8rem; font-weight: 700; color: {bar_color}; margin-top: 5px;">{pct}%</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    # 약점 분석 + 추천
+    st.markdown("---")
+    st.markdown("### 💡 맞춤 보강 추천")
+
+    weak_areas = [(k, v) for k, v in results.items() if v["pct"] < 60]
+    if weak_areas:
+        weak_areas.sort(key=lambda x: x[1]["pct"])
+        recommendations_map = {
+            "image": {"page": "이미지메이킹", "tip": "이미지메이킹 페이지에서 셀프체크와 NG사례를 확인하세요"},
+            "answer": {"page": "모의면접", "tip": "모의면접으로 실전 답변 연습을 해보세요"},
+            "english": {"page": "영어면접", "tip": "영어면접 페이지에서 카테고리별 질문을 연습하세요"},
+            "fitness": {"page": "국민체력", "tip": "국민체력 페이지에서 종목별 기준과 운동법을 확인하세요"},
+            "knowledge": {"page": "항공사퀴즈", "tip": "항공 상식 퀴즈로 기본 지식을 점검하세요"},
+        }
+        for cat_key, result in weak_areas:
+            rec = recommendations_map.get(cat_key, {})
+            cat_info = ASSESSMENT_CATEGORIES[cat_key]
+            st.markdown(f"""
+            <div style="background: #fef2f2; border-left: 4px solid #ef4444; border-radius: 10px; padding: 15px 20px; margin: 8px 0; display: flex; align-items: center; gap: 12px;">
+                <div style="font-size: 1.5rem;">{cat_info["icon"]}</div>
+                <div>
+                    <div style="font-weight: 600; color: #991b1b;">{cat_info["name"]} - {result["pct"]}% (보강 필요)</div>
+                    <div style="font-size: 0.85rem; color: #64748b; margin-top: 3px;">{rec.get("tip", "해당 분야를 집중 연습하세요")}</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div style="background: #f0fff4; border-left: 4px solid #38a169; border-radius: 10px; padding: 15px 20px;">
+            <div style="font-weight: 600; color: #22543d;">🎉 모든 분야가 60% 이상! 골고루 잘 준비하고 있어요.</div>
+            <div style="font-size: 0.85rem; color: #64748b; margin-top: 3px;">약한 분야 없이 균형잡힌 준비 상태입니다. 실전 모의면접으로 마무리하세요!</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # 진단 결과 저장
+    st.markdown("---")
+    if st.button("📥 진단 결과 저장", use_container_width=True):
+        save_record = {
+            "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "overall_pct": overall_pct,
+            "grade": grade,
+            "details": {k: v["pct"] for k, v in results.items()}
+        }
+        assessment_data["results"].append(save_record)
+        # 최근 20개만 유지
+        assessment_data["results"] = assessment_data["results"][-20:]
+        save_assessment(assessment_data)
+        st.success("진단 결과가 저장되었습니다!")
+
+    # 이전 진단 기록
+    if assessment_data.get("results"):
+        with st.expander("📈 이전 진단 기록"):
+            for record in reversed(assessment_data["results"][-5:]):
+                date = record.get("date", "")
+                pct = record.get("overall_pct", 0)
+                g = record.get("grade", "-")
+                details = record.get("details", {})
+                detail_str = " | ".join([f"{ASSESSMENT_CATEGORIES[k]['icon']}{v}%" for k, v in details.items()])
+                st.markdown(f"**{date}** - 등급 **{g}** ({pct}%) - {detail_str}")
 
 # div 닫기
 st.markdown('</div>', unsafe_allow_html=True)

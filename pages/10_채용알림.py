@@ -4,16 +4,15 @@
 import streamlit as st
 from datetime import datetime, timedelta
 import json
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from sidebar_common import render_sidebar
 
-# 구글 번역 방지
 st.set_page_config(page_title="채용 일정 알림", page_icon="📅", layout="wide")
+render_sidebar("채용알림")
 
-# 깔끔한 네비게이션 적용
-try:
-    from nav_utils import render_sidebar
-    render_sidebar(current_page="채용 알림")
-except ImportError:
-    pass
+
 
 
 st.markdown(
@@ -30,17 +29,11 @@ st.markdown(
 )
 st.markdown('<div translate="no" class="notranslate">', unsafe_allow_html=True)
 
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from config import AIRLINES, AIRLINE_TYPE
-from auth_utils import check_tester_password
 
 # ----------------------------
 # 비밀번호 보호
 # ----------------------------
-check_tester_password()
 
 # ----------------------------
 # CSS 스타일링
@@ -551,12 +544,210 @@ if ongoing_list:
 st.markdown("---")
 
 # ----------------------------
-# 탭 구성
+# 구독자 데이터 관리
 # ----------------------------
-tab1, tab2, tab3 = st.tabs([
+SUBSCRIBERS_FILE = os.path.join(DATA_DIR, "data", "subscribers.json")
+
+def load_subscribers():
+    """구독자 데이터 로드"""
+    if os.path.exists(SUBSCRIBERS_FILE):
+        try:
+            with open(SUBSCRIBERS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            pass
+    return {"subscribers": [], "total_count": 0}
+
+def save_subscribers(data):
+    """구독자 데이터 저장"""
+    os.makedirs(os.path.dirname(SUBSCRIBERS_FILE), exist_ok=True)
+    with open(SUBSCRIBERS_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def add_subscriber(name, email, phone="", airlines=None):
+    """새 구독자 추가"""
+    data = load_subscribers()
+
+    # 이메일 중복 체크
+    for sub in data["subscribers"]:
+        if sub["email"] == email:
+            return False, "이미 등록된 이메일입니다."
+
+    new_sub = {
+        "id": f"sub_{datetime.now().strftime('%Y%m%d%H%M%S')}_{len(data['subscribers'])}",
+        "name": name,
+        "email": email,
+        "phone": phone,
+        "airlines": airlines or [],
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "active": True
+    }
+    data["subscribers"].append(new_sub)
+    data["total_count"] = len([s for s in data["subscribers"] if s.get("active", True)])
+    save_subscribers(data)
+    return True, "구독 신청이 완료되었습니다!"
+
+def unsubscribe(email):
+    """구독 해지"""
+    data = load_subscribers()
+    for sub in data["subscribers"]:
+        if sub["email"] == email:
+            sub["active"] = False
+            data["total_count"] = len([s for s in data["subscribers"] if s.get("active", True)])
+            save_subscribers(data)
+            return True, "구독이 해지되었습니다."
+    return False, "등록된 이메일을 찾을 수 없습니다."
+
+def get_subscriber_count():
+    """활성 구독자 수"""
+    data = load_subscribers()
+    return len([s for s in data["subscribers"] if s.get("active", True)])
+
+# ----------------------------
+# 내 지원 현황 데이터
+# ----------------------------
+APPLICATION_FILE = os.path.join(DATA_DIR, "data", "my_applications.json")
+
+def load_applications():
+    if os.path.exists(APPLICATION_FILE):
+        try:
+            with open(APPLICATION_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            pass
+    return {"applications": []}
+
+def save_applications(data):
+    os.makedirs(os.path.dirname(APPLICATION_FILE), exist_ok=True)
+    with open(APPLICATION_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+# 채용 시즌 패턴 데이터 (과거 실적 기반)
+HIRING_PATTERNS = {
+    "대한항공": {
+        "frequency": "연 1~2회",
+        "typical_months": [3, 4, 9, 10],
+        "pattern": "상반기(3~4월) + 하반기(9~10월) 정기 채용",
+        "last_hiring": "2025년 10월",
+        "next_expected": "2026년 3~4월 (예상)",
+        "avg_applicants": "5,000~8,000명",
+        "avg_selected": "100~200명",
+        "tips": "영어면접 + 수영 25m 필수, 제2외국어 우대"
+    },
+    "아시아나항공": {
+        "frequency": "연 1~2회",
+        "typical_months": [5, 6, 10, 11],
+        "pattern": "상반기(5~6월) + 하반기(10~11월) 채용",
+        "last_hiring": "2025년 11월",
+        "next_expected": "2026년 5~6월 (예상)",
+        "avg_applicants": "4,000~6,000명",
+        "avg_selected": "80~150명",
+        "tips": "수영Test 포함, 중국어/일본어 우대"
+    },
+    "에어프레미아": {
+        "frequency": "연 2~3회",
+        "typical_months": [1, 2, 5, 6, 9, 10],
+        "pattern": "분기별 수시 채용 (확장 중)",
+        "last_hiring": "2026년 1월",
+        "next_expected": "2026년 상시 채용 가능",
+        "avg_applicants": "2,000~3,000명",
+        "avg_selected": "50~80명",
+        "tips": "영어+토론면접 특징, 체력측정 포함"
+    },
+    "진에어": {
+        "frequency": "연 2~3회",
+        "typical_months": [1, 2, 4, 5, 8, 9],
+        "pattern": "분기별 수시 채용",
+        "last_hiring": "2026년 1월",
+        "next_expected": "2026년 4~5월 (예상)",
+        "avg_applicants": "2,000~4,000명",
+        "avg_selected": "60~100명",
+        "tips": "일본어/중국어 우수자 우대, 밝은 이미지 중시"
+    },
+    "제주항공": {
+        "frequency": "연 2~4회",
+        "typical_months": [2, 3, 5, 6, 8, 9, 11],
+        "pattern": "수시 채용 (가장 활발)",
+        "last_hiring": "2025년 11월",
+        "next_expected": "2026년 2~3월 (예상)",
+        "avg_applicants": "3,000~5,000명",
+        "avg_selected": "80~120명",
+        "tips": "역량검사 포함, 밝은 에너지 중시"
+    },
+    "티웨이항공": {
+        "frequency": "연 2~3회",
+        "typical_months": [3, 4, 7, 8, 10, 11],
+        "pattern": "상/하반기 정기 + 수시",
+        "last_hiring": "2025년 10월",
+        "next_expected": "2026년 3~4월 (예상)",
+        "avg_applicants": "2,000~3,000명",
+        "avg_selected": "50~80명",
+        "tips": "서비스 경험자 우대, 대구 거주자 유리"
+    },
+    "에어부산": {
+        "frequency": "연 1~2회",
+        "typical_months": [4, 5, 9, 10],
+        "pattern": "상/하반기 정기 채용",
+        "last_hiring": "2025년 9월",
+        "next_expected": "2026년 4~5월 (예상)",
+        "avg_applicants": "1,500~2,500명",
+        "avg_selected": "40~60명",
+        "tips": "부산/경남 거주자 우대, 그룹토론 포함"
+    },
+    "에어서울": {
+        "frequency": "연 1~2회",
+        "typical_months": [3, 4, 8, 9],
+        "pattern": "비정기 수시 채용",
+        "last_hiring": "2025년 8월",
+        "next_expected": "2026년 3~4월 (예상)",
+        "avg_applicants": "1,000~2,000명",
+        "avg_selected": "30~50명",
+        "tips": "일본어/중국어 가능자 우대"
+    },
+    "이스타항공": {
+        "frequency": "연 2~3회",
+        "typical_months": [2, 3, 6, 7, 10, 11],
+        "pattern": "수시 채용 (재출범 후 확대)",
+        "last_hiring": "2025년 11월",
+        "next_expected": "2026년 2~3월 (예상)",
+        "avg_applicants": "1,500~2,500명",
+        "avg_selected": "40~70명",
+        "tips": "체력TEST 포함, 청주 근무 가능자"
+    },
+    "에어로케이": {
+        "frequency": "연 1~2회",
+        "typical_months": [3, 4, 9, 10],
+        "pattern": "비정기 수시 채용",
+        "last_hiring": "2025년 4월",
+        "next_expected": "2026년 상반기 (예상)",
+        "avg_applicants": "800~1,500명",
+        "avg_selected": "20~40명",
+        "tips": "외국어 능력 우수자 우대"
+    },
+    "파라타항공": {
+        "frequency": "연 2~3회",
+        "typical_months": [1, 2, 5, 6, 9, 10],
+        "pattern": "수시 채용 (신생 항공사)",
+        "last_hiring": "2026년 1월",
+        "next_expected": "2026년 상시 채용 가능",
+        "avg_applicants": "1,000~2,000명",
+        "avg_selected": "30~50명",
+        "tips": "국민체력100 제출 필수, 성장 가능성"
+    },
+}
+
+APPLICATION_STAGES = ["서류 지원", "서류 합격", "1차 면접", "2차 면접", "3차 면접", "체력/수영", "건강검진", "최종 합격", "불합격"]
+
+# ----------------------------
+# 탭 구성 (6개 탭)
+# ----------------------------
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📋 채용 일정",
     "📊 채용 프로세스",
-    "🔗 채용 페이지 바로가기"
+    "📈 채용 패턴",
+    "✈️ 내 지원현황",
+    "🔔 알림 구독",
+    "🔗 채용 페이지"
 ])
 
 # ----------------------------
@@ -760,9 +951,244 @@ with tab2:
                 st.success(f"✓ {p}")
 
 # ----------------------------
-# 탭 3: 채용 페이지 바로가기 (11개 전체)
+# 탭 3: 채용 패턴 분석
 # ----------------------------
 with tab3:
+    st.subheader("📈 항공사별 채용 패턴 분석")
+    st.caption("과거 채용 실적 기반 예상 시기 | 참고용 정보")
+
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
+        <strong>💡 참고사항:</strong> 채용 시기는 과거 패턴 기반 예상이며, 실제 일정은 항공사 공식 발표를 확인하세요.
+    </div>
+    """, unsafe_allow_html=True)
+
+    # 월별 채용 히트맵
+    st.markdown("### 📅 월별 채용 시즌 히트맵")
+    st.markdown("각 항공사의 과거 채용 시기를 시각화합니다.")
+
+    months = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"]
+    current_month = datetime.now().month
+
+    for airline_name, pattern in HIRING_PATTERNS.items():
+        airline_type = AIRLINE_INFO.get(airline_name, {}).get("type", "LCC")
+        typical = pattern["typical_months"]
+
+        # 월별 활성화 표시
+        month_cells = ""
+        for m in range(1, 13):
+            if m in typical:
+                if m == current_month:
+                    cell_style = "background: #10b981; color: white; font-weight: 700;"
+                else:
+                    cell_style = "background: #667eea; color: white;"
+            else:
+                if m == current_month:
+                    cell_style = "background: #e2e8f0; font-weight: 700; border: 2px solid #667eea;"
+                else:
+                    cell_style = "background: #f1f5f9; color: #94a3b8;"
+            month_cells += f'<div style="{cell_style} border-radius: 6px; padding: 4px 2px; text-align: center; font-size: 0.7rem;">{m}</div>'
+
+        st.markdown(f"""
+        <div style="background: white; border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                <div style="font-weight: 700; font-size: 0.9rem; min-width: 90px;">{airline_name}</div>
+                <div style="font-size: 0.7rem; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 10px;">{airline_type}</div>
+                <div style="font-size: 0.75rem; color: #64748b;">{pattern["frequency"]}</div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(12, 1fr); gap: 3px;">
+                {month_cells}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="display: flex; gap: 15px; margin: 15px 0; font-size: 0.8rem;">
+        <div style="display: flex; align-items: center; gap: 5px;"><div style="width: 14px; height: 14px; background: #667eea; border-radius: 4px;"></div> 채용 예상 시기</div>
+        <div style="display: flex; align-items: center; gap: 5px;"><div style="width: 14px; height: 14px; background: #10b981; border-radius: 4px;"></div> 현재 월 + 채용 시기</div>
+        <div style="display: flex; align-items: center; gap: 5px;"><div style="width: 14px; height: 14px; background: #e2e8f0; border: 2px solid #667eea; border-radius: 4px;"></div> 현재 월</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # 상세 정보
+    st.markdown("---")
+    st.markdown("### 📊 항공사별 상세 채용 정보")
+
+    pattern_airline = st.selectbox("항공사 선택", list(HIRING_PATTERNS.keys()), key="pattern_airline")
+    p_data = HIRING_PATTERNS[pattern_airline]
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("채용 빈도", p_data["frequency"])
+        st.caption(f"패턴: {p_data['pattern']}")
+    with col2:
+        st.metric("예상 지원자", p_data["avg_applicants"])
+        st.caption(f"예상 선발: {p_data['avg_selected']}")
+    with col3:
+        st.metric("다음 채용 예상", p_data["next_expected"].split(" (")[0])
+        st.caption(f"최근 채용: {p_data['last_hiring']}")
+
+    st.info(f"💡 **핵심 팁:** {p_data['tips']}")
+
+    # 경쟁률 추정
+    st.markdown("---")
+    st.markdown("### 🎯 지원 전략 팁")
+
+    st.markdown("""
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+        <div style="background: #f0fdf4; border-radius: 12px; padding: 15px; text-align: center;">
+            <div style="font-size: 1.5rem;">🎯</div>
+            <div style="font-weight: 700; font-size: 0.85rem; margin: 5px 0;">동시 지원</div>
+            <div style="font-size: 0.75rem; color: #64748b;">2~3개 항공사에<br>동시 지원 추천</div>
+        </div>
+        <div style="background: #eff6ff; border-radius: 12px; padding: 15px; text-align: center;">
+            <div style="font-size: 1.5rem;">📅</div>
+            <div style="font-weight: 700; font-size: 0.85rem; margin: 5px 0;">시즌 준비</div>
+            <div style="font-size: 0.75rem; color: #64748b;">채용 시작 2개월 전부터<br>본격 준비 시작</div>
+        </div>
+        <div style="background: #fef2f2; border-radius: 12px; padding: 15px; text-align: center;">
+            <div style="font-size: 1.5rem;">🔄</div>
+            <div style="font-weight: 700; font-size: 0.85rem; margin: 5px 0;">재지원</div>
+            <div style="font-size: 0.75rem; color: #64748b;">불합격 후 다음 공채에<br>재지원 가능 (대부분)</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# ----------------------------
+# 탭 4: 내 지원 현황
+# ----------------------------
+with tab4:
+    st.subheader("✈️ 내 지원 현황 관리")
+    st.caption("지원한 항공사와 진행 상태를 관리하세요")
+
+    app_data = load_applications()
+
+    # 지원 추가
+    with st.expander("➕ 새 지원 기록 추가", expanded=False):
+        with st.form("add_application"):
+            app_col1, app_col2 = st.columns(2)
+            with app_col1:
+                app_airline = st.selectbox("항공사", list(AIRLINE_INFO.keys()), key="app_airline")
+                app_date = st.date_input("지원 날짜", key="app_date")
+            with app_col2:
+                app_stage = st.selectbox("현재 단계", APPLICATION_STAGES, key="app_stage")
+                app_note = st.text_input("메모 (선택)", placeholder="예: 자소서 제출 완료", key="app_note")
+
+            if st.form_submit_button("✅ 지원 기록 추가", use_container_width=True):
+                new_app = {
+                    "id": f"app_{datetime.now().strftime('%Y%m%d%H%M%S')}",
+                    "airline": app_airline,
+                    "date": app_date.strftime("%Y-%m-%d"),
+                    "stage": app_stage,
+                    "note": app_note,
+                    "created_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                    "history": [{"stage": app_stage, "date": datetime.now().strftime("%Y-%m-%d")}]
+                }
+                app_data["applications"].append(new_app)
+                save_applications(app_data)
+                st.success(f"✅ {app_airline} 지원 기록이 추가되었습니다!")
+                st.rerun()
+
+    # 현재 지원 현황
+    st.markdown("---")
+    active_apps = [a for a in app_data["applications"] if a.get("stage") != "불합격"]
+    finished_apps = [a for a in app_data["applications"] if a.get("stage") == "불합격" or a.get("stage") == "최종 합격"]
+
+    if active_apps:
+        st.markdown("### 📋 진행 중인 지원")
+
+        for app in active_apps:
+            airline = app.get("airline", "")
+            stage = app.get("stage", "")
+            date = app.get("date", "")
+            note = app.get("note", "")
+
+            # 단계별 색상
+            if stage == "최종 합격":
+                stage_color = "#10b981"
+                stage_bg = "#f0fdf4"
+            elif "면접" in stage or "합격" in stage:
+                stage_color = "#3b82f6"
+                stage_bg = "#eff6ff"
+            else:
+                stage_color = "#f59e0b"
+                stage_bg = "#fffbeb"
+
+            # 진행률 계산
+            stage_idx = APPLICATION_STAGES.index(stage) if stage in APPLICATION_STAGES else 0
+            progress = int((stage_idx / (len(APPLICATION_STAGES) - 2)) * 100)  # 불합격 제외
+            progress = min(progress, 100)
+
+            st.markdown(f"""
+            <div style="background: {stage_bg}; border-left: 4px solid {stage_color}; border-radius: 12px; padding: 15px 20px; margin-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-weight: 700; font-size: 1rem;">✈️ {airline}</div>
+                        <div style="font-size: 0.8rem; color: #64748b; margin-top: 3px;">지원일: {date} {("| " + note) if note else ""}</div>
+                    </div>
+                    <div style="background: {stage_color}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">{stage}</div>
+                </div>
+                <div style="margin-top: 10px; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;">
+                    <div style="height: 100%; width: {progress}%; background: {stage_color}; border-radius: 3px;"></div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # 단계 업데이트 버튼
+            col_update, col_delete = st.columns([3, 1])
+            with col_update:
+                new_stage = st.selectbox(
+                    "단계 변경",
+                    APPLICATION_STAGES,
+                    index=stage_idx,
+                    key=f"stage_{app['id']}"
+                )
+                if new_stage != stage:
+                    if st.button("변경 적용", key=f"update_{app['id']}"):
+                        app["stage"] = new_stage
+                        app.setdefault("history", []).append({
+                            "stage": new_stage,
+                            "date": datetime.now().strftime("%Y-%m-%d")
+                        })
+                        save_applications(app_data)
+                        st.rerun()
+            with col_delete:
+                if st.button("🗑️ 삭제", key=f"del_{app['id']}"):
+                    app_data["applications"] = [a for a in app_data["applications"] if a["id"] != app["id"]]
+                    save_applications(app_data)
+                    st.rerun()
+
+            st.markdown("")
+    else:
+        st.info("아직 지원 기록이 없습니다. 위의 '새 지원 기록 추가'에서 추가해보세요!")
+
+    # 완료/불합격 기록
+    if finished_apps:
+        with st.expander(f"📂 완료된 지원 ({len(finished_apps)}건)"):
+            for app in finished_apps:
+                result_icon = "🎉" if app.get("stage") == "최종 합격" else "😢"
+                st.markdown(f"{result_icon} **{app.get('airline', '')}** - {app.get('stage', '')} ({app.get('date', '')})")
+
+    # 요약 통계
+    if app_data["applications"]:
+        st.markdown("---")
+        st.markdown("### 📊 지원 요약")
+        total_apps = len(app_data["applications"])
+        passed = len([a for a in app_data["applications"] if a.get("stage") == "최종 합격"])
+        in_progress = len(active_apps)
+
+        stat_col1, stat_col2, stat_col3 = st.columns(3)
+        with stat_col1:
+            st.metric("총 지원", f"{total_apps}곳")
+        with stat_col2:
+            st.metric("진행 중", f"{in_progress}곳")
+        with stat_col3:
+            st.metric("최종 합격", f"{passed}곳")
+
+# ----------------------------
+# 탭 6: 채용 페이지 바로가기 (11개 전체)
+# ----------------------------
+with tab6:
     st.subheader("🔗 항공사 채용 페이지 바로가기")
     st.caption("국내 11개 항공사 공식 채용 페이지")
 
@@ -833,6 +1259,130 @@ with tab3:
                     url = AIRLINE_CAREER_URLS.get(airline, "")
                     if url:
                         st.link_button(f"🔗 채용 페이지", url, use_container_width=True)
+
+# ----------------------------
+# 탭 5: 알림 구독
+# ----------------------------
+with tab5:
+    st.subheader("🔔 채용 알림 구독")
+
+    # 구독자 수 표시
+    subscriber_count = get_subscriber_count()
+
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 24px; border-radius: 16px; color: white; text-align: center; margin-bottom: 20px;">
+        <h2 style="margin: 0;">📬 {subscriber_count}명</h2>
+        <p style="margin: 8px 0 0 0; opacity: 0.9;">이 채용 알림을 구독하고 있습니다</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.info("💡 **새로운 채용 공고가 등록되면 이메일로 알려드립니다!**")
+
+    # 구독/구독해지 탭
+    sub_tab1, sub_tab2 = st.tabs(["✅ 구독 신청", "❌ 구독 해지"])
+
+    with sub_tab1:
+        st.markdown("### ✅ 채용 알림 구독 신청")
+
+        with st.form("subscribe_form"):
+            col1, col2 = st.columns(2)
+
+            with col1:
+                sub_name = st.text_input("이름 *", placeholder="홍길동")
+                sub_email = st.text_input("이메일 *", placeholder="example@email.com")
+
+            with col2:
+                sub_phone = st.text_input("연락처 (선택)", placeholder="010-1234-5678")
+                st.caption("카카오톡 알림을 원하시면 연락처를 입력하세요")
+
+            st.markdown("**관심 항공사 선택** (선택사항)")
+            st.caption("선택하지 않으면 모든 항공사 채용 알림을 받습니다")
+
+            airline_cols = st.columns(4)
+            selected_airlines = []
+
+            all_airlines = ["대한항공", "아시아나항공", "에어프레미아", "진에어", "제주항공",
+                          "티웨이항공", "에어부산", "에어서울", "이스타항공", "에어로케이", "파라타항공"]
+
+            for i, airline in enumerate(all_airlines):
+                with airline_cols[i % 4]:
+                    if st.checkbox(airline, key=f"airline_{airline}"):
+                        selected_airlines.append(airline)
+
+            st.markdown("---")
+
+            agree = st.checkbox("개인정보 수집 및 이용에 동의합니다 (채용 알림 발송 목적)")
+
+            submitted = st.form_submit_button("🔔 구독 신청", type="primary", use_container_width=True)
+
+            if submitted:
+                if not sub_name or not sub_email:
+                    st.error("이름과 이메일은 필수 입력 항목입니다.")
+                elif not agree:
+                    st.error("개인정보 수집 및 이용에 동의해주세요.")
+                elif "@" not in sub_email or "." not in sub_email:
+                    st.error("올바른 이메일 형식을 입력해주세요.")
+                else:
+                    success, message = add_subscriber(sub_name, sub_email, sub_phone, selected_airlines)
+                    if success:
+                        st.success(f"🎉 {message}")
+                        st.balloons()
+                        st.rerun()
+                    else:
+                        st.warning(message)
+
+    with sub_tab2:
+        st.markdown("### ❌ 구독 해지")
+        st.caption("더 이상 알림을 받고 싶지 않으시면 이메일을 입력해주세요.")
+
+        with st.form("unsubscribe_form"):
+            unsub_email = st.text_input("등록된 이메일", placeholder="example@email.com")
+
+            unsub_submitted = st.form_submit_button("구독 해지", use_container_width=True)
+
+            if unsub_submitted:
+                if not unsub_email:
+                    st.error("이메일을 입력해주세요.")
+                else:
+                    success, message = unsubscribe(unsub_email)
+                    if success:
+                        st.success(message)
+                        st.rerun()
+                    else:
+                        st.warning(message)
+
+    st.markdown("---")
+
+    # 알림 안내
+    st.markdown("### 📋 알림 안내")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("""
+        <div style="background: #f0fdf4; padding: 16px; border-radius: 12px; border-left: 4px solid #10b981;">
+            <h4 style="margin: 0 0 8px 0;">📧 이메일 알림</h4>
+            <p style="font-size: 14px; margin: 0; color: #666;">
+            새로운 채용 공고가 등록되면<br/>
+            이메일로 알려드립니다.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown("""
+        <div style="background: #fef3c7; padding: 16px; border-radius: 12px; border-left: 4px solid #f59e0b;">
+            <h4 style="margin: 0 0 8px 0;">💬 카카오톡 알림 (예정)</h4>
+            <p style="font-size: 14px; margin: 0; color: #666;">
+            연락처를 등록하시면<br/>
+            카카오톡 알림도 받으실 수 있습니다.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("")
+    st.caption("💡 알림은 관리자가 새 채용 공고를 등록할 때 발송됩니다.")
+    st.caption("📌 스팸 메일함도 확인해주세요!")
 
 # ----------------------------
 # 하단 정보

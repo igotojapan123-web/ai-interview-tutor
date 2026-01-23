@@ -13,19 +13,7 @@ import streamlit as st
 # 페이지 설정 (반드시 첫 번째 Streamlit 명령)
 st.set_page_config(page_title="자소서 기반 질문", page_icon="📋", layout="wide")
 
-# 깔끔한 네비게이션 적용
-try:
-    from nav_utils import render_sidebar
-    render_sidebar(current_page="자소서기반 질문")
-except ImportError:
-    pass
 
-# 사용량 제한 시스템
-try:
-    from usage_limiter import check_and_use, get_remaining
-    USAGE_LIMITER_AVAILABLE = True
-except ImportError:
-    USAGE_LIMITER_AVAILABLE = False
 
 
 # 구글 번역 방지
@@ -131,8 +119,6 @@ from flyready_question_data import (
 # ----------------------------
 # 비밀번호 보호 (테스터 5명만 접근 가능)
 # ----------------------------
-from auth_utils import check_tester_password
-check_tester_password()
 
 
 # ----------------------------
@@ -2319,9 +2305,6 @@ _srcai_apply_to_qa_sets(st.session_state.get("qa_sets", []))
 st.divider()
 
 # 남은 사용량 표시
-if USAGE_LIMITER_AVAILABLE:
-    remaining = get_remaining("자소서기반질문")
-    st.markdown(f"오늘 남은 질문 생성 횟수: **{remaining}회**")
 
 # 리셋 + 재분석 버튼 상단에 배치
 reset_col, reanalyze_col, info_col = st.columns([1, 1, 2])
@@ -2345,8 +2328,6 @@ if reset:
 
 if reanalyze:
     # 사용량 체크
-    if USAGE_LIMITER_AVAILABLE and not check_and_use("자소서기반질문"):
-        st.stop()
     # ============================================
     # v4.0: 재분석 시 캐시 완전 삭제 + 자동 질문 생성
     # ============================================
@@ -2451,8 +2432,6 @@ with step_btn_col:
 # STEP 4~5 버튼 클릭 시 전체 로직 실행
 if regen_step45:
     # 사용량 체크
-    if USAGE_LIMITER_AVAILABLE and not check_and_use("자소서기반질문"):
-        st.stop()
     current_ver = st.session_state.question_version
     st.session_state.question_version = (current_ver % 6) + 1
     request_id = hashlib.sha256(

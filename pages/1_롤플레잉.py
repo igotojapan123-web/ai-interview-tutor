@@ -13,7 +13,6 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import LLM_MODEL_NAME, LLM_API_URL, LLM_TIMEOUT_SEC
-from auth_utils import check_tester_password
 from env_config import OPENAI_API_KEY
 from roleplay_scenarios import (
     SCENARIO_CATEGORIES, SCENARIOS,
@@ -27,7 +26,7 @@ try:
         generate_tts_audio, get_audio_player_html,
         get_voice_for_persona, transcribe_audio,
         generate_tts_for_passenger, is_clova_available,
-        get_loud_audio_component,
+        get_loud_audio_component, analyze_voice_complete,
     )
     from animation_components import (
         render_animated_passenger,
@@ -47,25 +46,27 @@ try:
 except ImportError:
     SCORE_UTILS_AVAILABLE = False
 
-# 사용량 제한 시스템
+# PDF 리포트 및 추천 유틸리티
 try:
-    from usage_limiter import check_and_use, get_remaining
-    USAGE_LIMITER_AVAILABLE = True
+    from roleplay_report import (
+        generate_roleplay_report, get_report_filename,
+        get_weakness_recommendations
+    )
+    REPORT_AVAILABLE = True
 except ImportError:
-    USAGE_LIMITER_AVAILABLE = False
+    REPORT_AVAILABLE = False
+
+
+from sidebar_common import render_sidebar
 
 st.set_page_config(
     page_title="롤플레잉 시뮬레이션 | flyready_lab",
     page_icon="🎭",
     layout="wide"
 )
+render_sidebar("롤플레잉")
 
-# 깔끔한 네비게이션 적용
-try:
-    from nav_utils import render_sidebar
-    render_sidebar(current_page="롤플레잉")
-except ImportError:
-    pass
+
 
 # 구글 번역 방지
 st.markdown('<meta name="google" content="notranslate">', unsafe_allow_html=True)
@@ -91,7 +92,6 @@ st.markdown(CSS_STYLES, unsafe_allow_html=True)
 # ----------------------------
 # 비밀번호 보호
 # ----------------------------
-check_tester_password()
 
 # =====================
 # 프리미엄 기능 체크
@@ -454,6 +454,9 @@ defaults = {
     "rp_filter_category": "전체",
     "rp_filter_difficulty": "전체",
     "rp_response_times": [],  # 각 응답별 소요 시간 저장
+    "rp_audio_bytes_list": [],  # 각 응답별 음성 데이터 저장
+    "rp_voice_analysis": None,  # 음성 분석 결과
+    "rp_processed_audio_id": None,  # 처리된 오디오 ID (중복 방지)
 }
 
 for key, value in defaults.items():
@@ -913,9 +916,6 @@ elif not st.session_state.rp_ready:
     st.divider()
 
     # 남은 사용량 표시
-    if USAGE_LIMITER_AVAILABLE:
-        remaining = get_remaining("롤플레잉")
-        st.markdown(f"오늘 남은 횟수: **{remaining}회**")
 
     # 시작 버튼
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -928,8 +928,6 @@ elif not st.session_state.rp_ready:
     with col2:
         if st.button("🚀 연습 시작!", type="primary", use_container_width=True):
             # 사용량 체크
-            if USAGE_LIMITER_AVAILABLE and not check_and_use("롤플레잉"):
-                st.stop()
 
             # 초기화 및 첫 대사 생성
             st.session_state.rp_messages = []
@@ -943,6 +941,9 @@ elif not st.session_state.rp_ready:
             st.session_state.rp_timer_start = time.time()
             st.session_state.rp_timer_paused_at = None
             st.session_state.rp_audio_playing = False
+            st.session_state.rp_audio_bytes_list = []  # 음성 데이터 초기화
+            st.session_state.rp_voice_analysis = None  # 음성 분석 결과 초기화
+            st.session_state.rp_processed_audio_id = None  # 오디오 중복 방지 초기화
 
             with st.spinner("승객이 다가옵니다..."):
                 first_msg = generate_passenger_response(
@@ -980,6 +981,9 @@ else:
             st.session_state.rp_ended = False
             st.session_state.rp_evaluation = None
             st.session_state.rp_escalation_level = 0
+            st.session_state.rp_audio_bytes_list = []  # 음성 데이터 초기화
+            st.session_state.rp_voice_analysis = None  # 음성 분석 결과 초기화
+            st.session_state.rp_processed_audio_id = None  # 오디오 중복 방지 초기화
             st.rerun()
 
     # 감정 게이지
@@ -1104,26 +1108,44 @@ else:
             with col_rec1:
                 # 음성 녹음 시도 (st.audio_input 사용 - Streamlit 1.33+)
                 try:
+                    # 처리된 오디오 ID 추적 (중복 처리 방지)
+                    if "rp_processed_audio_id" not in st.session_state:
+                        st.session_state.rp_processed_audio_id = None
+
                     audio_data = st.audio_input("🎤 말하기 (녹음 버튼 클릭)", key="voice_input")
                     if audio_data:
-                        with st.spinner("🔊 음성 인식 중..."):
-                            # 타이머 일시정지
-                            if st.session_state.rp_timer_start and not st.session_state.rp_timer_paused_at:
-                                st.session_state.rp_timer_paused_at = time.time()
+                        # 오디오 ID로 중복 체크 (파일 크기 + 이름 조합)
+                        audio_id = f"{audio_data.name}_{audio_data.size}"
 
-                            result = transcribe_audio(audio_data.read(), language="ko")
-                            if result and result.get("text"):
-                                user_input = result["text"]
-                                st.success(f"✅ 인식됨: {user_input}")
+                        # 이미 처리된 오디오면 건너뛰기
+                        if audio_id != st.session_state.rp_processed_audio_id:
+                            with st.spinner("🔊 음성 인식 중..."):
+                                # 타이머 일시정지
+                                if st.session_state.rp_timer_start and not st.session_state.rp_timer_paused_at:
+                                    st.session_state.rp_timer_paused_at = time.time()
 
-                                # 타이머 재개
-                                if st.session_state.rp_timer_paused_at:
-                                    paused = time.time() - st.session_state.rp_timer_paused_at
-                                    if st.session_state.rp_timer_start:
-                                        st.session_state.rp_timer_start += paused
-                                    st.session_state.rp_timer_paused_at = None
-                            else:
-                                st.error("음성 인식 실패 - 다시 시도하거나 아래 텍스트로 입력하세요")
+                                # 음성 데이터 읽기 (분석용으로 저장)
+                                audio_bytes = audio_data.read()
+                                result = transcribe_audio(audio_bytes, language="ko")
+                                if result and result.get("text"):
+                                    user_input = result["text"]
+                                    st.success(f"✅ 인식됨: {user_input}")
+
+                                    # 음성 데이터 저장 (나중에 분석용)
+                                    st.session_state.rp_audio_bytes_list.append(audio_bytes)
+
+                                    # 처리 완료 표시
+                                    st.session_state.rp_processed_audio_id = audio_id
+
+                                    # 타이머 재개
+                                    if st.session_state.rp_timer_paused_at:
+                                        paused = time.time() - st.session_state.rp_timer_paused_at
+                                        if st.session_state.rp_timer_start:
+                                            st.session_state.rp_timer_start += paused
+                                        st.session_state.rp_timer_paused_at = None
+                                else:
+                                    st.error("음성 인식 실패 - 다시 시도하거나 아래 텍스트로 입력하세요")
+                                    st.session_state.rp_processed_audio_id = audio_id  # 실패해도 중복 처리 방지
                 except Exception as e:
                     st.warning("음성 입력 기능을 사용할 수 없습니다. 텍스트로 입력해주세요.")
 
@@ -1217,6 +1239,19 @@ else:
                 evaluation = evaluate_conversation(scenario, st.session_state.rp_messages)
                 st.session_state.rp_evaluation = evaluation
 
+                # 음성 분석 수행 (음성 데이터가 있는 경우)
+                if st.session_state.rp_audio_bytes_list and UTILS_AVAILABLE:
+                    try:
+                        # 모든 음성 데이터 합쳐서 분석
+                        combined_audio = b''.join(st.session_state.rp_audio_bytes_list)
+                        voice_result = analyze_voice_complete(
+                            combined_audio,
+                            response_times=st.session_state.rp_response_times
+                        )
+                        st.session_state.rp_voice_analysis = voice_result
+                    except Exception as e:
+                        st.session_state.rp_voice_analysis = {"error": str(e)}
+
                 # 점수 파싱 및 저장
                 if "result" in evaluation:
                     # 점수 추출 시도
@@ -1267,6 +1302,202 @@ else:
                 if SCORE_UTILS_AVAILABLE:
                     st.success("📊 점수가 성장그래프에 자동 저장되었습니다.")
 
+                # 음성 분석 결과 표시
+                voice_analysis = st.session_state.get("rp_voice_analysis")
+                if voice_analysis and "error" not in voice_analysis:
+                    st.divider()
+                    st.subheader("🎙️ 음성 전달력 분석")
+
+                    # 종합 점수
+                    total_score = voice_analysis.get("total_score", 0)
+                    grade = voice_analysis.get("grade", "N/A")
+
+                    col_score1, col_score2 = st.columns([1, 2])
+                    with col_score1:
+                        grade_colors = {"S": "#FFD700", "A": "#4CAF50", "B": "#2196F3", "C": "#FF9800", "D": "#f44336"}
+                        grade_color = grade_colors.get(grade, "#666")
+                        st.markdown(f"""
+                        <div style='text-align:center; padding:20px; background:linear-gradient(135deg, {grade_color}22, {grade_color}11); border-radius:15px; border:2px solid {grade_color};'>
+                            <div style='font-size:48px; font-weight:bold; color:{grade_color};'>{grade}</div>
+                            <div style='font-size:24px; color:#333;'>{total_score}점</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    with col_score2:
+                        st.markdown(f"**{voice_analysis.get('summary', '')}**")
+
+                        # 개선 포인트
+                        improvements = voice_analysis.get("top_improvements", [])
+                        if improvements:
+                            st.markdown("**🔧 우선 개선 포인트:**")
+                            for imp in improvements:
+                                st.markdown(f"- {imp}")
+
+                    # 상세 분석
+                    with st.expander("📋 상세 음성 분석 보기", expanded=True):
+                        voice_detail = voice_analysis.get("voice_analysis", {})
+                        text_detail = voice_analysis.get("text_analysis", {})
+
+                        col_v1, col_v2 = st.columns(2)
+
+                        with col_v1:
+                            st.markdown("**🗣️ 음성 품질**")
+
+                            # 목소리 떨림
+                            tremor = voice_detail.get("tremor", {})
+                            tremor_score = tremor.get("score", 0)
+                            st.markdown(f"**목소리 안정성**: {tremor.get('level', 'N/A')} ({tremor_score}/10)")
+                            st.progress(tremor_score / 10)
+                            st.caption(tremor.get("feedback", ""))
+
+                            # 말끝 흐림
+                            ending = voice_detail.get("ending_clarity", {})
+                            ending_score = ending.get("score", 0)
+                            st.markdown(f"**말끝 명확성**: {ending.get('issue', 'N/A')} ({ending_score}/10)")
+                            st.progress(ending_score / 10)
+                            st.caption(ending.get("feedback", ""))
+
+                            # 피치 변화
+                            pitch = voice_detail.get("pitch_variation", {})
+                            pitch_score = pitch.get("score", 0)
+                            st.markdown(f"**억양 변화**: {pitch.get('type', 'N/A')} ({pitch_score}/10)")
+                            st.progress(pitch_score / 10)
+                            st.caption(pitch.get("feedback", ""))
+
+                            # 에너지 일관성
+                            energy = voice_detail.get("energy_consistency", {})
+                            energy_score = energy.get("score", 0)
+                            st.markdown(f"**에너지 일관성**: ({energy_score}/10)")
+                            st.progress(energy_score / 10)
+                            st.caption(energy.get("feedback", ""))
+
+                            # 서비스 톤
+                            service = voice_detail.get("service_tone", {})
+                            service_score = service.get("score", 0)
+                            greeting = "✓" if service.get("greeting_bright") else "✗"
+                            ending_s = "✓" if service.get("ending_soft") else "✗"
+                            st.markdown(f"**서비스 톤**: 인사{greeting} 마무리{ending_s} ({service_score}/10)")
+                            st.progress(service_score / 10)
+                            st.caption(service.get("feedback", ""))
+
+                            # 침착함
+                            composure = voice_detail.get("composure", {})
+                            composure_score = composure.get("score", 0)
+                            st.markdown(f"**침착함**: ({composure_score}/10)")
+                            st.progress(composure_score / 10)
+                            st.caption(composure.get("feedback", ""))
+
+                        with col_v2:
+                            st.markdown("**📝 말하기 습관**")
+
+                            # 말 속도
+                            rate = text_detail.get("speech_rate", {})
+                            rate_score = rate.get("score", 0)
+                            wpm = rate.get("wpm", 0)
+                            st.markdown(f"**말 속도**: {wpm} WPM ({rate_score}/10)")
+                            st.progress(rate_score / 10)
+                            st.caption(rate.get("feedback", ""))
+
+                            # 필러 단어
+                            filler = text_detail.get("filler_words", {})
+                            filler_score = filler.get("score", 0)
+                            filler_count = filler.get("count", 0)
+                            st.markdown(f"**추임새(음, 어)**: {filler_count}회 ({filler_score}/10)")
+                            st.progress(filler_score / 10)
+                            st.caption(filler.get("feedback", ""))
+
+                            # 휴지
+                            pauses = text_detail.get("pauses", {})
+                            pause_score = pauses.get("score", 0)
+                            st.markdown(f"**휴지/끊김**: ({pause_score}/10)")
+                            st.progress(pause_score / 10)
+                            st.caption(pauses.get("feedback", ""))
+
+                            # 발음 명확성
+                            clarity = text_detail.get("clarity", {})
+                            clarity_score = clarity.get("score", 0)
+                            st.markdown(f"**발음 명확성**: ({clarity_score}/10)")
+                            st.progress(clarity_score / 10)
+                            st.caption(clarity.get("feedback", ""))
+
+                            # 응답 시간
+                            rt_detail = voice_analysis.get("response_time_analysis", {})
+                            rt_score = rt_detail.get("score", 0)
+                            avg_time = rt_detail.get("avg_time", 0)
+                            st.markdown(f"**응답 시간**: 평균 {avg_time}초 ({rt_score}/10)")
+                            st.progress(rt_score / 10)
+                            st.caption(rt_detail.get("feedback", ""))
+
+                elif voice_analysis and "error" in voice_analysis:
+                    st.warning(f"음성 분석 오류: {voice_analysis.get('error')}")
+                elif not st.session_state.rp_audio_bytes_list:
+                    st.info("💡 음성 모드로 응답하면 목소리 떨림, 말끝 흐림 등 상세 분석을 받을 수 있습니다.")
+
+                # 맞춤 추천 시나리오
+                if REPORT_AVAILABLE and voice_analysis:
+                    recommendations = get_weakness_recommendations(
+                        voice_analysis,
+                        eval_result.get("result", ""),
+                        max_recommendations=3
+                    )
+
+                    if recommendations:
+                        st.divider()
+                        st.subheader("🎯 약점 기반 맞춤 추천")
+                        st.caption("분석 결과를 바탕으로 개선이 필요한 부분을 연습할 수 있는 시나리오를 추천합니다.")
+
+                        for rec in recommendations:
+                            with st.container():
+                                col_r1, col_r2 = st.columns([3, 1])
+                                with col_r1:
+                                    st.markdown(f"**[{rec['weakness']}]** {rec['scenario_title']}")
+                                    st.caption(f"{rec['category']} | {'⭐' * rec['difficulty']} | 💡 {rec['tip']}")
+                                with col_r2:
+                                    if st.button("연습하기", key=f"rec_{rec['scenario_id']}", use_container_width=True):
+                                        # 추천 시나리오로 이동
+                                        from roleplay_scenarios import get_scenario_by_id
+                                        new_scenario = get_scenario_by_id(rec['scenario_id'])
+                                        if new_scenario:
+                                            st.session_state.rp_scenario = new_scenario
+                                            st.session_state.rp_ready = True
+                                            st.session_state.rp_messages = []
+                                            st.session_state.rp_turn = 0
+                                            st.session_state.rp_ended = False
+                                            st.session_state.rp_evaluation = None
+                                            st.session_state.rp_audio_bytes_list = []
+                                            st.session_state.rp_voice_analysis = None
+                                            st.session_state.rp_processed_audio_id = None
+                                            st.rerun()
+
+                # PDF 리포트 다운로드
+                if REPORT_AVAILABLE:
+                    st.divider()
+                    st.subheader("📄 리포트 다운로드")
+
+                    col_pdf1, col_pdf2 = st.columns([2, 1])
+                    with col_pdf1:
+                        st.caption("분석 결과를 PDF로 저장하여 나중에 확인하거나 공유할 수 있습니다.")
+                    with col_pdf2:
+                        try:
+                            pdf_bytes = generate_roleplay_report(
+                                scenario=scenario,
+                                messages=st.session_state.rp_messages,
+                                text_evaluation=eval_result.get("result", ""),
+                                voice_analysis=voice_analysis,
+                                user_name="사용자"
+                            )
+                            filename = get_report_filename(scenario.get("title", ""))
+
+                            st.download_button(
+                                label="📥 PDF 리포트 다운로드",
+                                data=pdf_bytes,
+                                file_name=filename,
+                                mime="application/pdf",
+                                use_container_width=True
+                            )
+                        except Exception as e:
+                            st.error(f"PDF 생성 오류: {e}")
+
         st.divider()
 
         col1, col2 = st.columns(2)
@@ -1284,6 +1515,9 @@ else:
                 st.session_state.rp_timer_start = time.time()
                 st.session_state.rp_timer_paused_at = None
                 st.session_state.rp_audio_playing = False
+                st.session_state.rp_audio_bytes_list = []  # 음성 데이터 초기화
+                st.session_state.rp_voice_analysis = None  # 음성 분석 결과 초기화
+                st.session_state.rp_processed_audio_id = None  # 오디오 중복 방지 초기화
 
                 first_msg = generate_passenger_response(
                     sc, [], "[상황 시작: 승객이 승무원에게 다가옵니다]", 0
@@ -1309,4 +1543,7 @@ else:
                 st.session_state.rp_ideal_responses = []
                 st.session_state.rp_response_times = []
                 st.session_state.rp_audio_playing = False
+                st.session_state.rp_audio_bytes_list = []  # 음성 데이터 초기화
+                st.session_state.rp_voice_analysis = None  # 음성 분석 결과 초기화
+                st.session_state.rp_processed_audio_id = None  # 오디오 중복 방지 초기화
                 st.rerun()

@@ -89,8 +89,6 @@ from feedback_analyzer import analyze_answer
 # ----------------------------
 # 비밀번호 보호 (테스터 5명만 접근 가능)
 # ----------------------------
-from auth_utils import check_tester_password
-check_tester_password()
 
 
 # ----------------------------

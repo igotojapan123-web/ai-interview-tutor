@@ -10,23 +10,19 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import AIRLINES
-from auth_utils import check_tester_password
+
+from sidebar_common import render_sidebar
 
 st.set_page_config(
     page_title="Q&A 게시판",
     page_icon="💬",
     layout="wide"
 )
-
-# 깔끔한 네비게이션 적용
-try:
-    from nav_utils import render_sidebar
-    render_sidebar(current_page="Q&A 게시판")
-except ImportError:
-    pass
+render_sidebar("QnA게시판")
 
 
-check_tester_password()
+
+
 
 # ----------------------------
 # 데이터

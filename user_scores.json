@@ -175,6 +175,14 @@
       "score": 75,
       "memo": "",
       "scenario": "문항2 (1차): \n자신의 인생을 한 편의 영화로 제작한다면, "
+    },
+    {
+      "date": "2026-01-22",
+      "time": "15:01",
+      "type": "롤플레잉",
+      "score": 30,
+      "memo": "",
+      "scenario": "만석인데 좌석 변경 요청"
     }
   ],
   "detailed_scores": [
@@ -441,6 +449,18 @@
         "star": 50
       },
       "total": 75
+    },
+    {
+      "date": "2026-01-22",
+      "time": "15:01",
+      "type": "롤플레잉",
+      "scores": {
+        "empathy": 20,
+        "solution": 40,
+        "professionalism": 20,
+        "attitude": 40
+      },
+      "total": 30
     }
   ]
 }

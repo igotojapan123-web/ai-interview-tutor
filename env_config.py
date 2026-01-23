@@ -32,8 +32,8 @@ CLOVA_CLIENT_SECRET = get_env("CLOVA_CLIENT_SECRET")
 GOOGLE_TTS_API_KEY = get_env("GOOGLE_TTS_API_KEY") or get_env("GOOGLE_CLOUD_API_KEY") or get_env("GOOGLE_API_KEY")
 
 # App Passwords
-TESTER_PASSWORD = get_env("TESTER_PASSWORD", "2026fly")
-ADMIN_PASSWORD = get_env("ADMIN_PASSWORD", "admin2024")
+TESTER_PASSWORD = get_env("TESTER_PASSWORD", "crew2024")
+ADMIN_PASSWORD = get_env("ADMIN_PASSWORD", "admin2026")
 
 def check_openai_key() -> tuple[bool, str]:
     """OpenAI API 키 상태 확인"""

@@ -11,12 +11,18 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import LLM_MODEL_NAME, LLM_API_URL, LLM_TIMEOUT_SEC
-from auth_utils import check_tester_password
 from env_config import OPENAI_API_KEY
 
 # 음성 유틸리티 import
 try:
-    from voice_utils import generate_tts_audio, get_audio_player_html, get_loud_audio_component
+    from voice_utils import (
+        generate_tts_audio,
+        get_audio_player_html,
+        get_loud_audio_component,
+        transcribe_audio,
+        analyze_voice_quality,
+        analyze_voice_complete,
+    )
     VOICE_AVAILABLE = True
 except ImportError:
     VOICE_AVAILABLE = False
@@ -39,25 +45,36 @@ try:
 except ImportError:
     SCORE_UTILS_AVAILABLE = False
 
-# 사용량 제한 시스템
+# 토론 주제 데이터
 try:
-    from usage_limiter import check_and_use, get_remaining
-    USAGE_LIMITER_AVAILABLE = True
+    from debate_topics import (
+        ALL_DEBATE_TOPICS,
+        DEBATE_CATEGORIES,
+        get_topics_by_category,
+        get_category_info,
+    )
+    DEBATE_TOPICS_AVAILABLE = True
 except ImportError:
-    USAGE_LIMITER_AVAILABLE = False
+    DEBATE_TOPICS_AVAILABLE = False
+
+# PDF 리포트
+try:
+    from debate_report import generate_debate_report, get_debate_report_filename
+    DEBATE_REPORT_AVAILABLE = True
+except ImportError:
+    DEBATE_REPORT_AVAILABLE = False
+
+
+from sidebar_common import render_sidebar
 
 st.set_page_config(
     page_title="토론면접",
     page_icon="💬",
     layout="wide"
 )
+render_sidebar("토론면접")
 
-# 깔끔한 네비게이션 적용
-try:
-    from nav_utils import render_sidebar
-    render_sidebar(current_page="토론면접")
-except ImportError:
-    pass
+
 
 # 구글 번역 방지
 st.markdown(
@@ -71,86 +88,34 @@ st.markdown(
 # ----------------------------
 # 비밀번호 보호
 # ----------------------------
-check_tester_password()
 
 # =====================
-# 토론 주제
+# 토론 주제 (폴백용)
 # =====================
 
-DEBATE_TOPICS = [
-    {
-        "topic": "승무원에게 외모가 중요한가?",
-        "background": "항공사 승무원 채용에서 외모 기준에 대한 논란이 있습니다. 서비스 직업의 특성상 단정한 외모가 필요하다는 의견과, 능력 중심으로 평가해야 한다는 의견이 있습니다.",
-        "pro_points": ["첫인상의 중요성", "브랜드 이미지", "고객 기대"],
-        "con_points": ["능력 중심 평가", "다양성 존중", "외모 차별 문제"],
-    },
-    {
-        "topic": "기내에서 휴대폰 사용을 전면 허용해야 하는가?",
-        "background": "기술 발전으로 비행기 모드가 일반화되었고, 일부 항공사는 Wi-Fi를 제공합니다. 하지만 여전히 안전 우려와 다른 승객 배려 문제가 있습니다.",
-        "pro_points": ["기술 발전으로 안전 문제 해결", "승객 편의", "트렌드"],
-        "con_points": ["안전 규정 준수", "다른 승객 배려", "비상시 집중력"],
-    },
-    {
-        "topic": "LCC가 FSC를 대체할 수 있는가?",
-        "background": "저가항공사(LCC)가 성장하면서 기존 대형항공사(FSC)의 입지가 줄어들고 있습니다. 가격 경쟁력과 서비스 품질 사이의 균형에 대한 논의가 필요합니다.",
-        "pro_points": ["가격 경쟁력", "효율적 운영", "시장 점유율 증가"],
-        "con_points": ["서비스 품질 차이", "장거리 노선 한계", "안전 투자"],
-    },
-    {
-        "topic": "승무원 정년을 연장해야 하는가?",
-        "background": "고령화 사회에서 정년 연장이 화두입니다. 경험 많은 승무원의 가치와 체력적 한계, 젊은 인력 채용 기회 사이의 균형이 필요합니다.",
-        "pro_points": ["경험과 노하우", "고용 안정", "고령화 대응"],
-        "con_points": ["체력적 한계", "신규 채용 기회", "서비스 활력"],
-    },
-    {
-        "topic": "기내 서비스를 자동화해야 하는가?",
-        "background": "AI와 로봇 기술의 발전으로 서비스 자동화가 가능해지고 있습니다. 효율성과 인간적 서비스 사이의 균형에 대한 논의가 필요합니다.",
-        "pro_points": ["효율성 향상", "비용 절감", "일관된 서비스"],
-        "con_points": ["인간적 교감", "유연한 대응", "일자리 감소"],
-    },
-    {
-        "topic": "승무원이 SNS를 자유롭게 해도 되는가?",
-        "background": "개인의 표현의 자유와 회사 이미지 관리 사이의 균형이 필요합니다. 일부 항공사는 SNS 가이드라인을 엄격히 적용합니다.",
-        "pro_points": ["표현의 자유", "개인 브랜딩", "소통 채널"],
-        "con_points": ["회사 이미지", "기밀 유지", "사생활 노출 위험"],
-    },
-    {
-        "topic": "항공사는 환경보호를 위해 운항을 줄여야 하는가?",
-        "background": "기후변화와 탄소 배출 문제로 항공 산업에 대한 비판이 있습니다. 지속가능한 항공과 경제적 현실 사이의 균형이 필요합니다.",
-        "pro_points": ["환경 책임", "지속가능성", "사회적 요구"],
-        "con_points": ["경제적 영향", "대안 부재", "다른 산업과 형평성"],
-    },
-    {
-        "topic": "기내식을 유료화해야 하는가?",
-        "background": "LCC는 이미 기내식을 유료로 제공하고 있으며, FSC도 일부 노선에서 유료화를 검토하고 있습니다.",
-        "pro_points": ["비용 절감", "선택의 자유", "음식 낭비 감소"],
-        "con_points": ["서비스 하락", "고객 불만", "차별화 요소 상실"],
-    },
-    {
-        "topic": "승무원에게 외국어 능력이 필수인가?",
-        "background": "글로벌 항공사의 경우 영어는 기본이고, 제2외국어까지 요구하는 경우가 있습니다. 언어 능력의 중요성에 대한 논의입니다.",
-        "pro_points": ["글로벌 서비스", "안전 커뮤니케이션", "경쟁력"],
-        "con_points": ["다른 역량도 중요", "국내선 위주", "번역 기술 발전"],
-    },
-    {
-        "topic": "승객 블랙리스트 제도가 필요한가?",
-        "background": "기내 난동, 성희롱 등 문제 승객에 대한 탑승 제한 제도에 대한 논의입니다. 안전과 인권 사이의 균형이 필요합니다.",
-        "pro_points": ["승무원 보호", "다른 승객 안전", "재발 방지"],
-        "con_points": ["인권 침해 우려", "기준 모호", "남용 가능성"],
-    },
-    {
-        "topic": "비즈니스석과 이코노미석 서비스 차이가 정당한가?",
-        "background": "같은 비행기에서 좌석에 따라 서비스 품질이 크게 다릅니다. 이러한 차등 서비스에 대한 논의입니다.",
-        "pro_points": ["수익 구조", "고객 선택권", "프리미엄 서비스 가치"],
-        "con_points": ["차별 느낌", "기본 서비스 저하", "사회적 위화감"],
-    },
-    {
-        "topic": "코로나 이후 마스크 착용을 의무화해야 하는가?",
-        "background": "팬데믹 이후 기내 위생과 건강에 대한 관심이 높아졌습니다. 개인 자유와 공중 보건 사이의 균형이 필요합니다.",
-        "pro_points": ["감염 예방", "취약 승객 보호", "안심감 제공"],
-        "con_points": ["개인 자유", "불편함", "과학적 근거"],
-    },
-]
+# 새 모듈이 있으면 사용, 없으면 기본 주제 사용
+if DEBATE_TOPICS_AVAILABLE:
+    DEBATE_TOPICS = ALL_DEBATE_TOPICS
+else:
+    DEBATE_TOPICS = [
+        {
+            "topic": "승무원에게 외모가 중요한가?",
+            "background": "항공사 승무원 채용에서 외모 기준에 대한 논란이 있습니다.",
+            "pro_points": ["첫인상의 중요성", "브랜드 이미지", "고객 기대"],
+            "con_points": ["능력 중심 평가", "다양성 존중", "외모 차별 문제"],
+            "category": "aviation",
+        },
+        {
+            "topic": "기내에서 휴대폰 사용을 전면 허용해야 하는가?",
+            "background": "기술 발전으로 비행기 모드가 일반화되었습니다.",
+            "pro_points": ["기술 발전으로 안전 문제 해결", "승객 편의", "트렌드"],
+            "con_points": ["안전 규정 준수", "다른 승객 배려", "비상시 집중력"],
+            "category": "service",
+        },
+    ]
+    DEBATE_CATEGORIES = {
+        "all": {"name": "전체", "icon": "📋", "color": "#6b7280"},
+    }
 
 # AI 토론자 페르소나 (아바타 추가)
 DEBATERS = {
@@ -351,6 +316,13 @@ defaults = {
     "debate_completed": False,
     "debate_evaluation": None,
     "debate_voice_mode": False,
+    # 음성 분석 관련
+    "debate_audio_bytes_list": [],
+    "debate_voice_analyses": [],
+    "debate_combined_voice_analysis": None,
+    "debate_response_times": [],
+    "debate_input_mode": "text",  # "text" or "voice"
+    "debate_processed_audio_id": None,
 }
 
 for key, value in defaults.items():
@@ -437,60 +409,140 @@ def generate_debater_response(topic: dict, position: str, history: list, user_me
         return f"[오류: {str(e)}]"
 
 
-def evaluate_debate(topic: dict, user_position: str, history: list) -> dict:
-    """토론 평가"""
+def evaluate_debate(topic: dict, user_position: str, history: list, voice_analyses: list = None) -> dict:
+    """토론 평가 - 음성 분석 포함"""
     api_key = get_api_key()
     if not api_key:
         return {"error": "API 키 없음"}
 
     user_statements = [h for h in history if h.get("is_user")]
-    user_text = "\n".join([f"- {h['content']}" for h in user_statements])
-
     position_kr = {"pro": "찬성", "con": "반대", "neutral": "중립"}[user_position]
 
-    system_prompt = """당신은 항공사 그룹면접 평가자입니다. 토론에서 지원자의 발언을 평가해주세요.
-한국어로 상세하게 피드백해주세요."""
+    # 발언 내용 구성
+    user_text = ""
+    for i, h in enumerate(user_statements):
+        user_text += f"\n[발언 {i+1}]: {h['content']}"
+
+    # 전체 토론 맥락 구성
+    debate_context = ""
+    for h in history:
+        if h.get("is_user"):
+            debate_context += f"\n[지원자 - {position_kr}]: {h['content']}"
+        else:
+            debate_context += f"\n[{h['speaker']}]: {h['content']}"
+
+    # 음성 분석 데이터 요약
+    voice_summary = ""
+    if voice_analyses:
+        total_wpm = []
+        total_fillers = 0
+        total_scores = []
+
+        for va in voice_analyses:
+            if va:
+                text_analysis = va.get("text_analysis", {})
+                wpm = text_analysis.get("words_per_minute", 0)
+                if wpm > 0:
+                    total_wpm.append(wpm)
+                total_fillers += text_analysis.get("filler_count", 0)
+                score = va.get("overall_score", 0)
+                if score > 0:
+                    total_scores.append(score)
+
+        avg_wpm = sum(total_wpm) / len(total_wpm) if total_wpm else 0
+        avg_score = sum(total_scores) / len(total_scores) if total_scores else 0
+
+        voice_summary = f"""
+## 음성 분석 데이터
+- 평균 말 속도: {avg_wpm:.0f} WPM (적정: 120-150)
+- 총 필러 단어 사용: {total_fillers}회
+- 음성 전달력 평균 점수: {avg_score:.0f}/100
+"""
+
+    system_prompt = """당신은 항공사 그룹면접 전문 평가자입니다.
+토론면접에서 지원자의 발언을 종합적으로 평가해주세요.
+
+평가 시 중요 포인트:
+1. 항공사 면접에서는 논리력뿐 아니라 협력적 태도가 중요합니다
+2. 상대방 의견을 경청하고 존중하면서도 자신의 주장을 명확히 전달하는지 확인하세요
+3. 결론보다 과정(어떻게 토론에 참여했는가)을 중시하세요
+4. 실제 면접관 시선에서 구체적이고 실용적인 피드백을 제공하세요
+
+한국어로 상세하고 친절하게 피드백해주세요."""
 
     user_prompt = f"""## 토론 주제
 {topic['topic']}
 
+## 주제 배경
+{topic.get('background', '')}
+
 ## 지원자 입장
 {position_kr}
 
-## 지원자 발언 내용
+## 전체 토론 흐름
+{debate_context}
+
+## 지원자 발언만 추출
 {user_text}
+{voice_summary}
 
-## 평가 기준
-1. 논리성: 주장이 논리적이고 일관성 있는가
-2. 경청: 다른 의견을 경청하고 반응했는가
-3. 표현력: 명확하고 설득력 있게 표현했는가
-4. 태도: 토론 태도가 협력적이고 존중하는가
-5. 리더십: 토론을 이끌거나 정리하는 모습이 있는가
+## 평가 기준 (각 항목 20점, 총 100점)
+1. 논리성 (20점): 주장에 근거가 있고 일관성이 있는가
+2. 경청력 (20점): 상대 발언을 듣고 적절히 반응했는가
+3. 표현력 (20점): 명확하고 설득력 있게 전달했는가
+4. 태도 (20점): 존중하고 협력적인 자세인가
+5. 리더십 (20점): 토론을 이끌거나 정리하는 모습이 있는가
 
-## 출력 형식
+## 출력 형식 (반드시 이 형식을 따르세요)
+
 ### 종합 점수: X/100
 
-### 항목별 평가
-#### 논리성
-- (평가)
+### 등급: [S/A/B/C/D]
+(90점 이상 S, 80점 이상 A, 70점 이상 B, 60점 이상 C, 그 미만 D)
 
-#### 경청 & 반응
-- (평가)
+---
 
-#### 표현력
-- (평가)
+### 📊 항목별 평가
 
-#### 토론 태도
-- (평가)
+#### 1. 논리성 (X/20점)
+**평가:** (구체적인 분석)
+**근거:** (지원자 발언에서 구체적 예시 인용)
 
-### 잘한 점
-- (구체적으로)
+#### 2. 경청력 (X/20점)
+**평가:** (구체적인 분석)
+**근거:** (상대 발언에 어떻게 반응했는지)
 
-### 개선할 점
-- (구체적으로)
+#### 3. 표현력 (X/20점)
+**평가:** (구체적인 분석)
+**근거:** (표현 방식, 문장 구조 분석)
 
-### 팁
-(다음 토론을 위한 조언)
+#### 4. 태도 (X/20점)
+**평가:** (구체적인 분석)
+**근거:** (말투, 표현에서 드러나는 태도)
+
+#### 5. 리더십 (X/20점)
+**평가:** (구체적인 분석)
+**근거:** (토론 진행에 기여한 부분)
+
+---
+
+### ✅ 잘한 점 (3가지)
+1. (구체적으로 - 발언 인용 포함)
+2. (구체적으로)
+3. (구체적으로)
+
+### ⚠️ 개선할 점 (3가지)
+1. (구체적으로 - 어떻게 고치면 좋을지 포함)
+2. (구체적으로)
+3. (구체적으로)
+
+---
+
+### 💡 면접관 코멘트
+(실제 면접관 시선에서 종합 평가 2-3문장)
+
+### 🎯 다음 토론을 위한 팁
+(구체적이고 실천 가능한 조언 2-3가지)
 """
 
     try:
@@ -504,8 +556,8 @@ def evaluate_debate(topic: dict, user_position: str, history: list) -> dict:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            "temperature": 0.5,
-            "max_tokens": 800,
+            "temperature": 0.4,
+            "max_tokens": 1500,
         }
 
         r = requests.post(LLM_API_URL, headers=headers, json=payload, timeout=LLM_TIMEOUT_SEC)
@@ -573,11 +625,57 @@ if st.session_state.debate_topic is None:
 
     st.markdown("---")
 
-    # 주제 선택
-    st.subheader(f"📌 토론 주제 선택 ({len(DEBATE_TOPICS)}개)")
+    # 카테고리 필터
+    st.subheader("📌 토론 주제 선택")
 
-    for i, topic in enumerate(DEBATE_TOPICS):
+    if DEBATE_TOPICS_AVAILABLE:
+        # 카테고리 탭
+        category_cols = st.columns(5)
+
+        # 세션 상태에 선택된 카테고리 저장
+        if "selected_category" not in st.session_state:
+            st.session_state.selected_category = "all"
+
+        with category_cols[0]:
+            if st.button("📋 전체", use_container_width=True,
+                        type="primary" if st.session_state.selected_category == "all" else "secondary"):
+                st.session_state.selected_category = "all"
+                st.rerun()
+
+        for idx, (cat_id, cat_info) in enumerate(DEBATE_CATEGORIES.items()):
+            with category_cols[idx + 1]:
+                btn_type = "primary" if st.session_state.selected_category == cat_id else "secondary"
+                if st.button(f"{cat_info['icon']} {cat_info['name']}", use_container_width=True, type=btn_type):
+                    st.session_state.selected_category = cat_id
+                    st.rerun()
+
+        # 선택된 카테고리의 주제 필터링
+        if st.session_state.selected_category == "all":
+            filtered_topics = DEBATE_TOPICS
+        else:
+            filtered_topics = get_topics_by_category(st.session_state.selected_category)
+
+        st.caption(f"총 {len(filtered_topics)}개 주제")
+    else:
+        filtered_topics = DEBATE_TOPICS
+
+    # 주제 목록 표시
+    for i, topic in enumerate(filtered_topics):
+        cat_info = DEBATE_CATEGORIES.get(topic.get("category", ""), {})
+        cat_badge = f"{cat_info.get('icon', '')} {cat_info.get('name', '')}" if cat_info else ""
+
         with st.expander(f"💬 {topic['topic']}", expanded=(i == 0)):
+            if cat_badge:
+                st.markdown(f"""
+                <span style="
+                    background: {cat_info.get('color', '#6b7280')}20;
+                    color: {cat_info.get('color', '#6b7280')};
+                    padding: 2px 8px;
+                    border-radius: 10px;
+                    font-size: 12px;
+                ">{cat_badge}</span>
+                """, unsafe_allow_html=True)
+
             st.write(topic["background"])
 
             col1, col2 = st.columns(2)
@@ -590,7 +688,7 @@ if st.session_state.debate_topic is None:
                 for p in topic["con_points"]:
                     st.write(f"• {p}")
 
-            if st.button("이 주제로 토론하기", key=f"select_{i}", type="primary", use_container_width=True):
+            if st.button("이 주제로 토론하기", key=f"select_{i}_{topic['topic'][:10]}", type="primary", use_container_width=True):
                 st.session_state.debate_topic = topic
                 st.rerun()
 
@@ -605,9 +703,6 @@ elif st.session_state.debate_position is None:
     st.subheader("당신의 입장을 선택하세요")
 
     # 남은 사용량 표시
-    if USAGE_LIMITER_AVAILABLE:
-        remaining = get_remaining("토론면접")
-        st.markdown(f"오늘 남은 횟수: **{remaining}회**")
 
     col1, col2, col3 = st.columns(3)
 
@@ -621,8 +716,6 @@ elif st.session_state.debate_position is None:
         for p in topic["pro_points"]:
             st.write(f"• {p}")
         if st.button("찬성으로 참여", use_container_width=True, type="primary"):
-            if USAGE_LIMITER_AVAILABLE and not check_and_use("토론면접"):
-                st.stop()
             st.session_state.debate_position = "pro"
             st.session_state.debate_history = []
             st.session_state.debate_round = 0
@@ -638,8 +731,6 @@ elif st.session_state.debate_position is None:
         for p in topic["con_points"]:
             st.write(f"• {p}")
         if st.button("반대로 참여", use_container_width=True, type="primary"):
-            if USAGE_LIMITER_AVAILABLE and not check_and_use("토론면접"):
-                st.stop()
             st.session_state.debate_position = "con"
             st.session_state.debate_history = []
             st.session_state.debate_round = 0
@@ -655,8 +746,6 @@ elif st.session_state.debate_position is None:
         st.write("• 양측 의견 조율")
         st.write("• 균형 잡힌 시각")
         if st.button("중립으로 참여", use_container_width=True):
-            if USAGE_LIMITER_AVAILABLE and not check_and_use("토론면접"):
-                st.stop()
             st.session_state.debate_position = "neutral"
             st.session_state.debate_history = []
             st.session_state.debate_round = 0
@@ -752,15 +841,107 @@ elif not st.session_state.debate_completed:
     st.markdown("---")
 
     if st.session_state.debate_round < 4:
-        user_input = st.chat_input("토론에 참여하세요...")
+        # 입력 모드 선택
+        input_col1, input_col2 = st.columns([1, 3])
+        with input_col1:
+            input_mode = st.radio(
+                "입력 방식",
+                ["텍스트", "음성"],
+                horizontal=True,
+                key="debate_input_mode_radio",
+                label_visibility="collapsed"
+            )
+            st.session_state.debate_input_mode = "voice" if input_mode == "음성" else "text"
 
+        user_input = None
+        voice_analysis = None
+
+        if st.session_state.debate_input_mode == "voice" and VOICE_AVAILABLE:
+            # 음성 입력 모드
+            st.info("🎤 녹음 버튼을 클릭하고 토론 발언을 하세요. (30초~2분 권장)")
+
+            audio_data = st.audio_input(
+                "🎤 녹음하기",
+                key=f"debate_voice_{st.session_state.debate_round}"
+            )
+
+            if audio_data:
+                audio_id = id(audio_data)
+                if st.session_state.debate_processed_audio_id != audio_id:
+                    st.session_state.debate_processed_audio_id = audio_id
+
+                    with st.spinner("음성을 분석하고 있습니다..."):
+                        audio_bytes = audio_data.read()
+
+                        # 음성 인식 (STT)
+                        import time
+                        start_time = time.time()
+                        stt_result = transcribe_audio(audio_bytes, language="ko")
+                        response_time = int(time.time() - start_time)
+
+                        if stt_result.get("success") and stt_result.get("text"):
+                            user_input = stt_result["text"]
+
+                            # 음성 품질 분석
+                            voice_analysis = analyze_voice_quality(
+                                stt_result,
+                                expected_duration_range=(30, 120)
+                            )
+
+                            # 저장
+                            st.session_state.debate_audio_bytes_list.append(audio_bytes)
+                            st.session_state.debate_voice_analyses.append(voice_analysis)
+                            st.session_state.debate_response_times.append(response_time)
+
+                            st.success(f"✅ 인식된 발언: {user_input[:100]}...")
+
+                            # 음성 분석 결과 미리보기
+                            if voice_analysis:
+                                with st.expander("🎯 음성 분석 결과", expanded=False):
+                                    v_cols = st.columns(4)
+                                    text_analysis = voice_analysis.get("text_analysis", {})
+                                    with v_cols[0]:
+                                        wpm = text_analysis.get("words_per_minute", 0)
+                                        st.metric("말 속도", f"{wpm} WPM")
+                                    with v_cols[1]:
+                                        fillers = text_analysis.get("filler_count", 0)
+                                        st.metric("필러 단어", f"{fillers}회")
+                                    with v_cols[2]:
+                                        clarity = voice_analysis.get("voice_quality", {}).get("pronunciation_clarity", 0)
+                                        st.metric("발음 명확도", f"{clarity}%")
+                                    with v_cols[3]:
+                                        overall = voice_analysis.get("overall_score", 0)
+                                        st.metric("종합 점수", f"{overall}점")
+                        else:
+                            st.error("음성 인식에 실패했습니다. 다시 시도해주세요.")
+                            user_input = None
+
+            # 텍스트 폴백 입력
+            with st.expander("📝 텍스트로 직접 입력", expanded=False):
+                fallback_input = st.text_area(
+                    "음성 인식이 안 될 경우 여기에 입력하세요",
+                    key=f"debate_fallback_{st.session_state.debate_round}"
+                )
+                if st.button("텍스트로 제출", key=f"submit_fallback_{st.session_state.debate_round}"):
+                    if fallback_input:
+                        user_input = fallback_input
+        else:
+            # 텍스트 입력 모드
+            user_input = st.chat_input("토론에 참여하세요...")
+
+        # 발언 처리
         if user_input:
-            st.session_state.debate_history.append({
+            # 히스토리에 추가 (음성 분석 정보 포함)
+            history_entry = {
                 "speaker": f"나 ({position_kr})",
                 "content": user_input,
                 "position": position,
                 "is_user": True,
-            })
+            }
+            if voice_analysis:
+                history_entry["voice_analysis"] = voice_analysis
+
+            st.session_state.debate_history.append(history_entry)
 
             with st.spinner("다른 참가자들이 발언 중..."):
                 if position == "pro":
@@ -795,6 +976,7 @@ elif not st.session_state.debate_completed:
                     })
 
             st.session_state.debate_round += 1
+            st.session_state.debate_processed_audio_id = None  # 리셋
 
             if st.session_state.debate_round >= 4:
                 st.session_state.debate_completed = True
@@ -810,12 +992,26 @@ else:
     # 토론 완료 - 평가
     st.subheader("🎉 토론 완료!")
 
+    # 종합 음성 분석 (음성 입력이 있었다면)
+    if st.session_state.debate_audio_bytes_list and st.session_state.debate_combined_voice_analysis is None:
+        with st.spinner("음성 데이터를 종합 분석하고 있습니다..."):
+            try:
+                combined_audio = b''.join(st.session_state.debate_audio_bytes_list)
+                voice_result = analyze_voice_complete(
+                    combined_audio,
+                    response_times=st.session_state.debate_response_times
+                )
+                st.session_state.debate_combined_voice_analysis = voice_result
+            except Exception as e:
+                st.session_state.debate_combined_voice_analysis = {"error": str(e)}
+
     if st.session_state.debate_evaluation is None:
         with st.spinner("토론 내용을 평가하고 있습니다..."):
             evaluation = evaluate_debate(
                 st.session_state.debate_topic,
                 st.session_state.debate_position,
-                st.session_state.debate_history
+                st.session_state.debate_history,
+                voice_analyses=st.session_state.debate_voice_analyses
             )
             st.session_state.debate_evaluation = evaluation
 
@@ -831,20 +1027,122 @@ else:
                     )
         st.rerun()
     else:
-        with st.expander("📜 토론 내용 보기", expanded=False):
+        # 결과 탭
+        result_tabs = st.tabs(["📊 종합 평가", "🎤 음성 분석", "📜 토론 내용"])
+
+        with result_tabs[0]:
+            eval_result = st.session_state.debate_evaluation
+            if "error" in eval_result:
+                st.error(f"평가 오류: {eval_result['error']}")
+            else:
+                st.markdown(eval_result.get("result", ""))
+
+        with result_tabs[1]:
+            if st.session_state.debate_voice_analyses:
+                st.subheader("🎯 음성 전달력 분석")
+
+                # 종합 음성 분석
+                combined = st.session_state.debate_combined_voice_analysis
+                if combined and "error" not in combined:
+                    # 등급 표시
+                    grade = combined.get("grade", "N/A")
+                    grade_colors = {"S": "#FFD700", "A": "#4CAF50", "B": "#2196F3", "C": "#FF9800", "D": "#f44336"}
+                    grade_color = grade_colors.get(grade, "#6b7280")
+
+                    st.markdown(f"""
+                    <div style="text-align: center; padding: 20px; background: {grade_color}15; border-radius: 15px; margin-bottom: 20px;">
+                        <div style="font-size: 60px; font-weight: bold; color: {grade_color};">{grade}</div>
+                        <div style="color: #666;">음성 전달력 등급</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    # 세부 점수
+                    col1, col2, col3, col4 = st.columns(4)
+                    text_analysis = combined.get("text_analysis", {})
+                    voice_quality = combined.get("voice_quality", {})
+
+                    with col1:
+                        wpm = text_analysis.get("words_per_minute", 0)
+                        st.metric("말 속도", f"{wpm:.0f} WPM", delta="적정" if 120 <= wpm <= 150 else "조절 필요")
+
+                    with col2:
+                        fillers = text_analysis.get("filler_count", 0)
+                        st.metric("필러 단어", f"{fillers}회", delta="좋음" if fillers < 5 else "줄이기 필요")
+
+                    with col3:
+                        clarity = voice_quality.get("pronunciation_clarity", 0)
+                        st.metric("발음 명확도", f"{clarity}%")
+
+                    with col4:
+                        overall = combined.get("overall_score", 0)
+                        st.metric("종합 점수", f"{overall}점")
+
+                    # 개선 포인트
+                    improvements = combined.get("priority_improvements", [])
+                    if improvements:
+                        st.markdown("### 🎯 우선 개선 포인트")
+                        for imp in improvements[:3]:
+                            st.markdown(f"- {imp}")
+
+                # 발언별 음성 분석
+                st.markdown("### 📝 발언별 분석")
+                user_statements = [h for h in st.session_state.debate_history if h.get("is_user")]
+                for i, (stmt, va) in enumerate(zip(user_statements, st.session_state.debate_voice_analyses)):
+                    with st.expander(f"발언 {i+1}: {stmt['content'][:50]}...", expanded=False):
+                        if va:
+                            ta = va.get("text_analysis", {})
+                            vq = va.get("voice_quality", {})
+                            cols = st.columns(4)
+                            with cols[0]:
+                                st.metric("말 속도", f"{ta.get('words_per_minute', 0):.0f} WPM")
+                            with cols[1]:
+                                st.metric("필러", f"{ta.get('filler_count', 0)}회")
+                            with cols[2]:
+                                st.metric("발음", f"{vq.get('pronunciation_clarity', 0)}%")
+                            with cols[3]:
+                                st.metric("점수", f"{va.get('overall_score', 0)}점")
+            else:
+                st.info("음성 입력을 사용하지 않아 음성 분석 데이터가 없습니다.")
+
+        with result_tabs[2]:
             for h in st.session_state.debate_history:
                 if h.get("is_user"):
-                    st.markdown(f"**나**: {h['content']}")
+                    st.markdown(get_user_debate_html(h['content'], st.session_state.debate_position), unsafe_allow_html=True)
                 else:
-                    st.markdown(f"**{h['speaker']}**: {h['content']}")
-                st.divider()
+                    st.markdown(
+                        get_debater_avatar_html(
+                            h['content'],
+                            h.get('position', 'neutral'),
+                            h['speaker']
+                        ),
+                        unsafe_allow_html=True
+                    )
 
-        st.subheader("📊 평가 결과")
-        eval_result = st.session_state.debate_evaluation
-        if "error" in eval_result:
-            st.error(f"평가 오류: {eval_result['error']}")
-        else:
-            st.markdown(eval_result.get("result", ""))
+        # PDF 다운로드
+        st.divider()
+        if DEBATE_REPORT_AVAILABLE:
+            position_kr = {"pro": "찬성", "con": "반대", "neutral": "중립"}[st.session_state.debate_position]
+            try:
+                pdf_bytes = generate_debate_report(
+                    topic=st.session_state.debate_topic,
+                    position=position_kr,
+                    history=st.session_state.debate_history,
+                    voice_analyses=st.session_state.debate_voice_analyses,
+                    combined_voice_analysis=st.session_state.debate_combined_voice_analysis,
+                    evaluation_result=st.session_state.debate_evaluation.get("result", "")
+                )
+                filename = get_debate_report_filename(st.session_state.debate_topic.get("topic", "토론"))
+
+                st.download_button(
+                    label="📥 PDF 리포트 다운로드",
+                    data=pdf_bytes,
+                    file_name=filename,
+                    mime="application/pdf",
+                    use_container_width=True,
+                    type="primary"
+                )
+            except Exception as e:
+                st.error(f"PDF 생성 오류: {e}")
 
     st.divider()
 
@@ -856,6 +1154,10 @@ else:
             st.session_state.debate_round = 0
             st.session_state.debate_completed = False
             st.session_state.debate_evaluation = None
+            st.session_state.debate_audio_bytes_list = []
+            st.session_state.debate_voice_analyses = []
+            st.session_state.debate_combined_voice_analysis = None
+            st.session_state.debate_response_times = []
             st.rerun()
 
     with col2:
@@ -865,4 +1167,8 @@ else:
             st.session_state.debate_history = []
             st.session_state.debate_completed = False
             st.session_state.debate_evaluation = None
+            st.session_state.debate_audio_bytes_list = []
+            st.session_state.debate_voice_analyses = []
+            st.session_state.debate_combined_voice_analysis = None
+            st.session_state.debate_response_times = []
             st.rerun()

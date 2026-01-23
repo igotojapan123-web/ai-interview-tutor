@@ -13,6 +13,40 @@
   },
   "history": [
     {
+      "scenario_id": "seat_change_full",
+      "score": 100,
+      "timestamp": "2026-01-22T15:01:11.034773",
+      "conversation": [
+        {
+          "role": "passenger",
+          "content": "아니 진짜 어이가 없네! 치킨이 하나 남았으면 나한테도 주는 게 맞지 않나요? 너무하네!",
+          "level": 2
+        },
+        {
+          "role": "crew",
+          "content": "요리는 등체로 요리다"
+        },
+        {
+          "role": "passenger",
+          "content": "아니 그러니까요, 제가 뭐라고 했나요? 그게 무슨 소리인지 이해를 못하겠어요!",
+          "level": 2
+        },
+        {
+          "role": "crew",
+          "content": "여기는 김치를 올려서"
+        },
+        {
+          "role": "passenger",
+          "content": "아니 그러니까요, 김치 올리는 게 무슨 상관이에요? 지금 제가 원하는 건 창가 좌석인데요!",
+          "level": 2
+        },
+        {
+          "role": "crew",
+          "content": "오기는... 김치를 어울리는 거야 이게ㅓ이겨"
+        }
+      ]
+    },
+    {
       "scenario_id": "snoring_complaint",
       "score": 100,
       "timestamp": "2026-01-19T16:11:26.042935",

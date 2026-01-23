@@ -126,16 +126,22 @@ def evaluate_english_answer(question: str, answer: str, key_points: list = None)
 
     key_points_text = ", ".join(key_points) if key_points else "N/A"
 
-    system_prompt = """You are a VERY STRICT airline interview examiner evaluating a candidate's English response.
-You must be extremely strict. Do NOT give undeserved scores.
-Provide feedback in Korean. Be honest and harsh when needed.
+    system_prompt = """You are a fair and objective airline interview examiner evaluating a candidate's English response.
+Evaluate objectively - give credit where deserved, but do not inflate scores for bad answers.
+Provide feedback in Korean.
 
-CRITICAL SCORING RULES:
-- If the answer is NOT in English: maximum 2/10
-- If the answer has NO relation to the question: maximum 3/10
-- If the answer is just random characters or meaningless: 1/10
-- If the answer is too short (under 2 sentences): maximum 5/10
-- Only give 8+ when the answer is genuinely good with proper grammar and content
+SCORING RULES:
+- 9-10/10: Excellent - fluent, relevant, well-structured, minimal errors
+- 7-8/10: Good - mostly correct, relevant, clear communication
+- 5-6/10: Average - understandable but has notable issues (grammar, content, length)
+- 3-4/10: Poor - significant problems (largely irrelevant, major errors, very short)
+- 1-2/10: Very poor - meaningless input, not English, random characters, completely off-topic
+
+CRITICAL (low score triggers):
+- Random characters or meaningless text: 1/10
+- NOT in English at all: maximum 2/10
+- Completely unrelated to the question: maximum 3/10
+- Under 1 sentence: maximum 4/10
 
 IMPORTANT: Since this is spoken English transcribed by speech recognition, pay special attention to:
 1. Words that might be mispronounced (transcribed incorrectly)
@@ -151,17 +157,17 @@ IMPORTANT: Since this is spoken English transcribed by speech recognition, pay s
 ## Key Points to Cover
 {key_points_text}
 
-## STRICT Evaluation Criteria
+## Evaluation Criteria
 
-### 점수 산정 기준 (10점 만점) - 엄격 적용!
+### 점수 산정 기준 (10점 만점) - 공정하게 평가!
 - 의미 없는 답변 (숫자, 무관한 텍스트): 1-2점
 - 질문과 무관한 답변: 최대 3점
-- 짧은 답변 (2문장 미만): 최대 5점
-- **문법/철자 오류 1개당 -1점** (기본 점수에서 차감)
-- 내용이 부실하면 추가 -1~2점
-- 완벽한 답변만 9-10점 가능
+- 1문장 미만의 너무 짧은 답변: 최대 4점
+- 문법 오류 있지만 의미 전달 가능: 5-6점
+- 문법 대체로 정확하고 내용 관련성 있음: 7-8점
+- 유창하고 구조적이며 핵심 포인트 포함: 9-10점
 
-### 엄격하게 체크해야 할 항목
+### 체크 항목
 1. **Grammar (문법)** - 시제, 주어-동사 일치, 관사(a/an/the), 전치사 오류 모두 체크
 2. **Spelling/Pronunciation (철자/발음)** - STT 오류는 발음 문제 가능성, 명확히 지적
 3. **Sentence Structure (문장 구조)** - 불완전한 문장, 어색한 어순

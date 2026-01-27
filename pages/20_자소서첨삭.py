@@ -11,8 +11,11 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import AIRLINES
-
 from sidebar_common import render_sidebar
+from logging_config import get_logger
+
+# 로거 설정
+logger = get_logger(__name__)
 
 st.set_page_config(page_title="자소서 첨삭", page_icon="📝", layout="wide")
 render_sidebar("자소서첨삭")
@@ -28,7 +31,11 @@ try:
     from openai import OpenAI
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     API_AVAILABLE = True
-except Exception:
+except ImportError as e:
+    logger.error(f"OpenAI 모듈 import 실패: {e}")
+    API_AVAILABLE = False
+except Exception as e:
+    logger.error(f"OpenAI 클라이언트 초기화 실패: {e}")
     API_AVAILABLE = False
 
 # ----------------------------
@@ -40,12 +47,15 @@ os.makedirs(DATA_DIR, exist_ok=True)
 
 
 def load_my_resumes():
+    """저장된 자소서 목록 로드"""
     try:
         if os.path.exists(RESUME_FILE):
             with open(RESUME_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-    except Exception:
-        pass
+    except json.JSONDecodeError as e:
+        logger.error(f"자소서 JSON 파싱 실패: {e}")
+    except Exception as e:
+        logger.error(f"자소서 로드 실패: {e}")
     return []
 
 

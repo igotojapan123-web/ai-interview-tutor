@@ -1,0 +1,38 @@
+# FlyReady Lab - Docker Compose 설정
+# 사용법: docker-compose up -d
+
+version: '3.8'
+
+services:
+  flyready-lab:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: flyready-lab
+    ports:
+      - "8501:8501"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_TTS_API_KEY=${GOOGLE_TTS_API_KEY:-}
+      - DID_API_KEY=${DID_API_KEY:-}
+      - CLOVA_CLIENT_ID=${CLOVA_CLIENT_ID:-}
+      - CLOVA_CLIENT_SECRET=${CLOVA_CLIENT_SECRET:-}
+      - TESTER_PASSWORD=${TESTER_PASSWORD}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+# 볼륨 정의 (영구 데이터 저장용)
+volumes:
+  flyready-data:
+    driver: local
+  flyready-logs:
+    driver: local

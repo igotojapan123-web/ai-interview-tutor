@@ -10,8 +10,15 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from collections import defaultdict
 
-# 로고 이미지 로드
+from logging_config import get_logger
+
+# 로거 설정
+logger = get_logger(__name__)
+
+# 로고 이미지 로드 (캐싱 적용)
+@st.cache_resource
 def get_logo_base64():
+    """로고 이미지를 Base64로 인코딩 (영구 캐시)"""
     logo_path = Path(__file__).parent / "logo.png"
     if logo_path.exists():
         with open(logo_path, "rb") as f:
@@ -36,8 +43,10 @@ try:
     if st.session_state.get("show_motivation_popup", False):
         from motivation import show_motivation_popup
         show_motivation_popup()
-except:
-    pass
+except ImportError:
+    logger.debug("motivation 모듈 없음 - 동기부여 기능 비활성화")
+except Exception as e:
+    logger.warning(f"동기부여 모듈 초기화 실패: {e}")
 
 # =====================
 # 데이터 로드 함수
@@ -46,18 +55,22 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 
 def load_json(filepath, default=None):
+    """JSON 파일을 안전하게 로드"""
     if default is None:
         default = {}
     if os.path.exists(filepath):
         try:
             with open(filepath, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
-            pass
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON 파싱 실패 ({filepath}): {e}")
+        except Exception as e:
+            logger.error(f"파일 읽기 실패 ({filepath}): {e}")
     return default
 
+@st.cache_data(ttl=60)  # 60초 캐시
 def get_dashboard_data():
-    """대시보드에 필요한 모든 데이터 수집"""
+    """대시보드에 필요한 모든 데이터 수집 (60초 캐시)"""
     data = {}
 
     # D-Day 캘린더 데이터
@@ -86,11 +99,15 @@ def get_upcoming_events(events, limit=3):
     upcoming = []
     for ev in events:
         try:
-            ev_date = datetime.strptime(ev.get("date", ""), "%Y-%m-%d").date()
+            date_str = ev.get("date", "")
+            if not date_str:
+                continue
+            ev_date = datetime.strptime(date_str, "%Y-%m-%d").date()
             days_left = (ev_date - today).days
             if days_left >= 0:
                 upcoming.append({**ev, "days_left": days_left})
-        except:
+        except ValueError as e:
+            logger.debug(f"날짜 파싱 실패: {ev.get('date', '')}")
             continue
     upcoming.sort(key=lambda x: x["days_left"])
     return upcoming[:limit]
@@ -127,7 +144,8 @@ def get_weekly_practice_count(scores_data, broadcast_data):
             score_date = datetime.strptime(score.get("date", "")[:10], "%Y-%m-%d").date()
             if score_date >= week_start:
                 count += 1
-        except:
+        except (ValueError, TypeError, AttributeError) as e:
+            logger.debug(f"점수 기록 날짜 파싱 실패: {e}")
             continue
 
     # 기내방송 기록에서
@@ -136,7 +154,8 @@ def get_weekly_practice_count(scores_data, broadcast_data):
             rec_date = datetime.strptime(rec.get("date", "")[:10], "%Y-%m-%d").date()
             if rec_date >= week_start:
                 count += 1
-        except:
+        except (ValueError, TypeError, AttributeError) as e:
+            logger.debug(f"기내방송 기록 날짜 파싱 실패: {e}")
             continue
 
     return count
@@ -178,7 +197,8 @@ def get_recent_avg_score(scores_data):
             score_val = s.get("score", 0)
             if isinstance(score_val, (int, float)) and score_val > 0:
                 all_scores.append(score_val)
-        except:
+        except (TypeError, KeyError) as e:
+            logger.debug(f"점수 값 추출 실패: {e}")
             continue
     if not all_scores:
         return 0

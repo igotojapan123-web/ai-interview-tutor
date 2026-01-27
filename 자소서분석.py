@@ -5,6 +5,9 @@ import re
 import time
 import hashlib
 from typing import List, Dict, Any, Optional, Tuple
+from logging_config import get_logger
+
+logger = get_logger(__name__)
 
 import streamlit as st
 
@@ -829,10 +832,10 @@ def _slot_q2_deep(
     deep_questions = _llm_extract_for_slot(llm_item, "deep_questions", [])
 
     # 디버그: llm_item 상태 확인
-    print(f"[DEBUG] llm_item is None: {llm_item is None}")
+    logger.debug(f"[DEBUG] llm_item is None: {llm_item is None}")
     if llm_item:
-        print(f"[DEBUG] llm_item keys: {list(llm_item.keys()) if isinstance(llm_item, dict) else 'not a dict'}")
-        print(f"[DEBUG] deep_questions count: {len(deep_questions) if deep_questions else 0}")
+        logger.debug(f"[DEBUG] llm_item keys: {list(llm_item.keys()) if isinstance(llm_item, dict) else 'not a dict'}")
+        logger.debug(f"[DEBUG] deep_questions count: {len(deep_questions) if deep_questions else 0}")
 
     if deep_questions and isinstance(deep_questions, list) and len(deep_questions) > 0:
         # 버전에 따라 다른 질문 선택

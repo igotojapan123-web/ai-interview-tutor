@@ -2,6 +2,9 @@
 # 영어 면접 연습 시스템 - 음성 분석 및 PDF 리포트 포함
 
 import os
+
+from logging_config import get_logger
+logger = get_logger(__name__)
 import random
 import streamlit as st
 import requests

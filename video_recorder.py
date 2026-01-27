@@ -6,6 +6,9 @@ import base64
 import tempfile
 import subprocess
 from typing import Optional, Tuple, List
+from logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 def get_video_recorder_html(duration: int = 30, show_audio_indicator: bool = True) -> str:
@@ -393,7 +396,8 @@ def extract_frames_from_video(video_bytes: bytes, num_frames: int = 5) -> List[s
         try:
             result = subprocess.run(duration_cmd, capture_output=True, text=True, timeout=30)
             duration = float(result.stdout.strip()) if result.stdout.strip() else 10
-        except:
+        except (subprocess.TimeoutExpired, ValueError, OSError) as e:
+            logger.warning(f"비디오 길이 확인 실패, 기본값 사용: {e}")
             duration = 10
 
         # 프레임 추출 간격 계산
@@ -473,5 +477,6 @@ def check_ffmpeg_available() -> bool:
     try:
         result = subprocess.run(['ffmpeg', '-version'], capture_output=True, timeout=5)
         return result.returncode == 0
-    except:
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as e:
+        logger.warning(f"ffmpeg 확인 실패: {e}")
         return False

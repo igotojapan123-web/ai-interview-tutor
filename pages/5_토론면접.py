@@ -2,6 +2,9 @@
 # 그룹 토론면접 시뮬레이션 - 아바타/음성 기능 추가
 
 import os
+
+from logging_config import get_logger
+logger = get_logger(__name__)
 import random
 import streamlit as st
 import streamlit.components.v1 as components

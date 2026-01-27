@@ -21,7 +21,7 @@ DAILY_LIMITS = {
 }
 
 # 베타 테스트 기간
-BETA_END_DATE = datetime(2025, 2, 1)  # 필요시 수정
+BETA_END_DATE = datetime(2026, 3, 31)  # 2026년 3월 31일까지
 
 def get_today_key():
     """오늘 날짜 키"""

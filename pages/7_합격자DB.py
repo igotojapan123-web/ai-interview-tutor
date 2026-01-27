@@ -11,8 +11,10 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import AIRLINES
-
 from sidebar_common import render_sidebar
+from logging_config import get_logger
+
+logger = get_logger(__name__)
 
 st.set_page_config(
     page_title="합격자 DB",
@@ -86,7 +88,8 @@ def load_stories():
         try:
             with open(SUCCESS_STORIES_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
+        except (json.JSONDecodeError, IOError, OSError) as e:
+            logger.error(f"합격자 스토리 로드 실패: {e}")
             return []
     return []
 
@@ -115,7 +118,8 @@ def load_likes():
         try:
             with open(LIKES_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
+        except (json.JSONDecodeError, IOError, OSError) as e:
+            logger.error(f"좋아요 데이터 로드 실패: {e}")
             return {}
     return {}
 
@@ -153,7 +157,8 @@ def load_comments():
         try:
             with open(COMMENTS_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
+        except (json.JSONDecodeError, IOError, OSError) as e:
+            logger.error(f"댓글 데이터 로드 실패: {e}")
             return {}
     return {}
 
@@ -868,7 +873,8 @@ with tab3:
                         try:
                             created_dt = datetime.fromisoformat(created)
                             created_str = created_dt.strftime("%m/%d %H:%M")
-                        except:
+                        except (ValueError, TypeError) as e:
+                            logger.warning(f"댓글 시간 파싱 실패: {e}")
                             created_str = ""
 
                         st.markdown(f"""

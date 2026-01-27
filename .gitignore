@@ -6,17 +6,27 @@ __pycache__/
 .Python
 *.egg-info/
 .eggs/
+dist/
+build/
 
 # Virtual environment
 venv/
 env/
+.venv/
+
+# 환경 변수 (절대 커밋하지 마세요!)
 .env
+.env.local
+.env.production
+*.env
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*.sublime-project
+*.sublime-workspace
 
 # Streamlit
 .streamlit/secrets.toml
@@ -24,6 +34,48 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+Desktop.ini
 
-# Logs
+# 로그
 *.log
+logs/
+*.log.*
+
+# 캐시
+*.cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# 사용자 데이터 (개인정보 보호)
+user_scores.json
+user_progress.json
+roleplay_progress.json
+data/practice_history.json
+data/quiz_history.json
+data/my_calendar.json
+data/broadcast_practice.json
+
+# 임시 파일
+*.tmp
+*.temp
+temp/
+tmp/
+
+# 테스트 출력
+test_output.txt
+test_result.txt
+*.mp3
+*.wav
+
+# 빌드 산출물
+*.pyc
+*.pyo
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Coverage reports
+htmlcov/
+.coverage
+coverage.xml

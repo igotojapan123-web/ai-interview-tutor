@@ -8,6 +8,8 @@ import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sidebar_common import render_sidebar
+from logging_config import get_logger
+logger = get_logger(__name__)
 
 st.set_page_config(page_title="채용 일정 알림", page_icon="📅", layout="wide")
 render_sidebar("채용알림")
@@ -383,8 +385,8 @@ def load_hiring_data():
 
                     result.append(hire)
                 return result
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to load hiring data: {e}")
     return []
 
 
@@ -403,7 +405,8 @@ def calculate_dday(date_str):
         today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         diff = (target - today).days
         return diff
-    except:
+    except Exception as e:
+        logger.debug(f"Failed to parse date: {date_str}, error: {e}")
         return None
 
 
@@ -417,7 +420,8 @@ def get_hiring_status(hire):
     try:
         start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date() if start_date_str else None
         end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date() if end_date_str else None
-    except:
+    except Exception as e:
+        logger.debug(f"Failed to parse hiring status date: {e}")
         return "마감"  # 날짜 파싱 실패시 마감 처리
 
     if not end_date:
@@ -554,8 +558,8 @@ def load_subscribers():
         try:
             with open(SUBSCRIBERS_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to load subscribers: {e}")
     return {"subscribers": [], "total_count": 0}
 
 def save_subscribers(data):
@@ -613,8 +617,8 @@ def load_applications():
         try:
             with open(APPLICATION_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to load applications: {e}")
     return {"applications": []}
 
 def save_applications(data):
@@ -1401,8 +1405,8 @@ with col2:
             with open(HIRING_DATA_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 last_updated = data.get("last_updated", "")
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"Failed to read last_updated from hiring data: {e}")
     st.caption(f"🔄 최종 업데이트: {last_updated if last_updated else '알 수 없음'}")
     st.caption("📌 출처: 각 항공사 공식 채용사이트")
 

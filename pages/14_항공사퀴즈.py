@@ -10,6 +10,9 @@ import random
 from datetime import datetime
 from typing import List, Dict
 
+from logging_config import get_logger
+logger = get_logger(__name__)
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sidebar_common import render_sidebar
@@ -32,8 +35,8 @@ def load_quiz_history() -> List[Dict]:
         if os.path.exists(QUIZ_HISTORY_FILE):
             with open(QUIZ_HISTORY_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"퀴즈 기록 로드 실패: {e}")
     return []
 
 
@@ -42,8 +45,8 @@ def save_quiz_history(history: List[Dict]):
         os.makedirs(DATA_DIR, exist_ok=True)
         with open(QUIZ_HISTORY_FILE, "w", encoding="utf-8") as f:
             json.dump(history, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"퀴즈 기록 저장 실패: {e}")
 
 
 # ========================================

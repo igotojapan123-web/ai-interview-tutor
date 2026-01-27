@@ -1625,3 +1625,35 @@ def get_scenario_by_id(scenario_id: str) -> dict:
     if scenario_id in SCENARIOS:
         return {"id": scenario_id, **SCENARIOS[scenario_id]}
     return None
+
+
+def get_scenarios_fresh(category: str = "all", count: int = 1) -> list:
+    """
+    롤플레잉 시나리오 선택 (중복 방지 적용)
+    - 이전에 연습한 시나리오를 제외하고 새 시나리오 우선 선택
+    - 모든 시나리오가 소진되면 자동으로 리셋
+
+    Args:
+        category: 카테고리명 또는 "all"
+        count: 선택할 시나리오 수
+
+    Returns:
+        시나리오 리스트 (이전에 안 나온 것 우선)
+    """
+    import random
+    
+    # 전체 또는 카테고리별 시나리오 가져오기
+    if category == "all":
+        all_scenarios = get_all_scenarios()
+    else:
+        all_scenarios = get_scenarios_by_category(category)
+    
+    if not all_scenarios:
+        return []
+    
+    try:
+        from question_history import get_fresh_roleplay_scenarios
+        return get_fresh_roleplay_scenarios(all_scenarios, category, count)
+    except ImportError:
+        # question_history 모듈 없으면 기존 방식 사용
+        return random.sample(all_scenarios, min(count, len(all_scenarios)))

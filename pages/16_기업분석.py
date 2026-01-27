@@ -6,6 +6,9 @@ import streamlit as st
 import os
 import json
 from datetime import datetime, timedelta
+
+from logging_config import get_logger
+logger = get_logger(__name__)
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -44,8 +47,8 @@ def load_metadata():
         if os.path.exists(META_FILE):
             with open(META_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"메타데이터 로드 실패: {e}")
     return {}
 
 
@@ -53,8 +56,8 @@ def save_metadata(data):
     try:
         with open(META_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"메타데이터 저장 실패: {e}")
 
 
 def load_read_history():
@@ -62,8 +65,8 @@ def load_read_history():
         if os.path.exists(READ_HISTORY_FILE):
             with open(READ_HISTORY_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"읽기 기록 로드 실패: {e}")
     return {"read": [], "downloads": {}}
 
 
@@ -71,8 +74,8 @@ def save_read_history(data):
     try:
         with open(READ_HISTORY_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"읽기 기록 저장 실패: {e}")
 
 
 def get_pdf_info(airline):
@@ -152,7 +155,8 @@ def is_new_pdf(info):
         else:
             upload_date = datetime.strptime(updated, "%Y-%m-%d %H:%M")
         return (datetime.now() - upload_date).days <= 7
-    except Exception:
+    except Exception as e:
+        logger.debug(f"PDF 날짜 확인 실패: {e}")
         return False
 
 

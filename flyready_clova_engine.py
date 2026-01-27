@@ -11,11 +11,14 @@ import time
 import requests
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
+from logging_config import get_logger
+
+logger = get_logger(__name__)
 
 # ===========================================
 # v4.1 디버그 설정
 # ===========================================
-DEBUG_MODE = True  # True면 CLOVA 응답을 파일로 저장
+DEBUG_MODE = False  # 운영 환경에서는 False로 설정
 DEBUG_LOG_PATH = os.path.join(os.path.dirname(__file__), "clova_debug_logs")
 
 
@@ -40,9 +43,9 @@ def log_clova_response(raw_response: str, question: str, answer: str):
             f.write("### CLOVA 응답 ###\n")
             f.write(raw_response if raw_response else "(응답 없음)")
 
-        print(f"[DEBUG] CLOVA 응답 저장: {filename}")
+        logger.debug(f"[DEBUG] CLOVA 응답 저장: {filename}")
     except Exception as e:
-        print(f"[DEBUG] 로그 저장 실패: {e}")
+        logger.debug(f"[DEBUG] 로그 저장 실패: {e}")
 
 
 def convert_question_ending(question: str) -> str:

@@ -10,6 +10,9 @@ import streamlit as st
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from logging_config import get_logger
+logger = get_logger(__name__)
+
 # 롤플레잉 시나리오
 try:
     from roleplay_scenarios import SCENARIOS as RP_SCENARIOS, get_all_scenarios
@@ -74,8 +77,8 @@ def load_progress_data():
         try:
             with open(DATA_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"진도 데이터 로드 실패: {e}")
     return {
         "checklist_completed": {},
     }
@@ -85,8 +88,8 @@ def save_progress_data(data):
     try:
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-    except:
-        pass
+    except Exception as e:
+        logger.warning(f"진도 데이터 저장 실패: {e}")
 
 
 def load_roleplay_progress():
@@ -94,8 +97,8 @@ def load_roleplay_progress():
         try:
             with open(RP_PROGRESS_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"롤플레이 진도 로드 실패: {e}")
     return {"history": [], "completed_scenarios": []}
 
 

@@ -12,6 +12,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import AIRLINES
 from env_config import ADMIN_PASSWORD
 from sidebar_common import render_sidebar
+from logging_config import get_logger
+
+logger = get_logger(__name__)
 
 st.set_page_config(
     page_title="관리자 모드",
@@ -72,8 +75,8 @@ def load_hiring_data():
         try:
             with open(HIRING_DATA_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"채용 데이터 로드 실패: {e}")
     return {"last_updated": "", "recruitments": []}
 
 
@@ -88,7 +91,8 @@ def get_status(start_date_str, end_date_str):
     try:
         start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
         end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
-    except:
+    except (ValueError, TypeError) as e:
+        logger.debug(f"날짜 파싱 실패: {e}")
         return "마감", "⚫"
 
     if today < start_date:
@@ -110,7 +114,8 @@ def get_dday(end_date_str):
             return "D-Day"
         else:
             return f"D+{abs(diff)}"
-    except:
+    except (ValueError, TypeError) as e:
+        logger.debug(f"D-Day 계산 실패: {e}")
         return "-"
 
 
@@ -123,8 +128,8 @@ def load_subscribers():
         try:
             with open(SUBSCRIBERS_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"구독자 데이터 로드 실패: {e}")
     return {"subscribers": [], "total_count": 0}
 
 
@@ -155,8 +160,8 @@ def load_stories():
         try:
             with open(SUCCESS_STORIES_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"합격 스토리 로드 실패: {e}")
     return []
 
 

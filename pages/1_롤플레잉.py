@@ -2,6 +2,9 @@
 # flyready_lab - 롤플레잉 시뮬레이션 (Premium Version)
 
 import os
+
+from logging_config import get_logger
+logger = get_logger(__name__)
 import json
 import time
 from datetime import datetime
@@ -123,7 +126,8 @@ def load_progress():
         try:
             with open(PROGRESS_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
+        except Exception as e:
+            logger.debug(f"진행률 로드 실패: {e}")
             return {"completed": [], "scores": {}, "history": []}
     return {"completed": [], "scores": {}, "history": []}
 
@@ -132,8 +136,8 @@ def save_progress(progress):
     try:
         with open(PROGRESS_FILE, "w", encoding="utf-8") as f:
             json.dump(progress, f, ensure_ascii=False, indent=2)
-    except:
-        pass
+    except Exception as e:
+        logger.warning(f"진행률 저장 실패: {e}")
 
 def mark_completed(scenario_id, score, conversation):
     """시나리오 완료 표시"""
@@ -380,7 +384,8 @@ def generate_ideal_response(scenario: dict, conversation: list, user_message: st
         if choices:
             return choices[0].get("message", {}).get("content", "").strip()
         return ""
-    except:
+    except Exception as e:
+        logger.debug(f"모범 답안 생성 실패: {e}")
         return ""
 
 # =====================

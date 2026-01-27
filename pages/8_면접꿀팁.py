@@ -6,6 +6,9 @@ import os
 import sys
 import json
 from datetime import datetime
+
+from logging_config import get_logger
+logger = get_logger(__name__)
 import random
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -54,7 +57,8 @@ def load_assessment():
         try:
             with open(ASSESSMENT_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
+        except Exception as e:
+            logger.debug(f'Exception occurred: {e}')
             pass
     return {"results": [], "bookmarks": []}
 

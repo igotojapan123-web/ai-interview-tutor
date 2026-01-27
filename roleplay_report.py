@@ -330,16 +330,16 @@ def generate_roleplay_report(
     pdf.add_page()
 
     # 1. 기본 정보
-    pdf.section_title("📋 기본 정보")
+    pdf.section_title("[INFO] 기본 정보")
     pdf.body_text(f"이름: {user_name}")
     pdf.body_text(f"날짜: {datetime.now().strftime('%Y년 %m월 %d일 %H:%M')}")
     pdf.body_text(f"시나리오: {scenario.get('title', 'N/A')}")
     pdf.body_text(f"카테고리: {scenario.get('category', 'N/A')}")
-    pdf.body_text(f"난이도: {'⭐' * scenario.get('difficulty', 1)}")
+    pdf.body_text(f"난이도: {'*' * scenario.get('difficulty', 1)}")
     pdf.ln(5)
 
     # 2. 종합 점수
-    pdf.section_title("📊 종합 점수")
+    pdf.section_title("[SCORE] 종합 점수")
 
     if voice_analysis:
         total_score = voice_analysis.get("total_score", 0)
@@ -368,7 +368,7 @@ def generate_roleplay_report(
 
     # 3. 음성 분석 상세
     if voice_analysis:
-        pdf.section_title("🎙️ 음성 전달력 분석")
+        pdf.section_title("[VOICE] 음성 전달력 분석")
 
         voice_detail = voice_analysis.get("voice_analysis", {})
         text_detail = voice_analysis.get("text_analysis", {})
@@ -395,7 +395,7 @@ def generate_roleplay_report(
         pdf.ln(5)
 
     # 4. 대응 내용 평가
-    pdf.section_title("💬 대응 내용 평가")
+    pdf.section_title("[RESPONSE] 대응 내용 평가")
 
     # 평가 텍스트 정리 (마크다운 제거)
     clean_eval = (text_evaluation or "").replace("**", "").replace("###", "").replace("##", "").replace("#", "")
@@ -413,20 +413,20 @@ def generate_roleplay_report(
 
     if recommendations:
         pdf.add_page()
-        pdf.section_title("🎯 맞춤 추천 시나리오")
+        pdf.section_title("[RECOMMEND] 맞춤 추천 시나리오")
 
         for i, rec in enumerate(recommendations, 1):
             pdf.body_text(f"{i}. [{rec['weakness']}] 개선 추천")
             pdf.body_text(f"   시나리오: {rec['scenario_title']}")
-            pdf.body_text(f"   카테고리: {rec['category']} | 난이도: {'⭐' * rec['difficulty']}")
-            pdf.body_text(f"   💡 {rec['tip']}")
+            pdf.body_text(f"   카테고리: {rec['category']} | 난이도: {'*' * rec['difficulty']}")
+            pdf.body_text(f"   [TIP] {rec['tip']}")
             pdf.ln(3)
 
     # 6. 우선 개선 포인트
     if voice_analysis:
         improvements = voice_analysis.get("top_improvements", [])
         if improvements:
-            pdf.section_title("🔧 우선 개선 포인트")
+            pdf.section_title("[IMPROVE] 우선 개선 포인트")
             for i, imp in enumerate(improvements, 1):
                 pdf.body_text(f"{i}. {imp}")
 

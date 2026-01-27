@@ -47,6 +47,7 @@ except ImportError:
 # 항공사별 맞춤 질문 import
 try:
     from airline_questions import (
+        get_airline_questions_fresh,  # 중복 방지 버전
         get_airline_questions,
         get_airline_values,
         get_airline_keywords,
@@ -187,7 +188,7 @@ def generate_questions(airline: str, count: int = 6) -> list:
     """면접 질문 생성 - 항공사별 맞춤 질문 사용"""
     # 항공사별 맞춤 질문 모듈이 있으면 사용
     if AIRLINE_QUESTIONS_AVAILABLE:
-        return get_airline_questions(airline, count)
+        return get_airline_questions_fresh(airline, count)
 
     # 폴백: 기존 공통 질문 사용
     questions = []

@@ -2,6 +2,7 @@
 # 자소서 분석, 키워드 추출, 앵커 선택, SRCAI 함수들
 
 import re
+from logging_config import get_logger
 from typing import List, Dict, Tuple, Any, Optional
 
 from text_utils import (
@@ -10,6 +11,8 @@ from text_utils import (
     _auto_fix_particles_kor, _dedup_keep_order
 )
 from config import STOPWORDS_KOR, OTHER_CHOICE_CANDIDATES
+
+logger = get_logger(__name__)
 
 
 # ----------------------------
@@ -138,8 +141,8 @@ def _anchor_is_hard_blocked(sent: str) -> bool:
     try:
         if _srcai_is_nonquestionable(s):
             return True
-    except Exception:
-        pass
+    except Exception as e:
+            logger.debug("_srcai_is_nonquestionable check failed: %s", e)
     return False
 
 
@@ -151,8 +154,8 @@ def _anchor_is_action_like(sent: str) -> bool:
     try:
         if _srcai_has_action_verb(s):
             return True
-    except Exception:
-        pass
+    except Exception as e:
+            logger.debug("_srcai_has_action_verb check failed: %s", e)
     if re.search(r"(했|하였다|했습니다|진행|수행|처리|대응|조치|확인|안내|관리|개선|조정|정리|공유|보고|설득)", s):
         return True
     return False
@@ -166,8 +169,8 @@ def _anchor_is_result_like(sent: str) -> bool:
     try:
         if _srcai_has_result_change(s):
             return True
-    except Exception:
-        pass
+    except Exception as e:
+            logger.debug("_srcai_has_result_change check failed: %s", e)
     if any(tok in s for tok in _SRCAI_RESULT_CONNECTORS):
         return True
     if re.search(r"(성과|개선|해결|달성|증가|감소|만족|효율|재발\s*방지|오류\s*감소|불만\s*해소)", s) and (re.search(r"\d", s) or re.search(r"(되었|됐다|되었습|되었고|되었으며|되었다)", s)):

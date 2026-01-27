@@ -13,6 +13,9 @@ from typing import Optional, Dict, Any, List
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from env_config import OPENAI_API_KEY
+from logging_config import get_logger
+
+logger = get_logger(__name__)
 
 # 페이지 설정
 from sidebar_common import render_sidebar
@@ -401,7 +404,8 @@ def load_history() -> List[Dict]:
             with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 return data.get("history", [])
-        except:
+        except (json.JSONDecodeError, IOError, OSError) as e:
+            logger.error(f"표정연습 기록 로드 실패: {e}")
             return []
     return []
 

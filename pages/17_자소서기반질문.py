@@ -8,6 +8,9 @@ import os
 import sys
 from typing import List, Dict, Any, Optional, Tuple
 
+from logging_config import get_logger
+logger = get_logger(__name__)
+
 import streamlit as st
 
 # 페이지 설정 (반드시 첫 번째 Streamlit 명령)
@@ -554,7 +557,8 @@ def _extract_topic_from_answer(raw_answer: str, qtype: str = "경험 요구형")
                 topic = template.format(*[g for g in groups if g])
                 if len(topic) >= 5 and len(topic) <= 25:
                     return topic
-            except:
+            except Exception as e:
+                logger.debug(f'Exception occurred: {e}')
                 pass
 
     # 일반 패턴 (qtype 무관)
@@ -571,7 +575,8 @@ def _extract_topic_from_answer(raw_answer: str, qtype: str = "경험 요구형")
                 topic = template.format(*[g for g in groups if g])
                 if len(topic) >= 5 and len(topic) <= 25:
                     return topic
-            except:
+            except Exception as e:
+                logger.debug(f'Exception occurred: {e}')
                 pass
 
     return ""
@@ -1003,10 +1008,10 @@ def _slot_q2_deep(
     deep_questions = _llm_extract_for_slot(llm_item, "deep_questions", [])
 
     # 디버그 로그
-    print(f"[DEBUG Q2] llm_item is None: {llm_item is None}")
+    logger.debug(f"[DEBUG Q2] llm_item is None: {llm_item is None}")
     if llm_item:
-        print(f"[DEBUG Q2] llm_item keys: {list(llm_item.keys()) if isinstance(llm_item, dict) else 'not a dict'}")
-        print(f"[DEBUG Q2] deep_questions count: {len(deep_questions) if deep_questions else 0}")
+        logger.debug(f"[DEBUG Q2] llm_item keys: {list(llm_item.keys()) if isinstance(llm_item, dict) else 'not a dict'}")
+        logger.debug(f"[DEBUG Q2] deep_questions count: {len(deep_questions) if deep_questions else 0}")
 
     if deep_questions and isinstance(deep_questions, list) and len(deep_questions) > 0:
         # 버전에 따라 다른 질문 선택
@@ -1022,7 +1027,7 @@ def _slot_q2_deep(
 
             # 질문이 유효한지 확인 (검증 통과 + 최소 길이)
             if q2_text and len(q2_text) >= 10:
-                print(f"[DEBUG Q2] Using deep_questions! Q2: {q2_text[:50]}...")
+                logger.debug(f"[DEBUG Q2] Using deep_questions! Q2: {q2_text[:50]}...")
 
                 # FSC/LCC 톤 규칙 적용
                 q2_text = _apply_airline_tone(q2_text, is_fsc, is_soft_version)
@@ -1034,12 +1039,12 @@ def _slot_q2_deep(
 
                 return q2_text, source_sentence, source_sentence
             else:
-                print(f"[DEBUG Q2] deep_questions rejected (invalid format): {q2_raw[:50] if q2_raw else 'empty'}...")
+                logger.debug(f"[DEBUG Q2] deep_questions rejected (invalid format): {q2_raw[:50] if q2_raw else 'empty'}...")
 
     # ========================================
     # 폴백: 기존 방식 (over_idealized_points 등)
     # ========================================
-    print("[DEBUG Q2] Falling back to old method...")
+    logger.debug("[DEBUG Q2] Falling back to old method...")
 
     # 1단계: LLM에서 공격 포인트 추출
     over_idealized = _llm_extract_for_slot(llm_item, "over_idealized_points", [])
@@ -1291,7 +1296,7 @@ def _slot_q3_followup(
     flyready_followup = st.session_state.get("_flyready_followup", None)
 
     if flyready_followup and len(flyready_followup) >= 5:
-        print(f"[DEBUG Q3] Using FLYREADY followup! Q3: {flyready_followup[:50]}...")
+        logger.debug(f"[DEBUG Q3] Using FLYREADY followup! Q3: {flyready_followup[:50]}...")
         # FSC/LCC 톤 규칙 적용
         q3_text = _apply_airline_tone(flyready_followup, is_fsc, is_soft_version)
         # 사용 후 초기화 (다음 버전에서 다른 질문 선택되도록)
@@ -1312,7 +1317,7 @@ def _slot_q3_followup(
             followup = selected_ans.get("followup", "")
 
             if followup and len(followup) >= 5:
-                print(f"[DEBUG Q3] Using expected_answers! Q3: {followup[:50]}...")
+                logger.debug(f"[DEBUG Q3] Using expected_answers! Q3: {followup[:50]}...")
                 # FSC/LCC 톤 규칙 적용
                 q3_text = _apply_airline_tone(followup, is_fsc, is_soft_version)
                 return q3_text
@@ -1320,7 +1325,7 @@ def _slot_q3_followup(
     # ========================================
     # 3순위: 폴백 - 기존 템플릿 방식
     # ========================================
-    print("[DEBUG Q3] Falling back to template method...")
+    logger.debug("[DEBUG Q3] Falling back to template method...")
 
     # 전제 정보 추출 (Q2와 동일한 맥락 유지)
     premise, premise_broken = _extract_premise_from_point(attack_point)
@@ -1480,7 +1485,7 @@ def _fallback_questions_fixed_slots_item(
     item: Dict[str, Any]
 ) -> Dict[str, Dict[str, str]]:
     """폴백 질문 생성 (공격 포인트 기반 - 새 방식)"""
-    print("[DEBUG FALLBACK] _fallback_questions_fixed_slots_item 호출됨!")
+    logger.debug("[DEBUG FALLBACK] _fallback_questions_fixed_slots_item 호출됨!")
     qtype = item.get("qtype", "경험 요구형")
     situation = item.get("situation", "현장에서 변수가 발생한 상황")
     raw_answer = item.get("answer", "")
@@ -1663,7 +1668,7 @@ def generate_questions(essay: str, airline: str, version: int) -> Dict[str, Dict
     base = stable_int_hash(f"{essay_id}|{airline}|{atype}|{len(items)}")
 
     if not items:
-        print("[DEBUG generate_questions] items is empty, returning fallback")
+        logger.debug("[DEBUG generate_questions] items is empty, returning fallback")
         dummy_item = {
             "index": 1,
             "qtype": "경험 요구형",
@@ -1678,7 +1683,7 @@ def generate_questions(essay: str, airline: str, version: int) -> Dict[str, Dict
     pick_idx = _pick_item_index(base, version, len(items))
     item = items[pick_idx]
 
-    print(f"[DEBUG ITEM] version={version}, items count={len(items)}, pick_idx={pick_idx} (CLOVA 단독 모드)")
+    logger.debug(f"[DEBUG ITEM] version={version}, items count={len(items)}, pick_idx={pick_idx} (CLOVA 단독 모드)")
 
     qtype = item.get("qtype", "경험 요구형")
     situation = item.get("situation", "현장에서 변수가 발생한 상황")
@@ -1716,7 +1721,7 @@ def generate_questions(essay: str, airline: str, version: int) -> Dict[str, Dict
 
     # FLYREADY 엔진 실행 (캐시 확인)
     if flyready_cache_key not in st.session_state and item2_data:
-        print("[DEBUG Q2] Running FLYREADY 2-call engine v2.0...")
+        logger.debug("[DEBUG Q2] Running FLYREADY 2-call engine v2.0...")
         try:
             item2_question = item2_data.get("prompt", "")
             item2_answer = item2_data.get("answer", "")
@@ -1726,12 +1731,12 @@ def generate_questions(essay: str, airline: str, version: int) -> Dict[str, Dict
                 engine = FlyreadyClovaEngine(airline=airline)
                 flyready_result = engine.analyze(item2_question, item2_answer, item_num=2)
                 st.session_state[flyready_cache_key] = flyready_result
-                print(f"[DEBUG Q2] FLYREADY Engine generated {len(flyready_result.get('questions', []))} questions")
+                logger.debug(f"[DEBUG Q2] FLYREADY Engine generated {len(flyready_result.get('questions', []))} questions")
             else:
-                print("[DEBUG Q2] Item2 data insufficient, skipping FLYREADY engine")
+                logger.debug("[DEBUG Q2] Item2 data insufficient, skipping FLYREADY engine")
                 st.session_state[flyready_cache_key] = None
         except Exception as e:
-            print(f"[DEBUG Q2] FLYREADY Engine error: {e}")
+            logger.debug(f"[DEBUG Q2] FLYREADY Engine error: {e}")
             import traceback
             traceback.print_exc()
             st.session_state[flyready_cache_key] = None
@@ -1806,7 +1811,7 @@ def generate_questions(essay: str, airline: str, version: int) -> Dict[str, Dict
         # 등급 정보 저장
         grade = flyready_result.get("grade", "MEDIUM")
         st.session_state["_flyready_grade"] = grade
-        print(f"[DEBUG Q2 v4.0] 등급: {grade}, 취약점 점수: {flyready_result.get('vulnerability_score', 0)}점")
+        logger.debug(f"[DEBUG Q2 v4.0] 등급: {grade}, 취약점 점수: {flyready_result.get('vulnerability_score', 0)}점")
 
         # 버전에 맞는 질문 직접 선택
         v_key = f"v{version}"
@@ -1818,12 +1823,12 @@ def generate_questions(essay: str, airline: str, version: int) -> Dict[str, Dict
         # 직무연결 여부 판단
         use_job_connection = (q2_type == "직무 연결")
 
-        print(f"[DEBUG Q2 v4.0] Version {version}: [{q2_type}] [{q2_slot}]")
-        print(f"[DEBUG Q2 v4.0] 질문: {q2_text[:50]}..." if q2_text else "[DEBUG Q2 v4.0] 질문 없음")
+        logger.debug(f"[DEBUG Q2 v4.0] Version {version}: [{q2_type}] [{q2_slot}]")
+        logger.debug(f"[DEBUG Q2 v4.0] 질문: {q2_text[:50]}..." if q2_text else "[DEBUG Q2 v4.0] 질문 없음")
 
     # 질문이 없으면 폴백
     if not q2_text:
-        print(f"[DEBUG Q2 v4.0] 질문 없음 - 폴백 사용")
+        logger.debug(f"[DEBUG Q2 v4.0] 질문 없음 - 폴백 사용")
         fallback_idx = (base + version) % len(Q2_RESUME_FALLBACK)
         selected_fallback = Q2_RESUME_FALLBACK[fallback_idx]
         q2_text = selected_fallback.get("question", "")
@@ -1833,7 +1838,7 @@ def generate_questions(essay: str, airline: str, version: int) -> Dict[str, Dict
     # 직무연결 질문 여부 저장 (라벨 표시용)
     st.session_state["_is_job_connection_q2"] = use_job_connection
 
-    print(f"[DEBUG Q2 v4.0] Final: {q2_text[:50]}... (직무연결: {use_job_connection})")
+    logger.debug(f"[DEBUG Q2 v4.0] Final: {q2_text[:50]}... (직무연결: {use_job_connection})")
 
     # Q3용으로 꼬리질문 저장
     if use_job_connection:
@@ -1841,7 +1846,7 @@ def generate_questions(essay: str, airline: str, version: int) -> Dict[str, Dict
         followup = Q3_JOB_CONNECTION[job_q3_idx]
 
         st.session_state["_flyready_followup"] = followup
-        print(f"[DEBUG Q3] Stored followup: {followup[:40]}...")
+        logger.debug(f"[DEBUG Q3] Stored followup: {followup[:40]}...")
 
     # Q3: FLYREADY 스타일 꼬리질문 (날카로운 어미 유지)
     Q3_FLYREADY_TEMPLATES = [
@@ -1864,7 +1869,7 @@ def generate_questions(essay: str, airline: str, version: int) -> Dict[str, Dict
     flyready_followup = st.session_state.get("_flyready_followup", "")
     if flyready_followup and len(flyready_followup) >= 5:
         q3_text = flyready_followup.strip()
-        print(f"[DEBUG Q3] Using FLYREADY followup: {q3_text[:50]}...")
+        logger.debug(f"[DEBUG Q3] Using FLYREADY followup: {q3_text[:50]}...")
 
     # 2순위: expected_answers에서 꼬리질문
     if not q3_text:
@@ -1877,13 +1882,13 @@ def generate_questions(essay: str, airline: str, version: int) -> Dict[str, Dict
                 followup = selected_ans.get("followup", "")
                 if followup and len(followup) >= 5:
                     q3_text = followup.strip()
-                    print(f"[DEBUG Q3] Using expected_answers! Q3: {q3_text[:50]}...")
+                    logger.debug(f"[DEBUG Q3] Using expected_answers! Q3: {q3_text[:50]}...")
 
     # 3순위: FLYREADY 스타일 꼬리질문 템플릿 사용
     if not q3_text:
         q3_idx = (base + version * 3) % len(Q3_FLYREADY_TEMPLATES)
         q3_text = Q3_FLYREADY_TEMPLATES[q3_idx]
-        print(f"[DEBUG Q3] Using FLYREADY fallback: {q3_text}")
+        logger.debug(f"[DEBUG Q3] Using FLYREADY fallback: {q3_text}")
 
     q5_text = _slot_q5_surprise(base, version, atype)
 
@@ -1992,10 +1997,10 @@ def safe_generate_questions(essay: str, airline: str, version: int) -> Dict[str,
     try:
         out = generate_questions(essay=essay, airline=airline, version=version)
         elapsed = time.monotonic() - start
-        print(f"[DEBUG safe_generate] generate_questions completed. elapsed={elapsed:.2f}s, SOFT_TIMEOUT_SEC={SOFT_TIMEOUT_SEC}")
+        logger.debug(f"[DEBUG safe_generate] generate_questions completed. elapsed={elapsed:.2f}s, SOFT_TIMEOUT_SEC={SOFT_TIMEOUT_SEC}")
 
         if elapsed > SOFT_TIMEOUT_SEC:
-            print(f"[DEBUG safe_generate] TIMEOUT! Triggering fallback")
+            logger.debug(f"[DEBUG safe_generate] TIMEOUT! Triggering fallback")
             if items:
                 pick_idx = _pick_item_index(base, version, len(items))
                 return _fallback_questions_fixed_slots_item(base=base, version=version, airline=airline, atype=atype, item=items[pick_idx])
@@ -2004,16 +2009,16 @@ def safe_generate_questions(essay: str, airline: str, version: int) -> Dict[str,
 
         for k in ["q1", "q2", "q3", "q4", "q5"]:
             if not out.get(k) or not out[k].get("question"):
-                print(f"[DEBUG safe_generate] Missing question for {k}, triggering fallback")
+                logger.debug(f"[DEBUG safe_generate] Missing question for {k}, triggering fallback")
                 if items:
                     pick_idx = _pick_item_index(base, version, len(items))
                     return _fallback_questions_fixed_slots_item(base=base, version=version, airline=airline, atype=atype, item=items[pick_idx])
                 dummy_item = {"index": 1, "qtype": "경험 요구형", "situation": "현장에서 변수가 발생한 상황", "basisA": {"text": "자기소개서 답변 내용"}, "basisB": {"text": "자기소개서 답변 내용"}, "action_sents": [], "result_sents": []}
                 return _fallback_questions_fixed_slots_item(base=base, version=version, airline=airline, atype=atype, item=dummy_item)
-        print(f"[DEBUG safe_generate] Returning normal out. Q2: {out.get('q2', {}).get('question', '')[:50]}...")
+        logger.debug(f"[DEBUG safe_generate] Returning normal out. Q2: {out.get('q2', {}).get('question', '')[:50]}...")
         return out
     except Exception as e:
-        print(f"[DEBUG safe_generate] EXCEPTION! {type(e).__name__}: {e}")
+        logger.debug(f"[DEBUG safe_generate] EXCEPTION! {type(e).__name__}: {e}")
         if items:
             pick_idx = _pick_item_index(base, version, len(items))
             return _fallback_questions_fixed_slots_item(base=base, version=version, airline=airline, atype=atype, item=items[pick_idx])
@@ -2454,7 +2459,7 @@ if regen_step45:
                 version=st.session_state.question_version,
             )
             st.session_state.questions = generated_qs
-            print(f"[DEBUG SAVE] Saved Q2 to session_state: {generated_qs.get('q2', {}).get('question', '')[:50]}...")
+            logger.debug(f"[DEBUG SAVE] Saved Q2 to session_state: {generated_qs.get('q2', {}).get('question', '')[:50]}...")
 
             # 이력서 기반 질문 생성 (Basic/Pro 요금제)
             resume_data = st.session_state.get("resume_data", {})
@@ -2480,7 +2485,7 @@ if regen_step45:
     st.rerun()
 
 if st.session_state.questions:
-    print(f"[DEBUG DISPLAY] Displaying Q2 from session_state: {st.session_state.questions.get('q2', {}).get('question', '')[:50]}...")
+    logger.debug(f"[DEBUG DISPLAY] Displaying Q2 from session_state: {st.session_state.questions.get('q2', {}).get('question', '')[:50]}...")
     st.caption(f"현재 버전: {st.session_state.question_version} / 버튼을 눌러 다른 각도의 질문을 받아보세요")
     for key in ["q1", "q2", "q3", "q4", "q5"]:
         qobj = st.session_state.questions.get(key, {})

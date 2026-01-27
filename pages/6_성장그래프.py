@@ -10,6 +10,9 @@ import streamlit as st
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from logging_config import get_logger
+logger = get_logger(__name__)
+
 # 롤플레잉 시나리오
 try:
     from roleplay_scenarios import SCENARIOS as RP_SCENARIOS
@@ -52,8 +55,8 @@ def load_json(filepath, default):
         try:
             with open(filepath, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"JSON 로드 실패 ({filepath}): {e}")
     return default
 
 
@@ -62,7 +65,8 @@ def save_json(filepath, data):
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
         return True
-    except:
+    except Exception as e:
+        logger.warning(f"JSON 저장 실패 ({filepath}): {e}")
         return False
 
 
@@ -212,8 +216,9 @@ def get_weekly_comparison():
                 last_week["count"] += 1
                 if s["score"] > 0:
                     last_week["scores"].append(s["score"])
-        except:
-            pass
+        except (ValueError, KeyError, TypeError) as e:
+            logger.warning(f"주간 통계 처리 중 데이터 오류: {e}")
+            continue
 
     this_avg = sum(this_week["scores"]) / len(this_week["scores"]) if this_week["scores"] else 0
     last_avg = sum(last_week["scores"]) / len(last_week["scores"]) if last_week["scores"] else 0

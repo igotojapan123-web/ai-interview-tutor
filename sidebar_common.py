@@ -6,7 +6,9 @@ import base64
 from pathlib import Path
 from env_config import ADMIN_PASSWORD
 
+@st.cache_resource
 def get_logo_base64():
+    """로고 이미지 Base64 인코딩 (영구 캐시)"""
     logo_path = Path(__file__).parent / "logo.png"
     if logo_path.exists():
         with open(logo_path, "rb") as f:

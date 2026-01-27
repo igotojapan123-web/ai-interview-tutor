@@ -282,17 +282,18 @@ AIRLINE_IDENTITY = {
         "compliance": "준법경영팀 신설 (2024.02) - 변호사, 개인정보보호담당자 등 전문 인력",
     },
     "에어부산": {
-        "mission": "Fun & Fresh - 부산의 자부심",
+        "mission": "FLY SMART - 여행의 지혜",
         "vision": "부산/경남 지역 대표 항공사",
         "core_values": {
-            "name": "핵심 가치",
+            "name": "2025 핵심가치",
             "values": [
-                {"title": "안전", "desc": "안전한 운항 최우선"},
-                {"title": "즐거움", "desc": "Fun한 여행 경험"},
-                {"title": "신선함", "desc": "Fresh한 서비스"},
-                {"title": "지역 연고", "desc": "부산/경남 기반 성장"},
+                {"title": "안전운항", "desc": "안전한 운항 최우선"},
+                {"title": "산업안전", "desc": "현장 안전관리 체계 확립"},
+                {"title": "정보보안", "desc": "고객 정보 보호 및 보안 강화"},
             ]
         },
+        "customer_values": "고객가치: 완벽한 안전, 편리한 서비스, 실용적인 가격",
+        "esg_mission": "ESG 경영을 통한 지속 가능한 환경과 사회적 가치 창조",
         "parent": "아시아나항공 자회사",
     },
     "에어서울": {

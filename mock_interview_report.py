@@ -98,7 +98,12 @@ class MockInterviewReportPDF(FPDF):
         else:
             self.set_font("Helvetica", "", 11)
         self.set_text_color(50, 50, 50)
-        self.multi_cell(0, 7, text)
+        # 현재 x를 왼쪽 마진으로 리셋하여 남은 너비 문제 방지
+        self.set_x(self.l_margin)
+        try:
+            self.multi_cell(0, 7, text or "")
+        except Exception:
+            self.ln(7)
         self.ln(2)
 
     def small_text(self, text: str):
@@ -107,7 +112,11 @@ class MockInterviewReportPDF(FPDF):
         else:
             self.set_font("Helvetica", "", 9)
         self.set_text_color(100, 100, 100)
-        self.multi_cell(0, 5, text)
+        self.set_x(self.l_margin)
+        try:
+            self.multi_cell(0, 5, text or "")
+        except Exception:
+            self.ln(5)
 
     def score_box(self, label: str, score: int, max_score: int = 10, feedback: str = ""):
         if self.korean_font_added:
@@ -122,15 +131,25 @@ class MockInterviewReportPDF(FPDF):
         else:
             color = (244, 67, 54)
 
+        # 라벨 (최대 12자로 자름)
+        label_safe = label[:12] if len(label) > 12 else label
         self.set_text_color(50, 50, 50)
-        self.cell(55, 8, label, border=0)
+        self.cell(50, 8, label_safe, border=0)
 
+        # 점수
         self.set_text_color(*color)
-        self.cell(25, 8, f"{score}/{max_score}", border=0)
+        self.cell(20, 8, f"{score}/{max_score}", border=0)
 
+        # 피드백 (남은 너비 사용, 안전하게 처리)
         self.set_text_color(100, 100, 100)
-        feedback_short = feedback[:45] + "..." if len(feedback) > 45 else feedback
-        self.multi_cell(0, 8, feedback_short)
+        feedback_safe = (feedback or "")[:40]
+        if feedback_safe:
+            try:
+                self.multi_cell(0, 8, feedback_safe)
+            except Exception:
+                self.ln(8)
+        else:
+            self.ln(8)
 
     def grade_display(self, grade: str, score: int):
         """큰 등급 표시"""

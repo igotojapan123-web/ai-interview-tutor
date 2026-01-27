@@ -263,7 +263,11 @@ class RoleplayReportPDF(FPDF):
         else:
             self.set_font("Helvetica", "", 11)
         self.set_text_color(50, 50, 50)
-        self.multi_cell(0, 7, text)
+        self.set_x(self.l_margin)
+        try:
+            self.multi_cell(0, 7, text or "")
+        except Exception:
+            self.ln(7)
         self.ln(2)
 
     def score_box(self, label: str, score: int, max_score: int = 10, feedback: str = ""):
@@ -275,20 +279,31 @@ class RoleplayReportPDF(FPDF):
 
         # 점수에 따른 색상
         if score >= 8:
-            color = (76, 175, 80)  # 초록
+            color = (76, 175, 80)
         elif score >= 6:
-            color = (255, 193, 7)  # 노랑
+            color = (255, 193, 7)
         else:
-            color = (244, 67, 54)  # 빨강
+            color = (244, 67, 54)
 
+        # 라벨 (최대 12자로 자름)
+        label_safe = label[:12] if len(label) > 12 else label
         self.set_text_color(50, 50, 50)
-        self.cell(60, 8, label, border=0)
+        self.cell(50, 8, label_safe, border=0)
 
+        # 점수
         self.set_text_color(*color)
-        self.cell(30, 8, f"{score}/{max_score}", border=0)
+        self.cell(20, 8, f"{score}/{max_score}", border=0)
 
+        # 피드백 (남은 너비 사용, 안전하게 처리)
         self.set_text_color(100, 100, 100)
-        self.multi_cell(0, 8, feedback[:50] + "..." if len(feedback) > 50 else feedback)
+        feedback_safe = (feedback or "")[:40]
+        if feedback_safe:
+            try:
+                self.multi_cell(0, 8, feedback_safe)
+            except Exception:
+                self.ln(8)
+        else:
+            self.ln(8)
 
 
 def generate_roleplay_report(
@@ -345,7 +360,10 @@ def generate_roleplay_report(
         pdf.set_text_color(50, 50, 50)
         if pdf.korean_font_added:
             pdf.set_font("Korean", "", 11)
-        pdf.multi_cell(0, 7, summary, align="C")
+        try:
+            pdf.multi_cell(0, 7, summary or "", align="C")
+        except Exception:
+            pdf.ln(7)
         pdf.ln(5)
 
     # 3. 음성 분석 상세
@@ -380,8 +398,8 @@ def generate_roleplay_report(
     pdf.section_title("💬 대응 내용 평가")
 
     # 평가 텍스트 정리 (마크다운 제거)
-    clean_eval = text_evaluation.replace("**", "").replace("###", "").replace("##", "").replace("#", "")
-    clean_eval = clean_eval.replace("|", " ").replace("-", "")
+    clean_eval = (text_evaluation or "").replace("**", "").replace("###", "").replace("##", "").replace("#", "")
+    clean_eval = clean_eval.replace("|", " ").replace("---", "")
 
     # 긴 텍스트는 잘라서 표시
     if len(clean_eval) > 1500:

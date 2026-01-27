@@ -402,17 +402,8 @@ tab1, tab2, tab3, tab4 = st.tabs(["✍️ 첨삭받기", "📖 합격 예시", "
 with tab1:
     st.subheader("✍️ 자소서 첨삭받기")
 
-    col1, col2 = st.columns(2)
-    with col1:
-        selected_airline = st.selectbox("지원 항공사", AIRLINES, key="airline_select")
-    with col2:
-        selected_item = st.selectbox(
-            "자소서 항목",
-            list(RESUME_ITEMS.keys()),
-            format_func=lambda x: f"{x} ({RESUME_ITEMS[x]['description']})"
-        )
-
-    item_info = RESUME_ITEMS[selected_item]
+    # 항공사 선택
+    selected_airline = st.selectbox("지원 항공사", AIRLINES, key="airline_select")
 
     # 항공사 키워드 표시
     keywords = AIRLINE_KEYWORDS.get(selected_airline, {})
@@ -428,142 +419,126 @@ with tab1:
 
             st.caption(f"💡 핵심 가치: {', '.join(keywords.get('가치', []))}")
 
-    # 작성 팁
-    with st.expander("💡 작성 팁 보기"):
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.markdown("**✅ 작성 팁:**")
-            for tip in item_info["tips"]:
-                st.markdown(f"- {tip}")
-        with col_b:
-            st.markdown("**❌ 피해야 할 표현:**")
-            for bad in item_info["bad_examples"]:
-                st.markdown(f"- {bad}")
+    st.markdown("---")
 
-    # 자소서 입력
-    content = st.text_area(
-        f"{selected_item} 내용 입력",
-        height=250,
-        max_chars=item_info["max_chars"],
-        placeholder=f"{item_info['description']}에 대해 작성해주세요...",
-        help=f"최대 {item_info['max_chars']}자",
-        key="main_content"
-    )
+    # 문항 개수 선택
+    num_items = st.slider("문항 수 (1~5개)", min_value=1, max_value=5, value=1, key="num_items")
 
-    # 문장 분석 대시보드 (실시간)
-    if content and len(content) >= 10:
-        analysis = analyze_text(content)
-        st.markdown("---")
-        st.markdown("**📊 문장 분석**")
+    # 각 문항별 질문 + 답변 입력
+    questions = []
+    answers = []
+    all_valid = True
 
-        cols = st.columns(6)
-        with cols[0]:
-            color = "#28a745" if 200 <= analysis["chars"] <= item_info["max_chars"] else "#ffc107" if analysis["chars"] < 200 else "#dc3545"
-            st.markdown(f'<div class="analysis-box"><div style="color:{color}; font-size:20px; font-weight:bold;">{analysis["chars"]}</div><div style="font-size:11px;">글자수</div></div>', unsafe_allow_html=True)
-        with cols[1]:
-            st.markdown(f'<div class="analysis-box"><div style="font-size:20px; font-weight:bold;">{analysis["sentences"]}</div><div style="font-size:11px;">문장 수</div></div>', unsafe_allow_html=True)
-        with cols[2]:
-            avg_color = "#28a745" if 20 <= analysis["avg_sentence_len"] <= 40 else "#ffc107"
-            st.markdown(f'<div class="analysis-box"><div style="color:{avg_color}; font-size:20px; font-weight:bold;">{analysis["avg_sentence_len"]}</div><div style="font-size:11px;">평균문장길이</div></div>', unsafe_allow_html=True)
-        with cols[3]:
-            fe_color = "#dc3545" if analysis["formal_endings"] > 5 else "#28a745"
-            st.markdown(f'<div class="analysis-box"><div style="color:{fe_color}; font-size:20px; font-weight:bold;">{analysis["formal_endings"]}</div><div style="font-size:11px;">~습니다</div></div>', unsafe_allow_html=True)
-        with cols[4]:
-            st.markdown(f'<div class="analysis-box"><div style="font-size:20px; font-weight:bold;">{analysis["conjunctions"]}</div><div style="font-size:11px;">접속사</div></div>', unsafe_allow_html=True)
-        with cols[5]:
-            st.markdown(f'<div class="analysis-box"><div style="font-size:20px; font-weight:bold;">{analysis["first_person"]}</div><div style="font-size:11px;">1인칭</div></div>', unsafe_allow_html=True)
+    for i in range(num_items):
+        st.markdown(f"#### 📌 문항 {i+1}")
+        q = st.text_input(
+            f"질문 {i+1}",
+            placeholder="예: 지원동기를 작성하세요 (500자 이내)",
+            key=f"question_{i}",
+            label_visibility="collapsed"
+        )
+        a = st.text_area(
+            f"답변 {i+1}",
+            height=200,
+            max_chars=800,
+            placeholder="위 질문에 대한 답변을 작성하세요...",
+            key=f"answer_{i}"
+        )
+        questions.append(q)
+        answers.append(a)
 
-        # 키워드 매칭 표시
-        if keywords:
-            rec_keywords = keywords.get("추천키워드", [])
-            found = [k for k in rec_keywords if k in content]
-            not_found = [k for k in rec_keywords if k not in content]
+        # 문장 분석 (실시간)
+        if a and len(a) >= 10:
+            analysis = analyze_text(a)
+            cols = st.columns(6)
+            with cols[0]:
+                color = "#28a745" if 200 <= analysis["chars"] <= 800 else "#ffc107" if analysis["chars"] < 200 else "#dc3545"
+                st.markdown(f'<div class="analysis-box"><div style="color:{color}; font-size:18px; font-weight:bold;">{analysis["chars"]}</div><div style="font-size:11px;">글자수</div></div>', unsafe_allow_html=True)
+            with cols[1]:
+                st.markdown(f'<div class="analysis-box"><div style="font-size:18px; font-weight:bold;">{analysis["sentences"]}</div><div style="font-size:11px;">문장 수</div></div>', unsafe_allow_html=True)
+            with cols[2]:
+                avg_color = "#28a745" if 20 <= analysis["avg_sentence_len"] <= 40 else "#ffc107"
+                st.markdown(f'<div class="analysis-box"><div style="color:{avg_color}; font-size:18px; font-weight:bold;">{analysis["avg_sentence_len"]}</div><div style="font-size:11px;">평균문장길이</div></div>', unsafe_allow_html=True)
+            with cols[3]:
+                fe_color = "#dc3545" if analysis["formal_endings"] > 5 else "#28a745"
+                st.markdown(f'<div class="analysis-box"><div style="color:{fe_color}; font-size:18px; font-weight:bold;">{analysis["formal_endings"]}</div><div style="font-size:11px;">~습니다</div></div>', unsafe_allow_html=True)
+            with cols[4]:
+                st.markdown(f'<div class="analysis-box"><div style="font-size:18px; font-weight:bold;">{analysis["conjunctions"]}</div><div style="font-size:11px;">접속사</div></div>', unsafe_allow_html=True)
+            with cols[5]:
+                st.markdown(f'<div class="analysis-box"><div style="font-size:18px; font-weight:bold;">{analysis["first_person"]}</div><div style="font-size:11px;">1인칭</div></div>', unsafe_allow_html=True)
 
-            if found:
-                found_html = " ".join([f'<span class="keyword-tag keyword-found">✓ {k}</span>' for k in found])
-                st.markdown(f"**포함된 키워드:** {found_html}", unsafe_allow_html=True)
-            if not_found:
-                nf_html = " ".join([f'<span class="keyword-tag">{k}</span>' for k in not_found[:4]])
-                st.markdown(f"**추가 추천:** {nf_html}", unsafe_allow_html=True)
+            # 키워드 매칭
+            if keywords:
+                rec_keywords = keywords.get("추천키워드", [])
+                found = [k for k in rec_keywords if k in a]
+                not_found = [k for k in rec_keywords if k not in a]
+                if found:
+                    found_html = " ".join([f'<span class="keyword-tag keyword-found">✓ {k}</span>' for k in found])
+                    st.markdown(f"**포함된 키워드:** {found_html}", unsafe_allow_html=True)
+                if not_found:
+                    nf_html = " ".join([f'<span class="keyword-tag">{k}</span>' for k in not_found[:4]])
+                    st.markdown(f"**추가 추천:** {nf_html}", unsafe_allow_html=True)
 
-    # 글자수 표시
-    char_count = len(content)
-    if char_count < 50:
-        st.caption(f"📏 {char_count} / {item_info['max_chars']}자 (최소 50자 이상 작성)")
-    else:
-        st.caption(f"📏 {char_count} / {item_info['max_chars']}자")
+        # 유효성 체크
+        if not q.strip() or len(a.strip()) < 50:
+            all_valid = False
 
-    # 버튼 영역
-    col1, col2, col3 = st.columns([2, 1, 1])
-
-    with col1:
-        submit = st.button("🔍 AI 첨삭받기", type="primary", use_container_width=True, disabled=len(content) < 50)
-
-    with col2:
-        # 재첨삭 버튼 (이전 피드백이 있을 때)
-        has_prev = "last_feedback" in st.session_state and st.session_state.last_feedback
-        re_submit = st.button("🔄 재첨삭", use_container_width=True, disabled=not has_prev or len(content) < 50,
-                              help="이전 피드백과 비교하여 개선도를 확인합니다")
-
-    with col3:
-        if st.button("💾 저장", use_container_width=True, disabled=len(content) < 50):
-            resumes = load_my_resumes()
-            resumes.append({
-                "id": datetime.now().strftime("%Y%m%d%H%M%S"),
-                "airline": selected_airline,
-                "item": selected_item,
-                "content": content,
-                "created_at": datetime.now().isoformat()
-            })
-            save_my_resumes(resumes)
-            st.success("저장되었습니다!")
-
-    # 첨삭 실행
-    if (submit or re_submit) and len(content) >= 50:
-        prev_feedback = st.session_state.get("last_feedback") if re_submit else None
-        prev_score = st.session_state.get("last_score") if re_submit else None
-
-        with st.spinner("AI가 첨삭 중입니다..." if not re_submit else "AI가 재첨삭 중입니다... (이전 피드백 비교)"):
-            feedback = get_ai_feedback(selected_airline, selected_item, content, prev_feedback)
-
-        if feedback:
-            st.session_state.last_feedback = feedback
-            current_score = extract_score(feedback)
-            st.session_state.last_score = current_score
-
+        if i < num_items - 1:
             st.markdown("---")
 
-            # 재첨삭 시 점수 비교
-            if re_submit and prev_score and current_score:
-                diff = current_score - prev_score
-                if diff > 0:
-                    st.success(f"📈 점수 변화: {prev_score}점 → {current_score}점 (+{diff}점 개선!)")
-                elif diff == 0:
-                    st.info(f"📊 점수 변화: {prev_score}점 → {current_score}점 (유지)")
-                else:
-                    st.warning(f"📉 점수 변화: {prev_score}점 → {current_score}점 ({diff}점)")
+    # 버튼 영역
+    st.markdown("---")
+    col1, col2 = st.columns([3, 1])
 
-            st.subheader("📋 AI 첨삭 결과")
-            st.markdown(feedback)
+    with col1:
+        submit = st.button("🔍 AI 첨삭받기", type="primary", use_container_width=True, disabled=not all_valid)
+    with col2:
+        save_btn = st.button("💾 저장", use_container_width=True, disabled=not all_valid)
 
-            # 결과 저장 버튼
-            if st.button("💾 첨삭 결과 저장", key="save_feedback"):
-                resumes = load_my_resumes()
-                resumes.append({
-                    "id": datetime.now().strftime("%Y%m%d%H%M%S"),
-                    "airline": selected_airline,
-                    "item": selected_item,
-                    "content": content,
-                    "feedback": feedback,
-                    "score": current_score,
-                    "is_re_review": re_submit,
-                    "created_at": datetime.now().isoformat()
-                })
-                save_my_resumes(resumes)
-                st.success("첨삭 결과가 저장되었습니다!")
+    if not all_valid and any(q.strip() for q in questions):
+        st.caption("⚠️ 모든 문항에 질문을 입력하고, 답변은 50자 이상 작성해주세요.")
 
-    elif submit and len(content) < 50:
-        st.warning("최소 50자 이상 작성해주세요.")
+    if save_btn and all_valid:
+        resumes = load_my_resumes()
+        for i in range(num_items):
+            resumes.append({
+                "id": datetime.now().strftime("%Y%m%d%H%M%S") + f"_{i}",
+                "airline": selected_airline,
+                "item": questions[i],
+                "content": answers[i],
+                "created_at": datetime.now().isoformat()
+            })
+        save_my_resumes(resumes)
+        st.success("저장되었습니다!")
+
+    # 첨삭 실행
+    if submit and all_valid:
+        with st.spinner("AI가 첨삭 중입니다..."):
+            for i in range(num_items):
+                st.markdown("---")
+                st.markdown(f"### 📋 문항 {i+1} 첨삭 결과")
+                st.caption(f"질문: {questions[i]}")
+
+                feedback = get_ai_feedback(selected_airline, questions[i], answers[i])
+
+                if feedback:
+                    current_score = extract_score(feedback)
+                    st.markdown(feedback)
+
+                    # 결과 자동 저장
+                    resumes = load_my_resumes()
+                    resumes.append({
+                        "id": datetime.now().strftime("%Y%m%d%H%M%S") + f"_fb_{i}",
+                        "airline": selected_airline,
+                        "item": questions[i],
+                        "content": answers[i],
+                        "feedback": feedback,
+                        "score": current_score,
+                        "created_at": datetime.now().isoformat()
+                    })
+                    save_my_resumes(resumes)
+
+            st.success("✅ 모든 문항 첨삭 완료! 결과가 자동 저장되었습니다.")
 
 
 # ========================================

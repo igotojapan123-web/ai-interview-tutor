@@ -2,7 +2,6 @@
 # 동영상으로 표정/자세 연습 - 전면 개편 버전
 
 import streamlit as st
-import streamlit.components.v1 as components
 import os
 import sys
 import json
@@ -25,12 +24,6 @@ render_sidebar("표정연습")
 st.markdown('<meta name="google" content="notranslate"><style>html{translate:no;}</style>', unsafe_allow_html=True)
 st.markdown('<div translate="no" class="notranslate">', unsafe_allow_html=True)
 
-# 동영상 녹화 컴포넌트
-try:
-    from video_recorder import get_video_recorder_html, extract_frames_from_video, check_ffmpeg_available
-    VIDEO_RECORDER_AVAILABLE = True
-except ImportError:
-    VIDEO_RECORDER_AVAILABLE = False
 
 # ========================================
 # 데이터 파일 경로
@@ -177,9 +170,9 @@ PRACTICE_SCENARIOS = {
 }
 
 # ========================================
-# 표정 예시 데이터
+# (표정 예시/가이드 데이터는 탭1에 직접 통합됨)
 # ========================================
-EXPRESSION_EXAMPLES = {
+_UNUSED_EXPRESSION_EXAMPLES = {
     "smile_types": {
         "duchenne": {
             "name": "듀센 스마일 (진짜 미소)",
@@ -659,230 +652,6 @@ def display_result(result: Dict[str, Any]):
         """, unsafe_allow_html=True)
 
 
-def get_mirror_mode_html():
-    """거울 모드 HTML 컴포넌트"""
-    return """
-    <style>
-        .mirror-container {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .mirror-box {
-            position: relative;
-            background: #000;
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-        }
-        #mirror-video {
-            width: 100%;
-            display: block;
-            transform: scaleX(-1);
-        }
-        .guide-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            pointer-events: none;
-        }
-        .face-guide {
-            position: absolute;
-            top: 15%;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 200px;
-            height: 280px;
-            border: 3px dashed rgba(102, 126, 234, 0.6);
-            border-radius: 50%;
-            display: none;
-        }
-        .eye-line {
-            position: absolute;
-            top: 35%;
-            left: 20%;
-            right: 20%;
-            border-top: 2px dashed rgba(102, 126, 234, 0.4);
-            display: none;
-        }
-        .eye-line::before {
-            content: '눈 위치';
-            position: absolute;
-            right: 0;
-            top: -20px;
-            font-size: 12px;
-            color: rgba(102, 126, 234, 0.8);
-        }
-        .mouth-line {
-            position: absolute;
-            top: 55%;
-            left: 30%;
-            right: 30%;
-            border-top: 2px dashed rgba(118, 75, 162, 0.4);
-            display: none;
-        }
-        .mouth-line::before {
-            content: '입 위치';
-            position: absolute;
-            right: 0;
-            top: -20px;
-            font-size: 12px;
-            color: rgba(118, 75, 162, 0.8);
-        }
-        .shoulder-line {
-            position: absolute;
-            top: 75%;
-            left: 10%;
-            right: 10%;
-            border-top: 2px dashed rgba(240, 147, 251, 0.4);
-            display: none;
-        }
-        .shoulder-line::before {
-            content: '어깨 라인 (수평 유지)';
-            position: absolute;
-            right: 0;
-            top: -20px;
-            font-size: 12px;
-            color: rgba(240, 147, 251, 0.8);
-        }
-        .mirror-controls {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
-        .mirror-btn {
-            border: none;
-            padding: 12px 24px;
-            font-size: 14px;
-            font-weight: 600;
-            border-radius: 25px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .mirror-btn:hover {
-            transform: scale(1.05);
-        }
-        .btn-guide {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-        }
-        .btn-flip {
-            background: #f5f5f5;
-            color: #333;
-        }
-        .btn-fullscreen {
-            background: linear-gradient(135deg, #f093fb, #f5576c);
-            color: white;
-        }
-        .timer-display {
-            text-align: center;
-            font-size: 48px;
-            font-weight: bold;
-            color: #667eea;
-            margin: 20px 0;
-            font-family: monospace;
-        }
-        .timer-controls {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-top: 10px;
-        }
-        .practice-tip {
-            background: linear-gradient(135deg, #667eea10, #764ba210);
-            border-radius: 12px;
-            padding: 16px;
-            margin-top: 20px;
-            text-align: center;
-        }
-    </style>
-
-    <div class="mirror-container">
-        <div class="mirror-box">
-            <video id="mirror-video" autoplay muted playsinline></video>
-            <div class="guide-overlay">
-                <div class="face-guide" id="face-guide"></div>
-                <div class="eye-line" id="eye-line"></div>
-                <div class="mouth-line" id="mouth-line"></div>
-                <div class="shoulder-line" id="shoulder-line"></div>
-            </div>
-        </div>
-
-        <div class="mirror-controls">
-            <button class="mirror-btn btn-guide" onclick="toggleGuide()">
-                📐 가이드라인 ON/OFF
-            </button>
-            <button class="mirror-btn btn-flip" onclick="toggleFlip()">
-                🔄 좌우반전
-            </button>
-        </div>
-
-        <div class="timer-display" id="timer">00:00</div>
-        <div class="timer-controls">
-            <button class="mirror-btn btn-guide" onclick="startTimer()">▶️ 시작</button>
-            <button class="mirror-btn btn-flip" onclick="resetTimer()">🔄 리셋</button>
-        </div>
-
-        <div class="practice-tip">
-            💡 <strong>연습 팁:</strong> 가이드라인을 켜고 얼굴 위치를 맞춰보세요. 어깨 라인이 수평인지 확인하세요.
-        </div>
-    </div>
-
-    <script>
-        let guideOn = false;
-        let flipped = true;
-        let timerInterval = null;
-        let seconds = 0;
-
-        async function initMirror() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }
-                });
-                document.getElementById('mirror-video').srcObject = stream;
-            } catch (err) {
-                console.error('Camera error:', err);
-            }
-        }
-
-        function toggleGuide() {
-            guideOn = !guideOn;
-            document.getElementById('face-guide').style.display = guideOn ? 'block' : 'none';
-            document.getElementById('eye-line').style.display = guideOn ? 'block' : 'none';
-            document.getElementById('mouth-line').style.display = guideOn ? 'block' : 'none';
-            document.getElementById('shoulder-line').style.display = guideOn ? 'block' : 'none';
-        }
-
-        function toggleFlip() {
-            flipped = !flipped;
-            document.getElementById('mirror-video').style.transform = flipped ? 'scaleX(-1)' : 'scaleX(1)';
-        }
-
-        function startTimer() {
-            if (timerInterval) return;
-            timerInterval = setInterval(() => {
-                seconds++;
-                const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
-                const secs = (seconds % 60).toString().padStart(2, '0');
-                document.getElementById('timer').textContent = mins + ':' + secs;
-            }, 1000);
-        }
-
-        function resetTimer() {
-            clearInterval(timerInterval);
-            timerInterval = null;
-            seconds = 0;
-            document.getElementById('timer').textContent = '00:00';
-        }
-
-        initMirror();
-    </script>
-    """
 
 
 # ========================================
@@ -900,143 +669,151 @@ if not OPENAI_API_KEY:
 if "expr_result" not in st.session_state:
     st.session_state.expr_result = None
 
-# 탭 구성 (6개)
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "🎬 AI 분석",
-    "🪞 거울 모드",
+# 탭 구성 (4개)
+tab1, tab2, tab3, tab4 = st.tabs([
+    "📸 표정 가이드",
     "🎭 연습 시나리오",
-    "📸 표정 예시",
-    "📚 상세 가이드",
+    "🔍 AI 분석",
     "📊 연습 기록"
 ])
 
 # ========================================
-# Tab 1: AI 분석 (기존 기능 유지)
+# Tab 1: 표정 가이드 (예시 + 상세 가이드 통합)
 # ========================================
 with tab1:
-    st.markdown("### 📹 동영상 녹화 및 AI 분석")
+    st.markdown("### 📸 표정 가이드")
 
-    # 설정
+    # 미소 유형 비교
+    st.markdown("#### 😊 올바른 미소 vs 잘못된 미소")
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #28a74520, #28a74510); border: 2px solid #28a745; border-radius: 16px; padding: 20px; text-align: center;">
+            <div style="font-size: 60px;">😊</div>
+            <h3 style="color: #28a745;">✅ 듀센 스마일 (진짜 미소)</h3>
+            <p>눈과 입이 함께 웃는 진정한 미소</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.markdown("**특징:**")
+        st.markdown("- 눈가에 자연스러운 주름 형성")
+        st.markdown("- 눈이 살짝 가늘어짐 (반달 모양)")
+        st.markdown("- 볼이 올라가고 입꼬리 자연스럽게 상승")
+        st.markdown("**연습법:**")
+        st.info("💡 즐거운 기억을 떠올리며 눈으로 먼저 웃기")
+        st.info("💡 거울 앞에서 눈만으로 웃는 연습하기")
+
+    with col2:
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #dc354520, #dc354510); border: 2px solid #dc3545; border-radius: 16px; padding: 20px; text-align: center;">
+            <div style="font-size: 60px;">🙂</div>
+            <h3 style="color: #dc3545;">❌ 팬암 스마일 (직업적 미소)</h3>
+            <p>입만 웃는 가식적 미소</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.markdown("**특징:**")
+        st.markdown("- 입꼬리만 올라감")
+        st.markdown("- 눈은 웃지 않음 (어색해 보임)")
+        st.markdown("- 진정성이 느껴지지 않음")
+        st.markdown("**피하는 법:**")
+        st.warning("⚠️ 눈웃음을 의식적으로 연습하기")
+        st.warning("⚠️ 입만 웃지 않도록 눈 주변 근육 활용")
+
+    st.markdown("---")
+
+    # 표정별 시각 예시
+    st.markdown("#### 🎭 상황별 올바른 표정")
+
+    expr_cards = [
+        {"emoji": "😄", "name": "인사/환영", "desc": "눈웃음 + 밝은 미소", "tip": "눈이 반달 모양, 치아 살짝 보이게"},
+        {"emoji": "😌", "name": "사과/유감", "desc": "진지 + 안타까운 눈빛", "tip": "미소 거두고, 눈썹 살짝 모으기"},
+        {"emoji": "🙂", "name": "안내/설명", "desc": "살짝 미소 + 또렷한 눈", "tip": "전문적이면서 친절한 느낌"},
+        {"emoji": "🤗", "name": "공감/위로", "desc": "따뜻한 눈빛 + 부드러운 미소", "tip": "고개 살짝 기울여 경청 표현"},
+        {"emoji": "☺️", "name": "서비스", "desc": "상냥한 미소 + 밝은 눈", "tip": "친근하고 에너지 있게"},
+        {"emoji": "😐", "name": "비상 안내", "desc": "진지 + 침착한 표정", "tip": "자신감 있되 차분하게"},
+    ]
+
+    cols = st.columns(3)
+    for i, card in enumerate(expr_cards):
+        with cols[i % 3]:
+            st.markdown(f"""
+            <div style="background: white; border-radius: 12px; padding: 16px; margin: 8px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.08); text-align: center;">
+                <div style="font-size: 40px;">{card['emoji']}</div>
+                <div style="font-weight: bold; margin: 4px 0;">{card['name']}</div>
+                <div style="font-size: 13px; color: #666;">{card['desc']}</div>
+                <div style="font-size: 12px; color: #667eea; margin-top: 4px;">💡 {card['tip']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # Good vs Bad 비교
+    st.markdown("#### ⚖️ 좋은 표정 vs 나쁜 표정")
+    comparisons = [
+        ("👁️ 시선", "면접관 눈을 부드럽게 (70%)", "시선 회피, 두리번거림"),
+        ("🧍 자세", "어깨 펴고 바른 자세, 살짝 앞으로", "구부정, 기대앉음, 팔짱"),
+        ("😊 표정", "자연스러운 미소, 적절한 변화", "무표정, 과한 미소, 불안"),
+        ("🤚 제스처", "자연스러운 손동작, 열린 자세", "손 꼼지락, 머리 만지기"),
+    ]
+    for icon_name, good, bad in comparisons:
+        st.markdown(f"**{icon_name}**")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.success(f"✅ {good}")
+        with col2:
+            st.error(f"❌ {bad}")
+
+    st.markdown("---")
+
+    # FSC vs LCC 스타일
+    st.markdown("#### 🛫 FSC vs LCC 스타일 차이")
     col1, col2 = st.columns(2)
     with col1:
-        context = st.selectbox("연습 상황", ["1차 면접", "2차 면접", "최종 면접", "일반 연습"], key="ctx1")
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #00387620, #00387610); border: 2px solid #003876; border-radius: 16px; padding: 20px; text-align: center;">
+            <div style="font-size: 36px;">👩‍✈️</div>
+            <h4 style="color: #003876;">FSC (대한항공, 아시아나)</h4>
+            <p style="font-weight: bold;">"품위 있고 절제된 미소"</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.markdown("- 우아하고 세련된 느낌")
+        st.markdown("- 절제된 표현, 차분한 태도")
+        st.markdown("- 미소는 은은하게, 동작은 천천히")
+
     with col2:
-        airline_type = st.selectbox("항공사 유형", ["FSC (대한항공, 아시아나)", "LCC (제주, 진에어 등)"], key="air1")
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #FF660020, #FF660010); border: 2px solid #FF6600; border-radius: 16px; padding: 20px; text-align: center;">
+            <div style="font-size: 36px;">💁‍♀️</div>
+            <h4 style="color: #FF6600;">LCC (제주항공, 진에어 등)</h4>
+            <p style="font-weight: bold;">"밝고 에너지 넘치는 미소"</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.markdown("- 친근하고 활발한 느낌")
+        st.markdown("- 적극적인 표현, 젊은 이미지")
+        st.markdown("- 환한 미소, 활기찬 태도")
 
     st.markdown("---")
 
-    # 동영상 녹화
-    if VIDEO_RECORDER_AVAILABLE:
-        with st.expander("📹 동영상 녹화하기", expanded=True):
-            components.html(get_video_recorder_html(duration=15), height=700)
-
-    st.markdown("---")
-
-    # 동영상 업로드
-    st.markdown("### 📤 녹화한 영상 업로드")
-    video_file = st.file_uploader(
-        "위에서 저장한 영상 파일을 업로드하세요",
-        type=["webm", "mp4", "mov"],
-        key="video_upload"
-    )
-
-    if video_file:
-        st.video(video_file)
-        st.success(f"✅ 영상 업로드됨: {video_file.name}")
-
-        if st.button("🔍 AI 분석하기", type="primary", use_container_width=True):
-            with st.spinner("🤖 동영상 분석 중... (프레임 추출 → AI 분석)"):
-                video_bytes = video_file.getvalue()
-
-                st.info("📽️ 동영상에서 프레임 추출 중...")
-
-                if VIDEO_RECORDER_AVAILABLE and check_ffmpeg_available():
-                    frames = extract_frames_from_video(video_bytes, num_frames=5)
-                else:
-                    st.warning("ffmpeg가 설치되지 않아 프레임 추출이 제한됩니다. 이미지를 직접 업로드해주세요.")
-                    frames = []
-
-                if frames:
-                    st.success(f"✅ {len(frames)}개 프레임 추출 완료")
-
-                    st.info("🧠 AI 표정 분석 중...")
-                    result = analyze_video_frames(frames, f"{context}, {airline_type}")
-
-                    if result:
-                        st.session_state.expr_result = result
-                        # 기록에 추가
-                        add_to_history(f"{context} - {airline_type}", result)
-                        st.rerun()
-                    else:
-                        st.error("분석에 실패했습니다.")
-                else:
-                    st.error("프레임 추출에 실패했습니다.")
-
-    # 대체: 이미지 업로드
-    with st.expander("📷 또는 이미지 직접 업로드"):
-        images = st.file_uploader("이미지 여러 장 선택", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key="img_upload")
-
-        if images:
-            cols = st.columns(min(len(images), 5))
-            for i, img in enumerate(images[:5]):
-                with cols[i]:
-                    st.image(img, use_container_width=True)
-
-            if st.button("🔍 이미지 분석", use_container_width=True):
-                with st.spinner("분석 중..."):
-                    frames = [base64.b64encode(img.getvalue()).decode('utf-8') for img in images[:5]]
-                    result = analyze_video_frames(frames, f"{context}, {airline_type}")
-
-                    if result:
-                        st.session_state.expr_result = result
-                        add_to_history(f"{context} - {airline_type}", result)
-                        st.rerun()
-
-    # 결과 표시
-    if st.session_state.expr_result:
-        st.markdown("---")
-        st.markdown("### 📊 분석 결과")
-        display_result(st.session_state.expr_result)
-
-        if st.button("🔄 새로 연습하기", use_container_width=True):
-            st.session_state.expr_result = None
-            st.rerun()
+    # 연습 루틴
+    st.markdown("#### 🏋️ 일일 표정 연습 루틴")
+    with st.expander("📋 5분 연습 루틴 보기", expanded=True):
+        steps = [
+            "1️⃣ 무표정에서 시작 (얼굴 근육 이완)",
+            "2️⃣ 눈으로 먼저 웃기 (눈웃음 3초 유지)",
+            "3️⃣ 입꼬리 천천히 올리기 (자연스럽게)",
+            "4️⃣ 전체 미소 5초 유지 (듀센 스마일)",
+            "5️⃣ 천천히 미소 풀기 (1초에 걸쳐)",
+            "6️⃣ 위 과정 10회 반복",
+            "7️⃣ 사과/안내/공감 표정도 각 3회 연습",
+        ]
+        for step in steps:
+            st.markdown(step)
 
 
 # ========================================
-# Tab 2: 거울 모드
+# Tab 2: 연습 시나리오
 # ========================================
 with tab2:
-    st.markdown("### 🪞 거울 모드")
-    st.markdown("녹화 없이 실시간으로 표정을 확인하며 연습하세요!")
-
-    st.info("💡 **사용법**: 가이드라인을 켜서 얼굴 위치와 어깨 라인을 맞춰보세요. 타이머로 미소 유지 시간을 측정할 수 있습니다.")
-
-    components.html(get_mirror_mode_html(), height=750)
-
-    # 거울 모드 연습 체크리스트
-    st.markdown("### ✅ 거울 모드 연습 체크리스트")
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.markdown("**표정 체크**")
-        st.checkbox("눈웃음이 자연스럽게 나오나요?", key="m1")
-        st.checkbox("입꼬리가 적당히 올라가 있나요?", key="m2")
-        st.checkbox("미소가 10초 이상 유지되나요?", key="m3")
-        st.checkbox("표정이 긴장되어 보이지 않나요?", key="m4")
-
-    with col2:
-        st.markdown("**자세 체크**")
-        st.checkbox("어깨가 수평인가요?", key="m5")
-        st.checkbox("턱이 너무 들리거나 숙여지지 않았나요?", key="m6")
-        st.checkbox("목이 앞으로 빠지지 않았나요?", key="m7")
-        st.checkbox("전체적으로 자신감 있어 보이나요?", key="m8")
-
-
-# ========================================
-# Tab 3: 연습 시나리오
-# ========================================
-with tab3:
     st.markdown("### 🎭 상황별 연습 시나리오")
     st.markdown("실제 기내 상황을 상상하며 표정을 연습해보세요!")
 
@@ -1107,182 +884,78 @@ with tab3:
         for mistake in scenario['common_mistakes']:
             st.error(f"❌ {mistake}")
 
+    # 셀프 체크리스트
+    st.markdown("---")
+    st.markdown("#### ✅ 셀프 체크리스트")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**표정 체크**")
+        st.checkbox("눈웃음이 자연스럽게 나오나요?", key="m1")
+        st.checkbox("입꼬리가 적당히 올라가 있나요?", key="m2")
+        st.checkbox("미소가 10초 이상 유지되나요?", key="m3")
+        st.checkbox("표정이 긴장되어 보이지 않나요?", key="m4")
+    with col2:
+        st.markdown("**자세 체크**")
+        st.checkbox("어깨가 수평인가요?", key="m5")
+        st.checkbox("턱이 너무 들리거나 숙여지지 않았나요?", key="m6")
+        st.checkbox("목이 앞으로 빠지지 않았나요?", key="m7")
+        st.checkbox("전체적으로 자신감 있어 보이나요?", key="m8")
+
 
 # ========================================
-# Tab 4: 표정 예시
+# Tab 3: AI 분석 (간소화 - 이미지 업로드)
+# ========================================
+with tab3:
+    st.markdown("### 🔍 AI 표정 분석")
+    st.markdown("사진을 업로드하면 AI가 표정, 자세, 인상을 분석해드립니다.")
+
+    # 설정
+    col1, col2 = st.columns(2)
+    with col1:
+        context = st.selectbox("연습 상황", ["1차 면접", "2차 면접", "최종 면접", "일반 연습"], key="ctx1")
+    with col2:
+        airline_type = st.selectbox("항공사 유형", ["FSC (대한항공, 아시아나)", "LCC (제주, 진에어 등)"], key="air1")
+
+    st.markdown("---")
+
+    # 이미지 업로드
+    st.markdown("#### 📷 사진 업로드 (1~5장)")
+    st.caption("면접 연습 중 찍은 사진이나 셀카를 업로드하세요.")
+    images = st.file_uploader("이미지 선택", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key="img_upload")
+
+    if images:
+        cols = st.columns(min(len(images), 5))
+        for i, img in enumerate(images[:5]):
+            with cols[i]:
+                st.image(img, use_container_width=True)
+
+        if st.button("🔍 AI 분석하기", type="primary", use_container_width=True):
+            with st.spinner("🤖 AI가 표정을 분석하고 있습니다..."):
+                frames = [base64.b64encode(img.getvalue()).decode('utf-8') for img in images[:5]]
+                result = analyze_video_frames(frames, f"{context}, {airline_type}")
+
+                if result:
+                    st.session_state.expr_result = result
+                    add_to_history(f"{context} - {airline_type}", result)
+                    st.rerun()
+                else:
+                    st.error("분석에 실패했습니다. 다시 시도해주세요.")
+
+    # 결과 표시
+    if st.session_state.expr_result:
+        st.markdown("---")
+        st.markdown("### 📊 분석 결과")
+        display_result(st.session_state.expr_result)
+
+        if st.button("🔄 새로 분석하기", use_container_width=True):
+            st.session_state.expr_result = None
+            st.rerun()
+
+
+# ========================================
+# Tab 4: 연습 기록
 # ========================================
 with tab4:
-    st.markdown("### 📸 표정 예시 및 비교")
-
-    # 미소 유형
-    st.markdown("#### 😊 미소의 종류")
-    col1, col2 = st.columns(2)
-
-    duchenne = EXPRESSION_EXAMPLES["smile_types"]["duchenne"]
-    pan_am = EXPRESSION_EXAMPLES["smile_types"]["pan_am"]
-
-    with col1:
-        st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #28a74520, #28a74510); border: 2px solid #28a745; border-radius: 16px; padding: 20px;">
-            <h3 style="color: #28a745;">✅ {duchenne['name']}</h3>
-            <p>{duchenne['description']}</p>
-            <p><strong>특징:</strong></p>
-            <ul>
-        """, unsafe_allow_html=True)
-        for char in duchenne['characteristics']:
-            st.markdown(f"- {char}")
-        st.markdown("**연습법:**")
-        for how in duchenne['how_to']:
-            st.info(f"💡 {how}")
-
-    with col2:
-        st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #dc354520, #dc354510); border: 2px solid #dc3545; border-radius: 16px; padding: 20px;">
-            <h3 style="color: #dc3545;">❌ {pan_am['name']}</h3>
-            <p>{pan_am['description']}</p>
-            <p><strong>특징:</strong></p>
-            <ul>
-        """, unsafe_allow_html=True)
-        for char in pan_am['characteristics']:
-            st.markdown(f"- {char}")
-        st.markdown("**피하는 법:**")
-        for how in pan_am['how_to_avoid']:
-            st.warning(f"⚠️ {how}")
-
-    st.markdown("---")
-
-    # Good vs Bad
-    st.markdown("#### ⚖️ 좋은 표정 vs 나쁜 표정")
-
-    good_bad = EXPRESSION_EXAMPLES["good_vs_bad"]
-    for category, examples in good_bad.items():
-        category_names = {"eye_contact": "👁️ 시선 처리", "posture": "🧍 자세", "expression": "😊 표정", "gesture": "🤚 제스처"}
-        st.markdown(f"**{category_names.get(category, category)}**")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.success(f"✅ {examples['good']}")
-        with col2:
-            st.error(f"❌ {examples['bad']}")
-
-    st.markdown("---")
-
-    # FSC vs LCC
-    st.markdown("#### 🛫 FSC vs LCC 스타일 차이")
-
-    fsc_lcc = EXPRESSION_EXAMPLES["fsc_vs_lcc"]
-    col1, col2 = st.columns(2)
-
-    with col1:
-        fsc = fsc_lcc["FSC"]
-        st.markdown(f"""
-        <div style="background: linear-gradient(135deg, {fsc['color']}20, {fsc['color']}10); border: 2px solid {fsc['color']}; border-radius: 16px; padding: 20px;">
-            <h3 style="color: {fsc['color']};">{fsc['name']}</h3>
-            <p style="font-size: 18px; font-weight: bold;">"{fsc['style']}"</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown("**특징:**")
-        for char in fsc['characteristics']:
-            st.markdown(f"- {char}")
-
-        st.markdown("**면접 팁:**")
-        for tip in fsc['tips']:
-            st.info(f"💡 {tip}")
-
-    with col2:
-        lcc = fsc_lcc["LCC"]
-        st.markdown(f"""
-        <div style="background: linear-gradient(135deg, {lcc['color']}20, {lcc['color']}10); border: 2px solid {lcc['color']}; border-radius: 16px; padding: 20px;">
-            <h3 style="color: {lcc['color']};">{lcc['name']}</h3>
-            <p style="font-size: 18px; font-weight: bold;">"{lcc['style']}"</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown("**특징:**")
-        for char in lcc['characteristics']:
-            st.markdown(f"- {char}")
-
-        st.markdown("**면접 팁:**")
-        for tip in lcc['tips']:
-            st.info(f"💡 {tip}")
-
-
-# ========================================
-# Tab 5: 상세 가이드
-# ========================================
-with tab5:
-    st.markdown("### 📚 표정 연습 상세 가이드")
-
-    guide_tabs = st.tabs(["😊 듀센 스마일", "👁️ 눈웃음", "🙂 자연스러운 미소", "🧍 자세"])
-
-    # 듀센 스마일
-    with guide_tabs[0]:
-        guide = DETAILED_GUIDE["duchenne_smile"]
-        st.markdown(f"### {guide['title']}")
-        st.markdown(guide['description'])
-
-        for step in guide['steps']:
-            with st.expander(f"Step {step['step']}: {step['title']}", expanded=step['step']==1):
-                st.markdown(step['content'])
-                st.info(f"🎯 **연습**: {step['exercise']}")
-
-    # 눈웃음
-    with guide_tabs[1]:
-        guide = DETAILED_GUIDE["eye_smile"]
-        st.markdown(f"### {guide['title']}")
-        st.markdown(guide['description'])
-
-        st.markdown("#### 테크닉")
-        for tech in guide['techniques']:
-            st.markdown(f"""
-            <div style="background: white; border-radius: 12px; padding: 16px; margin: 10px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-                <h4 style="color: #667eea;">{tech['name']}</h4>
-                <p><strong>방법:</strong> {tech['how']}</p>
-                <p><strong>효과:</strong> {tech['effect']}</p>
-            </div>
-            """, unsafe_allow_html=True)
-
-        st.markdown("#### 일일 연습")
-        for ex in guide['daily_exercise']:
-            st.checkbox(ex, key=f"eye_{ex}")
-
-    # 자연스러운 미소
-    with guide_tabs[2]:
-        guide = DETAILED_GUIDE["natural_smile"]
-        st.markdown(f"### {guide['title']}")
-        st.markdown(guide['description'])
-
-        for tip in guide['tips']:
-            with st.expander(tip['title']):
-                st.markdown(tip['content'])
-                if 'degree' in tip:
-                    st.info(f"📐 권장 각도: {tip['degree']}")
-                if 'tip' in tip:
-                    st.success(f"💡 팁: {tip['tip']}")
-
-        st.markdown("#### 연습 루틴")
-        for i, routine in enumerate(guide['practice_routine'], 1):
-            st.markdown(f"{routine}")
-
-    # 자세
-    with guide_tabs[3]:
-        guide = DETAILED_GUIDE["posture"]
-        st.markdown(f"### {guide['title']}")
-
-        for section in guide['sections']:
-            st.markdown(f"#### {section['part']}")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.success(f"✅ **올바른 자세**: {section['correct']}")
-            with col2:
-                st.error(f"❌ **잘못된 자세**: {section['incorrect']}")
-            st.info(f"💡 **팁**: {section['tip']}")
-
-
-# ========================================
-# Tab 6: 연습 기록
-# ========================================
-with tab6:
     st.markdown("### 📊 연습 기록")
 
     history = load_history()

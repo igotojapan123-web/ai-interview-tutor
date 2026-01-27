@@ -3,7 +3,6 @@
 # 기능: 꼬리질문, 연속질문모드, 누적기록, 텍스트모드, 답변리라이트
 
 import streamlit as st
-import streamlit.components.v1 as components
 import os
 import sys
 import json
@@ -33,12 +32,6 @@ OPENAI_API_URL = "https://api.openai.com/v1"
 # 누적 기록 파일 경로
 HISTORY_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "practice_history.json")
 
-# 동영상 모듈
-try:
-    from video_recorder import get_video_recorder_html, extract_frames_from_video, extract_audio_from_video, check_ffmpeg_available
-    VIDEO_AVAILABLE = True
-except ImportError:
-    VIDEO_AVAILABLE = False
 
 # 질문 DB (확장)
 INTERVIEW_QUESTIONS = {
@@ -115,7 +108,7 @@ def save_history(history: List[Dict]):
 DEFAULT_STATE = {
     "practice_started": False,
     "practice_mode": "single",
-    "answer_mode": "video",
+    "answer_mode": "text",
     "question": None,
     "category": None,
     "airline": "",
@@ -333,86 +326,66 @@ def rewrite_answer(question: str, answer: str, airline: str, atype: str, feedbac
         return None
 
 
-def calc_total(voice: Dict, content: Dict, expr: Dict, mode: str = "video") -> Dict:
+def calc_total(voice: Dict, content: Dict, expr: Dict, mode: str = "text") -> Dict:
     v = voice.get("total_score", 0) if voice else 0
     c = content.get("total_score", 0) if content and not content.get("error") else 0
-    e = expr.get("overall_score", 0) if expr else 0
 
     if mode == "text":
         total = c
     else:
-        total = int(c * 0.5 + e * 0.3 + v * 0.2)
+        total = int(c * 0.7 + v * 0.3)
 
     if total >= 85:
-        return {"total_score": total, "grade": "S", "grade_text": "탁월함", "color": "#667eea", "breakdown": {"voice": v, "content": c, "expression": e}}
+        return {"total_score": total, "grade": "S", "grade_text": "탁월함", "color": "#667eea", "breakdown": {"voice": v, "content": c}}
     elif total >= 75:
-        return {"total_score": total, "grade": "A", "grade_text": "우수", "color": "#28a745", "breakdown": {"voice": v, "content": c, "expression": e}}
+        return {"total_score": total, "grade": "A", "grade_text": "우수", "color": "#28a745", "breakdown": {"voice": v, "content": c}}
     elif total >= 65:
-        return {"total_score": total, "grade": "B", "grade_text": "양호", "color": "#17a2b8", "breakdown": {"voice": v, "content": c, "expression": e}}
+        return {"total_score": total, "grade": "B", "grade_text": "양호", "color": "#17a2b8", "breakdown": {"voice": v, "content": c}}
     elif total >= 50:
-        return {"total_score": total, "grade": "C", "grade_text": "보통", "color": "#ffc107", "breakdown": {"voice": v, "content": c, "expression": e}}
+        return {"total_score": total, "grade": "C", "grade_text": "보통", "color": "#ffc107", "breakdown": {"voice": v, "content": c}}
     else:
-        return {"total_score": total, "grade": "D", "grade_text": "개선필요", "color": "#dc3545", "breakdown": {"voice": v, "content": c, "expression": e}}
+        return {"total_score": total, "grade": "D", "grade_text": "개선필요", "color": "#dc3545", "breakdown": {"voice": v, "content": c}}
 
 
 def get_directions(voice: Dict, content: Dict, expr: Dict) -> List[str]:
     d = []
     if voice and voice.get("speech_rate", {}).get("score", 10) < 7:
         d.append(f"🎤 **말 속도**: {voice['speech_rate'].get('feedback', '')}")
+    if voice and voice.get("filler", {}).get("score", 10) < 7:
+        d.append(f"🎤 **추임새**: '음', '어' 등을 줄여보세요.")
     if content and not content.get("error"):
         for i in content.get("improvements", [])[:2]:
             d.append(f"📝 {i}")
-    if expr and expr.get("expression", {}).get("score", 10) < 7:
-        d.append(f"😊 **표정**: {expr['expression'].get('feedback', '')}")
     if len(d) < 3:
-        d.extend(["🎯 핵심 키워드를 정리하고 답변하세요.", "👀 카메라를 바라보며 답변하세요."])
+        d.extend(["🎯 핵심 키워드를 정리하고 답변하세요.", "⏱️ 60~90초 내 답변을 완성하세요."])
     return d[:5]
 
 
-def run_analysis(question: str, airline: str, atype: str, video_file=None, text_answer: str = "", mode: str = "video") -> Dict:
+def run_analysis(question: str, airline: str, atype: str, audio_bytes=None, text_answer: str = "", mode: str = "text") -> Dict:
     """통합 분석 실행"""
     voice_analysis = {}
     content_analysis = {}
-    expr_analysis = {}
     answer_text = text_answer
 
-    if mode == "video" and video_file:
-        video_bytes = video_file.getvalue() if hasattr(video_file, 'getvalue') else video_file
-
-        frames = []
-        if VIDEO_AVAILABLE and check_ffmpeg_available():
-            st.info("📽️ 프레임 추출 중...")
-            frames = extract_frames_from_video(video_bytes, num_frames=5)
-
-        audio_bytes = None
-        if VIDEO_AVAILABLE and check_ffmpeg_available():
-            st.info("🎤 음성 추출 중...")
-            audio_bytes = extract_audio_from_video(video_bytes)
-
-        if audio_bytes:
-            st.info("🎤 음성 인식 중...")
-            transcription = transcribe_audio(audio_bytes)
-            if transcription and transcription.get("text"):
-                answer_text = transcription["text"]
-                voice_analysis = analyze_voice(transcription)
-
-        if frames:
-            st.info("😊 표정 분석 중...")
-            expr_analysis = analyze_expression(frames, f"{airline} {atype}") or {}
+    if mode == "voice" and audio_bytes:
+        st.info("🎤 음성 인식 중...")
+        transcription = transcribe_audio(audio_bytes)
+        if transcription and transcription.get("text"):
+            answer_text = transcription["text"]
+            voice_analysis = analyze_voice(transcription)
 
     if answer_text:
         st.info("📝 내용 분석 중...")
         content_analysis = analyze_content(question, answer_text, airline, atype)
 
-    total = calc_total(voice_analysis, content_analysis, expr_analysis, mode)
-    directions = get_directions(voice_analysis, content_analysis, expr_analysis)
+    total = calc_total(voice_analysis, content_analysis, {}, mode)
+    directions = get_directions(voice_analysis, content_analysis, {})
 
     return {
         "question": question,
         "answer": answer_text,
         "voice": voice_analysis,
         "content": content_analysis,
-        "expression": expr_analysis,
         "total": total,
         "directions": directions,
         "mode": mode,
@@ -436,13 +409,11 @@ def display_result(r: Dict, show_followup: bool = True, show_rewrite: bool = Tru
     if r.get("mode") == "text":
         st.metric("📝 답변 내용", f"{t['breakdown']['content']}점")
     else:
-        c1, c2, c3 = st.columns(3)
+        c1, c2 = st.columns(2)
         with c1:
-            st.metric("📝 답변 내용 (50%)", f"{t['breakdown']['content']}점")
+            st.metric("📝 답변 내용 (70%)", f"{t['breakdown']['content']}점")
         with c2:
-            st.metric("😊 표정/자세 (30%)", f"{t['breakdown']['expression']}점")
-        with c3:
-            st.metric("🎤 음성 전달 (20%)", f"{t['breakdown']['voice']}점")
+            st.metric("🎤 음성 전달 (30%)", f"{t['breakdown']['voice']}점")
 
     if r.get("answer"):
         st.markdown("#### 🎤 인식된 답변")
@@ -473,8 +444,8 @@ def display_result(r: Dict, show_followup: bool = True, show_rewrite: bool = Tru
             if content_data.get("sample_answer"):
                 st.info(f"💡 모범답변: {content_data['sample_answer']}")
     else:
-        tab1, tab2, tab3 = st.tabs(["📝 답변", "😊 표정", "🎤 음성"])
-        with tab1:
+        tab_a, tab_b = st.tabs(["📝 답변", "🎤 음성"])
+        with tab_a:
             if content_data and not content_data.get("error"):
                 col1, col2 = st.columns(2)
                 with col1:
@@ -489,19 +460,7 @@ def display_result(r: Dict, show_followup: bool = True, show_rewrite: bool = Tru
                         st.warning(f"△ {i}")
                 if content_data.get("sample_answer"):
                     st.info(f"💡 모범답변: {content_data['sample_answer']}")
-        with tab2:
-            e = r.get("expression", {})
-            if e:
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.metric("표정", f"{e.get('expression', {}).get('score', 0)}/10")
-                    st.caption(e.get('expression', {}).get('feedback', ''))
-                with col2:
-                    st.metric("인상", f"{e.get('impression', {}).get('score', 0)}/10")
-                    st.caption(e.get('impression', {}).get('feedback', ''))
-            else:
-                st.caption("표정 분석 데이터 없음")
-        with tab3:
+        with tab_b:
             v = r.get("voice", {})
             if v:
                 col1, col2, col3 = st.columns(3)
@@ -557,7 +516,7 @@ def display_result(r: Dict, show_followup: bool = True, show_rewrite: bool = Tru
 # 메인 UI
 # ========================================
 st.title("🎯 실전 면접 연습")
-st.markdown("동영상 또는 텍스트로 답변하고 **AI 종합 분석** + **꼬리질문** + **답변 개선**까지!")
+st.markdown("텍스트 또는 음성으로 답변하고 **AI 종합 분석** + **꼬리질문** + **답변 개선**까지!")
 
 if not OPENAI_API_KEY:
     st.error("OpenAI API 키가 필요합니다.")
@@ -591,8 +550,8 @@ if not st.session_state.practice_started:
     with mode_col2:
         answer_mode = st.radio(
             "답변 방식",
-            ["video", "text"],
-            format_func=lambda x: "🎬 영상 녹화" if x == "video" else "⌨️ 텍스트 입력",
+            ["text", "voice"],
+            format_func=lambda x: "⌨️ 텍스트 입력" if x == "text" else "🎤 음성 녹음",
             horizontal=True
         )
 
@@ -648,7 +607,7 @@ else:
     # 질문 표시
     st.markdown(f"""
     <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 20px; padding: 30px; margin-bottom: 30px;">
-        <div style="font-size: 14px; opacity: 0.8;">{airline} ({atype}) | {QUESTION_CATEGORIES.get(st.session_state.category, '')} | {'텍스트 모드' if mode == 'text' else '영상 모드'}</div>
+        <div style="font-size: 14px; opacity: 0.8;">{airline} ({atype}) | {QUESTION_CATEGORIES.get(st.session_state.category, '')} | {'텍스트 모드' if mode == 'text' else '음성 모드'}</div>
         <div style="font-size: 24px; font-weight: bold; margin-top: 10px;">"{q}"</div>
     </div>
     """, unsafe_allow_html=True)
@@ -664,7 +623,7 @@ else:
         avg_total = calc_total(
             {"total_score": int(sum(r["total"]["breakdown"]["voice"] for r in results) / len(results))},
             {"total_score": int(sum(r["total"]["breakdown"]["content"] for r in results) / len(results))},
-            {"overall_score": int(sum(r["total"]["breakdown"]["expression"] for r in results) / len(results))},
+            {},
             mode
         )
 
@@ -752,23 +711,22 @@ else:
                     save_history(st.session_state.persistent_history)
                     st.rerun()
         else:
-            st.markdown("### 🎬 동영상으로 답변하기")
-            st.info("💡 질문을 읽고, 카메라를 보며 답변하세요. 녹화 완료 후 업로드")
-            if VIDEO_AVAILABLE:
-                components.html(get_video_recorder_html(duration=60), height=720)
-            st.markdown("---")
-            st.markdown("### 📤 녹화한 영상 업로드")
-            video_file = st.file_uploader("영상 파일 업로드", type=["webm", "mp4", "mov"], key="video")
-            if video_file:
-                st.video(video_file)
+            st.markdown("### 🎤 음성으로 답변하기")
+            st.caption("💡 질문을 읽고, 마이크 버튼을 눌러 답변을 녹음하세요. 60~90초가 적당합니다.")
+
+            audio_value = st.audio_input("🎙️ 녹음하기", key="voice_answer_input")
+
+            if audio_value:
+                st.audio(audio_value)
                 if st.button("🔍 분석하기", type="primary", use_container_width=True):
-                    with st.spinner("🤖 종합 분석 중... (1-2분 소요)"):
-                        result = run_analysis(q, airline, atype, video_file=video_file, mode="video")
+                    with st.spinner("🤖 음성 분석 중..."):
+                        audio_bytes = audio_value.getvalue()
+                        result = run_analysis(q, airline, atype, audio_bytes=audio_bytes, mode="voice")
                         st.session_state.result = result
                         st.session_state.history.append(result)
                         st.session_state.persistent_history.append({
                             "question": q, "score": result["total"]["total_score"],
-                            "grade": result["total"]["grade"], "mode": "video",
+                            "grade": result["total"]["grade"], "mode": "voice",
                             "airline": airline, "category": st.session_state.category,
                             "timestamp": result["timestamp"]
                         })
@@ -809,13 +767,13 @@ else:
                             st.session_state.followup_result = followup_result
                             st.rerun()
                 else:
-                    st.markdown("##### 📤 꼬리질문 답변 영상 업로드")
-                    followup_video = st.file_uploader("영상 업로드", type=["webm", "mp4", "mov"], key="followup_video")
-                    if followup_video and st.button("🔍 꼬리질문 답변 분석", type="primary", key="followup_analyze"):
+                    st.markdown("##### 🎤 꼬리질문 음성 답변")
+                    followup_audio = st.audio_input("🎙️ 녹음하기", key="followup_audio")
+                    if followup_audio and st.button("🔍 꼬리질문 답변 분석", type="primary", key="followup_analyze"):
                         with st.spinner("분석 중..."):
                             followup_result = run_analysis(
                                 st.session_state.followup_question, airline, atype,
-                                video_file=followup_video, mode="video"
+                                audio_bytes=followup_audio.getvalue(), mode="voice"
                             )
                             st.session_state.followup_result = followup_result
                             st.rerun()

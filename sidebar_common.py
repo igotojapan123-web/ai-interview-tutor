@@ -61,6 +61,27 @@ def render_sidebar(current_page=""):
         [data-testid="stSidebar"] nav { display: none !important; }
         [data-testid="stSidebarUserContent"] > div:first-child > ul { display: none !important; }
         .st-emotion-cache-16tkqhc { display: none !important; }
+
+        /* 탭 오버플로우 방지 - 스크롤 가능한 탭 바 */
+        .stTabs [data-baseweb="tab-list"] {
+            overflow-x: auto;
+            flex-wrap: nowrap !important;
+            gap: 2px;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            padding-bottom: 4px;
+        }
+        .stTabs [data-baseweb="tab-list"] button {
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar {
+            height: 4px;
+        }
+        .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.2);
+            border-radius: 2px;
+        }
         .st-emotion-cache-eczf16 { display: none !important; }
         [data-testid="stSidebar"] [data-testid="stPageLink"] { display: none !important; }
         [data-testid="stSidebar"] button[kind="header"] { display: none !important; }

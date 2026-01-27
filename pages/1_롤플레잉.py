@@ -63,8 +63,8 @@ except ImportError:
 from sidebar_common import render_sidebar
 
 st.set_page_config(
-    page_title="롤플레잉 시뮬레이션 | flyready_lab",
-    page_icon="🎭",
+    page_title="롤플레잉 시뮬레이션 | FlyReady Lab",
+    page_icon="✈️",
     layout="wide"
 )
 render_sidebar("롤플레잉")
@@ -172,9 +172,9 @@ def render_emotion_gauge(level: int, previous_level: int = None):
     # 감정 변화 표시
     if previous_level is not None and previous_level != level:
         if level > previous_level:
-            st.error("😠 승객이 더 화났습니다!")
+            st.error("승객이 더 화났습니다!")
         else:
-            st.success("😌 승객이 진정되었습니다")
+            st.success("승객이 진정되었습니다")
 
     # 감정 게이지를 Streamlit 기본 컴포넌트로 표현
     col1, col2, col3 = st.columns([1, 3, 1])
@@ -219,7 +219,7 @@ def get_hint(scenario: dict, escalation_level: int, turn: int) -> str:
 def render_hint_box(hint: str, show_hint: bool):
     """힌트 박스 렌더링"""
     if show_hint and is_premium_user():
-        st.info(f"💡 **힌트:** {hint}")
+        st.info(f"**힌트:** {hint}")
 
 # =====================
 # 타이머 컴포넌트 (실시간 카운트다운)
@@ -754,7 +754,7 @@ def check_escalation(scenario: dict, user_message: str, current_level: int) -> i
 # =====================
 # UI 시작
 # =====================
-st.title("🎭 롤플레잉 시뮬레이션")
+st.title("롤플레잉 시뮬레이션")
 st.caption("AI 승객과 대화하며 기내 상황 대응 연습을 해보세요")
 
 # 상단 상태 표시
@@ -843,7 +843,7 @@ if st.session_state.rp_scenario is None:
 
     # 복습 섹션
     if progress.get("history") and is_premium_user():
-        st.subheader("📚 최근 연습 기록")
+        st.subheader("최근 연습 기록")
         for i, hist in enumerate(progress["history"][:5]):
             sc_id = hist.get("scenario_id", "")
             sc_info = get_scenario_by_id(sc_id)
@@ -870,26 +870,26 @@ elif not st.session_state.rp_ready:
     st.divider()
 
     # 연습 설정 (잘 보이게)
-    st.subheader("⚙️ 연습 설정")
+    st.subheader("연습 설정")
     st.caption("연습 방식을 선택하세요")
 
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("##### 📝 입력 방식")
+        st.markdown("##### 입력 방식")
         input_mode = st.radio(
             "응답 입력 방식 선택",
-            ["⌨️ 타자 입력", "🎤 음성 입력"],
+            ["타자 입력", "음성 입력"],
             label_visibility="collapsed",
             help="타자로 입력하거나 음성으로 말할 수 있습니다"
         )
-        st.session_state.rp_voice_mode = (input_mode == "🎤 음성 입력") and UTILS_AVAILABLE
+        st.session_state.rp_voice_mode = (input_mode == "음성 입력") and UTILS_AVAILABLE
 
-        if input_mode == "🎤 음성 입력" and not UTILS_AVAILABLE:
+        if input_mode == "음성 입력" and not UTILS_AVAILABLE:
             st.warning("음성 기능이 현재 사용 불가합니다")
 
     with col2:
-        st.markdown("##### 🔊 승객 음성")
+        st.markdown("##### 승객 음성")
         passenger_voice = st.checkbox(
             "승객 대사를 음성으로 듣기",
             value=st.session_state.get("rp_passenger_voice", False),
@@ -903,7 +903,7 @@ elif not st.session_state.rp_ready:
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("##### ⏱️ 타이머")
+        st.markdown("##### 타이머")
         st.session_state.rp_timer_enabled = st.checkbox(
             "30초 응답 제한 타이머",
             value=st.session_state.rp_timer_enabled,
@@ -911,7 +911,7 @@ elif not st.session_state.rp_ready:
         )
 
     with col2:
-        st.markdown("##### 💡 힌트")
+        st.markdown("##### 힌트")
         st.session_state.rp_show_hint = st.checkbox(
             "상황별 힌트 표시",
             value=st.session_state.rp_show_hint,
@@ -925,13 +925,13 @@ elif not st.session_state.rp_ready:
     # 시작 버튼
     col1, col2, col3 = st.columns([1, 2, 1])
     with col1:
-        if st.button("◀ 다른 시나리오", use_container_width=True):
+        if st.button("다른 시나리오", use_container_width=True):
             st.session_state.rp_scenario = None
             st.session_state.rp_ready = False
             st.rerun()
 
     with col2:
-        if st.button("🚀 연습 시작!", type="primary", use_container_width=True):
+        if st.button("연습 시작", type="primary", use_container_width=True):
             # 사용량 체크
 
             # 초기화 및 첫 대사 생성
@@ -978,7 +978,7 @@ else:
         difficulty_stars = "⭐" * scenario["difficulty"]
         st.markdown(f"**난이도**  \n{difficulty_stars}")
     with col4:
-        if st.button("🚪 나가기", type="secondary"):
+        if st.button("나가기", type="secondary"):
             st.session_state.rp_scenario = None
             st.session_state.rp_ready = False
             st.session_state.rp_messages = []
@@ -1237,7 +1237,7 @@ else:
     else:
         # 평가 단계
         st.divider()
-        st.subheader("📊 대응 평가")
+        st.subheader("대응 평가")
 
         if st.session_state.rp_evaluation is None:
             with st.spinner("대응을 평가하고 있습니다..."):
@@ -1298,20 +1298,20 @@ else:
                     end_level = levels[-1]
 
                     if end_level < start_level:
-                        st.success("🎉 승객의 감정을 진정시키는 데 성공했습니다!")
+                        st.success("승객의 감정을 진정시키는 데 성공했습니다!")
                     elif end_level > start_level:
-                        st.warning("⚠️ 승객의 감정이 더 악화되었습니다. 공감과 해결책 제시를 연습해보세요.")
+                        st.warning("승객의 감정이 더 악화되었습니다. 공감과 해결책 제시를 연습해보세요.")
                     else:
                         st.info("승객의 감정이 유지되었습니다.")
 
                 if SCORE_UTILS_AVAILABLE:
-                    st.success("📊 점수가 성장그래프에 자동 저장되었습니다.")
+                    st.success("점수가 성장그래프에 자동 저장되었습니다.")
 
                 # 음성 분석 결과 표시
                 voice_analysis = st.session_state.get("rp_voice_analysis")
                 if voice_analysis and "error" not in voice_analysis:
                     st.divider()
-                    st.subheader("🎙️ 음성 전달력 분석")
+                    st.subheader("음성 전달력 분석")
 
                     # 종합 점수
                     total_score = voice_analysis.get("total_score", 0)
@@ -1436,7 +1436,7 @@ else:
                 elif voice_analysis and "error" in voice_analysis:
                     st.warning(f"음성 분석 오류: {voice_analysis.get('error')}")
                 elif not st.session_state.rp_audio_bytes_list:
-                    st.info("💡 음성 모드로 응답하면 목소리 떨림, 말끝 흐림 등 상세 분석을 받을 수 있습니다.")
+                    st.info("음성 모드로 응답하면 목소리 떨림, 말끝 흐림 등 상세 분석을 받을 수 있습니다.")
 
                 # 맞춤 추천 시나리오
                 if REPORT_AVAILABLE and voice_analysis:
@@ -1448,7 +1448,7 @@ else:
 
                     if recommendations:
                         st.divider()
-                        st.subheader("🎯 약점 기반 맞춤 추천")
+                        st.subheader("약점 기반 맞춤 추천")
                         st.caption("분석 결과를 바탕으로 개선이 필요한 부분을 연습할 수 있는 시나리오를 추천합니다.")
 
                         for rec in recommendations:
@@ -1477,7 +1477,7 @@ else:
                 # PDF 리포트 다운로드
                 if REPORT_AVAILABLE:
                     st.divider()
-                    st.subheader("📄 리포트 다운로드")
+                    st.subheader("리포트 다운로드")
 
                     col_pdf1, col_pdf2 = st.columns([2, 1])
                     with col_pdf1:
@@ -1494,7 +1494,7 @@ else:
                             filename = get_report_filename(scenario.get("title", ""))
 
                             st.download_button(
-                                label="📥 PDF 리포트 다운로드",
+                                label="PDF 리포트 다운로드",
                                 data=pdf_bytes,
                                 file_name=filename,
                                 mime="application/pdf",
@@ -1507,7 +1507,7 @@ else:
 
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("🔄 같은 시나리오 다시하기", use_container_width=True):
+            if st.button("같은 시나리오 다시하기", use_container_width=True):
                 sc = st.session_state.rp_scenario
                 st.session_state.rp_messages = []
                 st.session_state.rp_turn = 0
@@ -1536,7 +1536,7 @@ else:
                 st.rerun()
 
         with col2:
-            if st.button("📋 다른 시나리오 선택", type="primary", use_container_width=True):
+            if st.button("다른 시나리오 선택", type="primary", use_container_width=True):
                 st.session_state.rp_scenario = None
                 st.session_state.rp_ready = False
                 st.session_state.rp_messages = []

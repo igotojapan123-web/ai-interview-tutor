@@ -1,10 +1,17 @@
 # sidebar_common.py
-# 공통 사이드바 모듈 - 모든 페이지에서 import하여 사용
+# 공통 사이드바 모듈 - 전문적인 디자인 (이모지 없는 버전)
 
 import streamlit as st
 import base64
 from pathlib import Path
 from env_config import ADMIN_PASSWORD
+
+# 디자인 시스템 import
+try:
+    from ui_config import NAV_MENU, COLORS, get_sidebar_css
+    UI_CONFIG_AVAILABLE = True
+except ImportError:
+    UI_CONFIG_AVAILABLE = False
 
 @st.cache_resource
 def get_logo_base64():
@@ -15,216 +22,138 @@ def get_logo_base64():
             return base64.b64encode(f.read()).decode()
     return None
 
-# 네비게이션 메뉴 구조
-NAV_MENU = {
-    "면접 연습": [
-        {"icon": "🎤", "name": "모의면접", "page": "모의면접"},
-        {"icon": "🎭", "name": "롤플레잉", "page": "롤플레잉"},
-        {"icon": "🌐", "name": "영어면접", "page": "영어면접"},
-        {"icon": "💬", "name": "토론면접", "page": "토론면접"},
-    ],
-    "준비 도구": [
-        {"icon": "📝", "name": "자소서 첨삭", "page": "자소서첨삭"},
-        {"icon": "🎯", "name": "실전 연습", "page": "실전연습"},
-        {"icon": "👗", "name": "이미지메이킹", "page": "이미지메이킹"},
-        {"icon": "🎙️", "name": "기내방송 연습", "page": "기내방송연습"},
-        {"icon": "😊", "name": "표정 연습", "page": "표정연습"},
-    ],
-    "학습 · 정보": [
-        {"icon": "✈️", "name": "항공 퀴즈", "page": "항공사퀴즈"},
-        {"icon": "💡", "name": "면접 꿀팁", "page": "면접꿀팁"},
-        {"icon": "🏢", "name": "항공사 가이드", "page": "항공사가이드"},
-        {"icon": "🏋️", "name": "국민체력", "page": "국민체력"},
-        {"icon": "📊", "name": "기업 분석", "page": "기업분석"},
-    ],
-    "학습 관리": [
-        {"icon": "📈", "name": "진도 관리", "page": "진도관리"},
-        {"icon": "📉", "name": "성장 그래프", "page": "성장그래프"},
-        {"icon": "📢", "name": "채용 알림", "page": "채용알림"},
-        {"icon": "🏆", "name": "합격자 DB", "page": "합격자DB"},
-        {"icon": "📅", "name": "D-Day 캘린더", "page": "D-Day캘린더"},
-    ],
-}
 
 def render_sidebar(current_page=""):
-    """공통 사이드바 렌더링
+    """공통 사이드바 렌더링 (전문적인 디자인)
 
     Args:
         current_page: 현재 페이지 이름 (예: "모의면접", "롤플레잉" 등)
     """
     with st.sidebar:
-        # 사이드바 CSS
-        st.markdown("""
-        <style>
-        /* 기본 Streamlit 페이지 네비게이션 숨김 */
-        [data-testid="stSidebarNav"] { display: none !important; }
-        [data-testid="stSidebarNavItems"] { display: none !important; }
-        [data-testid="stSidebarNavLink"] { display: none !important; }
-        [data-testid="stSidebarNavSeparator"] { display: none !important; }
-        [data-testid="stSidebar"] nav { display: none !important; }
-        [data-testid="stSidebarUserContent"] > div:first-child > ul { display: none !important; }
-        .st-emotion-cache-16tkqhc { display: none !important; }
+        # CSS 스타일 적용
+        if UI_CONFIG_AVAILABLE:
+            st.markdown(get_sidebar_css(), unsafe_allow_html=True)
+        else:
+            # 폴백 CSS
+            st.markdown("""
+            <style>
+            [data-testid="stSidebarNav"] { display: none !important; }
+            [data-testid="stSidebarNavItems"] { display: none !important; }
+            [data-testid="stSidebarNavLink"] { display: none !important; }
+            [data-testid="stSidebarNavSeparator"] { display: none !important; }
+            [data-testid="stSidebar"] nav { display: none !important; }
+            [data-testid="stSidebarUserContent"] > div:first-child > ul { display: none !important; }
+            .st-emotion-cache-16tkqhc { display: none !important; }
+            .st-emotion-cache-eczf16 { display: none !important; }
+            [data-testid="stSidebar"] [data-testid="stPageLink"] { display: none !important; }
+            [data-testid="stSidebar"] button[kind="header"] { display: none !important; }
+            [data-testid="stSidebarCollapseButton"] { display: none !important; }
 
-        /* 탭 오버플로우 방지 - 스크롤 가능한 탭 바 */
-        .stTabs [data-baseweb="tab-list"] {
-            overflow-x: auto;
-            flex-wrap: nowrap !important;
-            gap: 2px;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: thin;
-            padding-bottom: 4px;
-        }
-        .stTabs [data-baseweb="tab-list"] button {
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-        .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar {
-            height: 4px;
-        }
-        .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar-thumb {
-            background: rgba(0,0,0,0.2);
-            border-radius: 2px;
-        }
-        .st-emotion-cache-eczf16 { display: none !important; }
-        [data-testid="stSidebar"] [data-testid="stPageLink"] { display: none !important; }
-        [data-testid="stSidebar"] button[kind="header"] { display: none !important; }
-        [data-testid="stSidebarCollapseButton"] { display: none !important; }
+            .stTabs [data-baseweb="tab-list"] {
+                overflow-x: auto;
+                flex-wrap: nowrap !important;
+                gap: 2px;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: thin;
+                padding-bottom: 4px;
+            }
+            .stTabs [data-baseweb="tab-list"] button {
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+            .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar {
+                height: 4px;
+            }
+            .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar-thumb {
+                background: rgba(0,0,0,0.2);
+                border-radius: 2px;
+            }
 
-        [data-testid="stSidebar"] {
-            background: linear-gradient(180deg, #0f2439 0%, #1a3a5c 30%, #1e4976 100%);
-            min-width: 260px;
-            max-width: 260px;
-        }
-        [data-testid="stSidebar"] * {
-            color: white !important;
-        }
-        [data-testid="stSidebar"] .stMarkdown p {
-            color: white !important;
-        }
+            [data-testid="stSidebar"] {
+                background: linear-gradient(180deg, #0f2439 0%, #1e3a5f 30%, #2d5a87 100%);
+                min-width: 260px;
+                max-width: 260px;
+            }
+            [data-testid="stSidebar"] * {
+                color: white !important;
+            }
+            [data-testid="stSidebar"] .stMarkdown p {
+                color: white !important;
+            }
+            </style>
+            """, unsafe_allow_html=True)
 
-        .sidebar-header {
-            text-align: center;
-            padding: 20px 15px 15px 15px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            margin-bottom: 10px;
-        }
-        .sidebar-logo {
-            height: 36px;
-            margin-bottom: 8px;
-        }
-        .sidebar-brand {
-            font-size: 1.1rem;
-            font-weight: 800;
-            color: white !important;
-            letter-spacing: -0.5px;
-        }
-        .sidebar-crew {
-            margin-top: 10px;
-            font-size: 2.5rem;
-            line-height: 1;
-        }
-        .sidebar-tagline {
-            font-size: 0.7rem;
-            color: rgba(255,255,255,0.6) !important;
-            margin-top: 5px;
-        }
-
-        .sidebar-home-btn {
-            display: block;
-            text-align: center;
-            padding: 10px;
-            margin: 10px 10px 15px 10px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 8px;
-            color: white !important;
-            text-decoration: none;
-            font-size: 0.85rem;
-            font-weight: 600;
-            transition: background 0.2s;
-        }
-        .sidebar-home-btn:hover {
-            background: rgba(255,255,255,0.2);
-        }
-
-        .sidebar-category {
-            font-size: 0.7rem;
-            font-weight: 700;
-            color: rgba(255,255,255,0.45) !important;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: 12px 18px 5px 18px;
-            margin-top: 5px;
-        }
-
-        .sidebar-nav-item {
-            display: block;
-            padding: 8px 18px;
-            color: rgba(255,255,255,0.8) !important;
-            text-decoration: none;
-            font-size: 0.85rem;
-            font-weight: 500;
-            border-left: 3px solid transparent;
-            transition: all 0.2s;
-        }
-        .sidebar-nav-item:hover {
-            background: rgba(255,255,255,0.08);
-            color: white !important;
-            border-left-color: rgba(255,255,255,0.3);
-        }
-        .sidebar-nav-item.active {
-            background: rgba(59,130,246,0.25);
-            color: white !important;
-            border-left-color: #60a5fa;
-            font-weight: 700;
-        }
-
-        .sidebar-footer {
-            position: fixed;
-            bottom: 0;
-            width: 260px;
-            text-align: center;
-            padding: 12px 10px;
-            background: rgba(0,0,0,0.2);
-            border-top: 1px solid rgba(255,255,255,0.08);
-        }
-        .sidebar-footer-text {
-            font-size: 0.65rem;
-            color: rgba(255,255,255,0.35) !important;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-
-        # 헤더 (로고 + 승무원 이미지)
+        # 헤더 (로고)
         logo_b64 = get_logo_base64()
         if logo_b64:
-            logo_img = f'<img src="data:image/png;base64,{logo_b64}" class="sidebar-logo">'
+            logo_img = f'<img src="data:image/png;base64,{logo_b64}" class="fr-sidebar-logo">'
         else:
-            logo_img = '<div class="sidebar-brand">flyready_lab</div>'
+            logo_img = '<div class="fr-sidebar-brand">FlyReady Lab</div>'
 
         st.markdown(f"""
-        <div class="sidebar-header">
+        <div class="fr-sidebar-header">
             {logo_img}
-            <div class="sidebar-crew">👩‍✈️</div>
-            <div class="sidebar-tagline">AI 승무원 면접 준비 플랫폼</div>
+            <div class="fr-sidebar-tagline">AI 승무원 면접 코칭</div>
         </div>
         """, unsafe_allow_html=True)
 
         # 홈 버튼
-        st.markdown('<a href="/" class="sidebar-home-btn">🏠 홈 대시보드</a>', unsafe_allow_html=True)
+        st.markdown('<a href="/" class="fr-sidebar-home">홈 대시보드</a>', unsafe_allow_html=True)
 
-        # 네비게이션 메뉴
+        # 네비게이션 메뉴 구성
+        if UI_CONFIG_AVAILABLE:
+            nav_menu = NAV_MENU
+        else:
+            # 폴백 메뉴
+            nav_menu = {
+                "면접 연습": [
+                    {"name": "모의면접", "page": "모의면접", "desc": "AI 면접관"},
+                    {"name": "롤플레잉", "page": "롤플레잉", "desc": "기내 상황"},
+                    {"name": "영어면접", "page": "영어면접", "desc": "영어 답변"},
+                    {"name": "토론면접", "page": "토론면접", "desc": "그룹 토론"},
+                ],
+                "준비 도구": [
+                    {"name": "자소서 첨삭", "page": "자소서첨삭", "desc": "AI 피드백"},
+                    {"name": "실전 연습", "page": "실전연습", "desc": "종합 분석"},
+                    {"name": "이미지메이킹", "page": "이미지메이킹", "desc": "복장 체크"},
+                    {"name": "기내방송", "page": "기내방송연습", "desc": "스크립트"},
+                    {"name": "표정 연습", "page": "표정연습", "desc": "표정 분석"},
+                ],
+                "학습 정보": [
+                    {"name": "항공 퀴즈", "page": "항공사퀴즈", "desc": "187문항"},
+                    {"name": "면접 꿀팁", "page": "면접꿀팁", "desc": "핵심 팁"},
+                    {"name": "항공사 가이드", "page": "항공사가이드", "desc": "각 사 정보"},
+                    {"name": "국민체력", "page": "국민체력", "desc": "체력 기준"},
+                    {"name": "기업 분석", "page": "기업분석", "desc": "기업 정보"},
+                ],
+                "학습 관리": [
+                    {"name": "진도 관리", "page": "진도관리", "desc": "학습 현황"},
+                    {"name": "성장 그래프", "page": "성장그래프", "desc": "점수 추이"},
+                    {"name": "채용 알림", "page": "채용알림", "desc": "공고 소식"},
+                    {"name": "합격자 DB", "page": "합격자DB", "desc": "합격 자료"},
+                    {"name": "D-Day 캘린더", "page": "D-Day캘린더", "desc": "일정 관리"},
+                ],
+            }
+
+        # 네비게이션 HTML 생성
         nav_html = ""
-        for category, items in NAV_MENU.items():
-            nav_html += f'<div class="sidebar-category">{category}</div>'
+        for category, items in nav_menu.items():
+            nav_html += f'<div class="fr-sidebar-category">{category}</div>'
             for item in items:
                 active_class = "active" if item["page"] == current_page else ""
-                nav_html += f'<a href="/{item["page"]}" class="sidebar-nav-item {active_class}">{item["icon"]} {item["name"]}</a>'
+                desc_html = f'<span class="fr-sidebar-item-desc">{item.get("desc", "")}</span>' if item.get("desc") else ""
+                nav_html += f'''
+                <a href="/{item["page"]}" class="fr-sidebar-item {active_class}">
+                    <span>{item["name"]}</span>
+                    {desc_html}
+                </a>
+                '''
 
         # 관리자 모드 활성화 시 관리자 링크 추가
         if st.session_state.get("admin_authenticated", False):
-            nav_html += '<div class="sidebar-category">관리자</div>'
+            nav_html += '<div class="fr-sidebar-category">관리자</div>'
             active_class = "active" if current_page == "관리자" else ""
-            nav_html += f'<a href="/관리자" class="sidebar-nav-item {active_class}">🔐 관리자 모드</a>'
+            nav_html += f'<a href="/관리자" class="fr-sidebar-item {active_class}"><span>관리자 모드</span></a>'
 
         st.markdown(nav_html, unsafe_allow_html=True)
 
@@ -233,14 +162,14 @@ def render_sidebar(current_page=""):
         if show_admin:
             st.markdown("<div style='margin-top:40px;'></div>", unsafe_allow_html=True)
             if not st.session_state.get("admin_authenticated", False):
-                admin_pw = st.text_input("🔐 관리자 비밀번호", type="password", key="admin_pw_input")
+                admin_pw = st.text_input("관리자 비밀번호", type="password", key="admin_pw_input")
                 if admin_pw == ADMIN_PASSWORD:
                     st.session_state["admin_authenticated"] = True
                     st.rerun()
                 elif admin_pw:
                     st.error("비밀번호 오류")
             else:
-                st.success("관리자 모드 ✓")
+                st.success("관리자 모드")
                 confirm = st.checkbox("로그아웃", key="admin_logout_check")
                 if confirm:
                     st.session_state["admin_authenticated"] = False

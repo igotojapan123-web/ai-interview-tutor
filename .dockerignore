@@ -1,6 +1,7 @@
 # Git
 .git
 .gitignore
+.gitattributes
 
 # Python
 __pycache__
@@ -12,43 +13,97 @@ __pycache__
 .eggs
 dist
 build
+*.whl
 
-# 환경
+# Environment
 .env
-.env.local
+.env.*
+!.env.example
 .venv
 venv
 ENV
+.python-version
 
 # IDE
 .idea
 .vscode
 *.swp
 *.swo
+*.sublime-*
 
-# 테스트
+# Testing
 .pytest_cache
 .coverage
 htmlcov
-tests
+.tox
+.nox
+coverage.xml
+*.cover
 
-# 로그 및 임시 파일
+# Logs and temp files
 *.log
 logs/
 *.tmp
 *.temp
+*.cache
 
-# 사용자 데이터 (민감정보)
+# User data (sensitive)
 user_*.json
 data/user_*
+data/sessions/*
+data/uploads/*
 
-# 백업 파일
+# Backup files
 *_backup.py
 *.bak
+*.backup
 
-# 문서
+# Documentation (except README)
 *.md
 !README.md
+docs/
 
-# 개발용 디버그 로그
+# Debug logs
 clova_debug_logs/
+debug/
+
+# Docker
+.docker
+docker-compose.override.yml
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.circleci/
+
+# Local development
+Makefile
+*.local
+.editorconfig
+
+# SSL certificates (never include real certs)
+nginx/ssl/*.pem
+nginx/ssl/*.key
+nginx/ssl/*.crt
+!nginx/ssl/.gitkeep
+
+# Database files
+*.sql
+!scripts/init-db.sql
+*.db
+*.sqlite
+
+# Monitoring data
+monitoring/data/
+prometheus-data/
+grafana-data/
+
+# Node modules (if any frontend)
+node_modules/
+package-lock.json
+yarn.lock
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp

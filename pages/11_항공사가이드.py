@@ -6,10 +6,13 @@ import streamlit as st
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from sidebar_common import render_sidebar
+from sidebar_common import init_page, end_page
 
-st.set_page_config(page_title="항공사 가이드", page_icon="✈️", layout="wide")
-render_sidebar("항공사가이드")
+init_page(
+    title="항공사 가이드",
+    current_page="항공사가이드",
+    wide_layout=True
+)
 
 
 st.markdown(
@@ -738,7 +741,7 @@ AIRLINE_INTERVIEW_GUIDE = {
 # ----------------------------
 # 페이지 제목
 # ----------------------------
-st.title("✈️ 항공사별 면접 가이드")
+st.title("️ 항공사별 면접 가이드")
 st.caption("국내 11개 항공사 | 기업 정체성 · 최신 이슈 · 면접 전략")
 
 st.markdown("---")
@@ -747,19 +750,19 @@ st.markdown("---")
 # 메인 탭 구성 (4개)
 # ----------------------------
 main_tab1, main_tab2, main_tab3, main_tab4, main_tab5 = st.tabs([
-    "🏢 기업 정체성",
-    "📰 최신 이슈",
-    "❓ FSC vs LCC 질문",
-    "📋 면접 가이드",
-    "🎯 나에게 맞는 항공사"
+ " 기업 정체성",
+ " 최신 이슈",
+ " FSC vs LCC 질문",
+ " 면접 가이드",
+ " 나에게 맞는 항공사"
 ])
 
 # ========================================
 # 탭 1: 기업 정체성
 # ========================================
 with main_tab1:
-    st.subheader("🏢 항공사별 기업 정체성")
-    st.info("💡 면접에서 '왜 이 항공사인가요?'에 답하려면 기업의 미션/비전/핵심가치를 알아야 합니다.")
+    st.subheader(" 항공사별 기업 정체성")
+    st.info("면접에서 '왜 이 항공사인가요?'에 답하려면 기업의 미션/비전/핵심가치를 알아야 합니다.")
 
     # 항공사 선택
     identity_airline = st.selectbox(
@@ -775,7 +778,7 @@ with main_tab1:
         # 헤더
         st.markdown(f"""
         <div class="airline-header">
-            <h2 style="margin: 0;">✈️ {identity_airline}</h2>
+            <h2 style="margin: 0;">️ {identity_airline}</h2>
             <p style="margin: 8px 0 0 0; opacity: 0.9;">{guide.get('type', '')} | {guide.get('slogan', '')}</p>
         </div>
         """, unsafe_allow_html=True)
@@ -784,7 +787,7 @@ with main_tab1:
 
         with col1:
             # 미션
-            st.markdown("### 🎯 미션 (Mission)")
+            st.markdown("### 미션 (Mission)")
             st.markdown(f"""
             <div class="identity-card">
                 <p style="font-size: 18px; font-weight: 600; color: #667eea; margin: 0;">"{identity.get('mission', '')}"</p>
@@ -793,7 +796,7 @@ with main_tab1:
             """, unsafe_allow_html=True)
 
             # 비전
-            st.markdown("### 🔭 비전 (Vision)")
+            st.markdown("### 비전 (Vision)")
             st.markdown(f"""
             <div class="identity-card">
                 <p style="font-size: 16px; font-weight: 600; margin: 0;">{identity.get('vision', '')}</p>
@@ -805,7 +808,7 @@ with main_tab1:
             # 핵심가치
             core_values = identity.get('core_values', {})
             if core_values:
-                st.markdown(f"### 💎 핵심가치 ({core_values.get('name', '')})")
+                st.markdown(f"###  핵심가치 ({core_values.get('name', '')})")
                 for val in core_values.get('values', []):
                     st.markdown(f"""
                     <div class="talent-item">
@@ -820,7 +823,7 @@ with main_tab1:
         talent = identity.get('talent', [])
 
         if talent_framework:
-            st.markdown(f"### 👤 인재상 ({talent_framework.get('name', '')})")
+            st.markdown(f"###  인재상 ({talent_framework.get('name', '')})")
             cols = st.columns(min(len(talent_framework.get('values', [])), 4))
             for i, val in enumerate(talent_framework.get('values', [])):
                 with cols[i % 4]:
@@ -832,21 +835,21 @@ with main_tab1:
                     """, unsafe_allow_html=True)
 
         elif talent:
-            st.markdown("### 👤 인재상")
+            st.markdown("### 인재상")
             talent_html = "".join([f'<span class="value-badge">{t}</span>' for t in talent])
             st.markdown(f"<div>{talent_html}</div>", unsafe_allow_html=True)
 
             if identity.get('talent_summary'):
-                st.info(f"💡 **요약:** {identity.get('talent_summary')}")
+                st.info(f" **요약:** {identity.get('talent_summary')}")
 
         # 추가 정보
         if identity.get('competencies'):
-            st.markdown("### 📊 객실승무원 핵심역량")
+            st.markdown("### 객실승무원 핵심역량")
             for comp in identity.get('competencies', []):
                 st.markdown(f"• {comp}")
 
         if identity.get('brand_tagline'):
-            st.markdown(f"### 🏷️ 브랜드")
+            st.markdown(f"### ️ 브랜드")
             st.success(f"**Tagline:** {identity.get('brand_tagline')}")
             if identity.get('brand_statement'):
                 st.caption(identity.get('brand_statement'))
@@ -855,36 +858,36 @@ with main_tab1:
 # 탭 2: 최신 이슈
 # ========================================
 with main_tab2:
-    st.subheader("📰 항공 업계 최신 이슈")
-    st.warning("⚠️ 면접에서 자주 물어보는 업계 동향입니다. 반드시 숙지하세요!")
+    st.subheader(" 항공 업계 최신 이슈")
+    st.warning("️ 면접에서 자주 물어보는 업계 동향입니다. 반드시 숙지하세요!")
 
     # 합병 이슈
     merger = LATEST_ISSUES["merger"]
     st.markdown(f"""
     <div class="issue-card important">
-        <h3 style="margin: 0 0 12px 0;">🔥 {merger['title']}</h3>
+        <h3 style="margin: 0 0 12px 0;"> {merger['title']}</h3>
     </div>
     """, unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("**📅 타임라인**")
+        st.markdown("** 타임라인**")
         for item in merger['timeline']:
             st.markdown(f"• **{item['year']}**: {item['event']}")
 
         st.markdown("")
-        st.markdown("**📌 핵심 포인트**")
+        st.markdown("** 핵심 포인트**")
         for point in merger['key_points']:
             st.markdown(f"• {point}")
 
     with col2:
-        st.markdown("**👨‍✈️ 승무원에게 미치는 영향**")
+        st.markdown("**‍️ 승무원에게 미치는 영향**")
         for impact in merger['impact_on_crew']:
             st.info(impact)
 
         st.markdown("")
-        st.success(f"💡 **면접 포인트:** {merger['interview_point']}")
+        st.success(f" **면접 포인트:** {merger['interview_point']}")
 
     st.markdown("---")
 
@@ -892,14 +895,14 @@ with main_tab2:
     lcc = LATEST_ISSUES["lcc_integration"]
     st.markdown(f"""
     <div class="issue-card">
-        <h3 style="margin: 0 0 12px 0;">✈️ {lcc['title']}</h3>
+        <h3 style="margin: 0 0 12px 0;">️ {lcc['title']}</h3>
     </div>
     """, unsafe_allow_html=True)
 
     for content in lcc['content']:
         st.markdown(f"• {content}")
     st.caption(f"예상 시점: {lcc['timeline']}")
-    st.success(f"💡 **면접 포인트:** {lcc['interview_point']}")
+    st.success(f" **면접 포인트:** {lcc['interview_point']}")
 
     st.markdown("---")
 
@@ -907,33 +910,33 @@ with main_tab2:
     tway = LATEST_ISSUES["tway_rebranding"]
     st.markdown(f"""
     <div class="issue-card">
-        <h3 style="margin: 0 0 12px 0;">🔄 {tway['title']}</h3>
+        <h3 style="margin: 0 0 12px 0;"> {tway['title']}</h3>
     </div>
     """, unsafe_allow_html=True)
 
     for content in tway['content']:
         st.markdown(f"• {content}")
-    st.success(f"💡 **면접 포인트:** {tway['interview_point']}")
+    st.success(f" **면접 포인트:** {tway['interview_point']}")
 
     st.markdown("---")
 
     # 이스타 회생
     eastar = LATEST_ISSUES["eastar_revival"]
-    with st.expander(f"📈 {eastar['title']}"):
-        st.markdown("**📅 타임라인**")
+    with st.expander(f" {eastar['title']}"):
+        st.markdown("** 타임라인**")
         for item in eastar['timeline']:
             st.markdown(f"• **{item['year']}**: {item['event']}")
 
         st.markdown("")
-        st.markdown("**📌 핵심 포인트**")
+        st.markdown("** 핵심 포인트**")
         for point in eastar['key_points']:
             st.markdown(f"• {point}")
 
-        st.success(f"💡 **면접 포인트:** {eastar['interview_point']}")
+        st.success(f" **면접 포인트:** {eastar['interview_point']}")
 
     # 체력측정 도입
     physical = LATEST_ISSUES["physical_test"]
-    with st.expander(f"🏋️ {physical['title']}"):
+    with st.expander(f"️ {physical['title']}"):
         st.markdown(f"**도입 항공사:** {', '.join(physical['airlines'])}")
         st.markdown("")
         for content in physical['content']:
@@ -944,7 +947,7 @@ with main_tab2:
 # 탭 3: FSC vs LCC 질문 패턴
 # ========================================
 with main_tab3:
-    st.subheader("❓ FSC vs LCC 면접 질문 패턴")
+    st.subheader(" FSC vs LCC 면접 질문 패턴")
 
     st.markdown("""
     <div class="identity-card">
@@ -956,12 +959,12 @@ with main_tab3:
 
     st.markdown("")
 
-    question_tab1, question_tab2 = st.tabs(["🏛️ FSC 질문 (대한항공/아시아나)", "✈️ LCC 질문 (제주/진에어/티웨이 등)"])
+    question_tab1, question_tab2 = st.tabs(["️ FSC 질문 (대한항공/아시아나)", "️ LCC 질문 (제주/진에어/티웨이 등)"])
 
     with question_tab1:
         st.markdown("""
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px; border-radius: 12px; margin-bottom: 16px;">
-            <h4 style="margin: 0;">🏛️ FSC 면접 특징</h4>
+            <h4 style="margin: 0;">️ FSC 면접 특징</h4>
             <p style="margin: 8px 0 0 0; opacity: 0.9;">보수적, 검증 중심, 꼬리 질문 깊음 | "왜 그렇게 판단했는지"보다 "그 판단이 위험하지 않은지"를 먼저 봄</p>
         </div>
         """, unsafe_allow_html=True)
@@ -979,7 +982,7 @@ with main_tab3:
     with question_tab2:
         st.markdown("""
         <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 16px; border-radius: 12px; margin-bottom: 16px;">
-            <h4 style="margin: 0;">✈️ LCC 면접 특징</h4>
+            <h4 style="margin: 0;">️ LCC 면접 특징</h4>
             <p style="margin: 8px 0 0 0; opacity: 0.9;">빠른 판단, 현실성, 말의 명확성 | 돌발/상황 질문 비중 높음</p>
         </div>
         """, unsafe_allow_html=True)
@@ -995,29 +998,29 @@ with main_tab3:
             st.markdown("")
 
     st.markdown("---")
-    st.info("💡 **팁:** 같은 경험이라도 FSC와 LCC에서 강조하는 포인트가 다릅니다. 지원 항공사에 맞게 답변을 조정하세요!")
+    st.info("**팁:** 같은 경험이라도 FSC와 LCC에서 강조하는 포인트가 다릅니다. 지원 항공사에 맞게 답변을 조정하세요!")
 
 # ========================================
 # 탭 4: 면접 가이드 (기존 기능)
 # ========================================
 with main_tab4:
-    st.subheader("📋 항공사별 면접 가이드")
+    st.subheader(" 항공사별 면접 가이드")
 
     # 항공사 유형별 분류
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.markdown("**🏛️ FSC**")
+        st.markdown("**️ FSC**")
         fsc = [a for a, g in AIRLINE_INTERVIEW_GUIDE.items() if g["type"] == "FSC"]
         st.caption(", ".join(fsc))
 
     with col2:
-        st.markdown("**✈️ LCC**")
+        st.markdown("**️ LCC**")
         lcc = [a for a, g in AIRLINE_INTERVIEW_GUIDE.items() if g["type"] == "LCC"]
         st.caption(", ".join(lcc))
 
     with col3:
-        st.markdown("**🌟 HSC**")
+        st.markdown("** HSC**")
         hsc = [a for a, g in AIRLINE_INTERVIEW_GUIDE.items() if g["type"] == "HSC"]
         st.caption(", ".join(hsc))
 
@@ -1027,7 +1030,7 @@ with main_tab4:
     selected_airline = st.selectbox(
         "항공사 선택",
         list(AIRLINE_INTERVIEW_GUIDE.keys()),
-        format_func=lambda x: f"✈️ {x} ({AIRLINE_INTERVIEW_GUIDE[x]['type']})",
+        format_func=lambda x: f"️ {x} ({AIRLINE_INTERVIEW_GUIDE[x]['type']})",
         key="guide_airline"
     )
 
@@ -1036,15 +1039,15 @@ with main_tab4:
     if guide:
         col1, col2 = st.columns([3, 1])
         with col1:
-            st.markdown(f"## ✈️ {selected_airline}")
+            st.markdown(f"## ️ {selected_airline}")
             st.caption(f"{guide['type']} | {guide.get('slogan', '')}")
         with col2:
             url = AIRLINE_CAREER_URLS.get(selected_airline, "")
             if url:
-                st.link_button("🔗 채용 페이지", url, use_container_width=True)
+                st.link_button(" 채용 페이지", url, use_container_width=True)
 
         # 서브탭
-        sub_tab1, sub_tab2, sub_tab3 = st.tabs(["📊 전형 절차", "📋 지원 자격", "💡 면접 팁"])
+        sub_tab1, sub_tab2, sub_tab3 = st.tabs([" 전형 절차", " 지원 자격", " 면접 팁"])
 
         with sub_tab1:
             process = guide.get("process", [])
@@ -1065,7 +1068,7 @@ with main_tab4:
                         st.info(f"**{i+1}. {step['name']}**: {step['detail']}")
 
             if guide.get("physical_test"):
-                st.markdown("### 🏋️ 체력측정 항목")
+                st.markdown("### ️ 체력측정 항목")
                 for item in guide.get("physical_test", []):
                     st.markdown(f"• {item}")
 
@@ -1083,10 +1086,10 @@ with main_tab4:
 # 탭 5: 나에게 맞는 항공사
 # ========================================
 with main_tab5:
-    st.subheader("🎯 나에게 맞는 항공사 찾기")
-    st.info("💡 간단한 질문에 답하면 나에게 가장 잘 맞는 항공사를 추천해드립니다!")
+    st.subheader(" 나에게 맞는 항공사 찾기")
+    st.info("간단한 질문에 답하면 나에게 가장 잘 맞는 항공사를 추천해드립니다!")
 
-    st.markdown("### 📝 나의 성향 체크")
+    st.markdown("### 나의 성향 체크")
 
     q1 = st.radio(
         "1. 선호하는 서비스 스타일은?",
@@ -1120,7 +1123,7 @@ with main_tab5:
 
     st.markdown("---")
 
-    if st.button("🎯 결과 보기", use_container_width=True, type="primary"):
+    if st.button("결과 보기", use_container_width=True, type="primary"):
         # 점수 계산
         scores = {
             "대한항공": 0, "아시아나항공": 0, "에어프레미아": 0,
@@ -1197,9 +1200,9 @@ with main_tab5:
         top3 = sorted_airlines[:3]
         max_score = top3[0][1] if top3 else 1
 
-        st.markdown("### 🏆 나에게 맞는 항공사 TOP 3")
+        st.markdown("### 나에게 맞는 항공사 TOP 3")
 
-        medal_icons = ["🥇", "🥈", "🥉"]
+        medal_icons = ["", "", ""]
         medal_colors = ["#f59e0b", "#94a3b8", "#cd7f32"]
 
         for idx, (airline, score) in enumerate(top3):
@@ -1212,7 +1215,7 @@ with main_tab5:
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <div style="font-size: 2rem;">{medal_icons[idx]}</div>
                         <div>
-                            <div style="font-weight: 700; font-size: 1.1rem;">✈️ {airline}</div>
+                            <div style="font-weight: 700; font-size: 1.1rem;">️ {airline}</div>
                             <div style="font-size: 0.8rem; color: #64748b;">{airline_type}</div>
                         </div>
                     </div>
@@ -1228,7 +1231,7 @@ with main_tab5:
             """, unsafe_allow_html=True)
 
         st.markdown("---")
-        st.markdown("### 💡 추천 이유")
+        st.markdown("### 추천 이유")
 
         best_airline = top3[0][0]
         reasons = {
@@ -1244,20 +1247,20 @@ with main_tab5:
 
         st.markdown(f"""
         <div style="background: linear-gradient(135deg, #eff6ff, #dbeafe); border-radius: 12px; padding: 20px; border-left: 4px solid #3b82f6;">
-            <div style="font-weight: 700; margin-bottom: 8px;">✈️ {best_airline}을(를) 추천하는 이유</div>
+            <div style="font-weight: 700; margin-bottom: 8px;">️ {best_airline}을(를) 추천하는 이유</div>
             <div style="font-size: 0.9rem; color: #334155;">{reasons.get(best_airline, "")}</div>
         </div>
         """, unsafe_allow_html=True)
 
         st.markdown("")
-        st.caption("💡 이 결과는 참고용입니다. 여러 항공사에 동시 지원하는 것을 추천합니다!")
+        st.caption(" 이 결과는 참고용입니다. 여러 항공사에 동시 지원하는 것을 추천합니다!")
 
 # ----------------------------
 # 하단 정보
 # ----------------------------
 st.markdown("---")
-st.caption("⚠️ 본 정보는 참고용이며, 정확한 정보는 각 항공사 공식 채용 페이지에서 확인하세요.")
-st.caption("📅 최종 업데이트: 2026-01-23")
+st.caption("️ 본 정보는 참고용이며, 정확한 정보는 각 항공사 공식 채용 페이지에서 확인하세요.")
+st.caption(" 최종 업데이트: 2026-01-23")
 
 # div 닫기
 st.markdown('</div>', unsafe_allow_html=True)

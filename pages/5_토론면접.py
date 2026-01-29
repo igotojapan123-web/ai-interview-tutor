@@ -68,25 +68,36 @@ except ImportError:
     DEBATE_REPORT_AVAILABLE = False
 
 
-from sidebar_common import render_sidebar
+from sidebar_common import init_page, end_page
 
-st.set_page_config(
-    page_title="토론면접",
-    page_icon="💬",
-    layout="wide"
+# 공용 유틸리티 (Stage 2)
+try:
+    from shared_utils import get_api_key, load_json, save_json
+except ImportError:
+    pass
+
+init_page(
+    title="토론면접",
+    current_page="토론면접",
+    wide_layout=True
 )
-render_sidebar("토론면접")
 
 
 
 # 구글 번역 방지
-st.markdown(
-    """
-    <meta name="google" content="notranslate">
-    <style>html { translate: no; }</style>
-    """,
-    unsafe_allow_html=True,
-)
+st.markdown("""
+<meta name="google" content="notranslate">
+<meta http-equiv="Content-Language" content="ko">
+<style>
+html, body, .stApp, .main, [data-testid="stAppViewContainer"] {
+    translate: no !important;
+}
+.notranslate, [translate="no"] {
+    translate: no !important;
+}
+</style>
+""", unsafe_allow_html=True)
+st.markdown('<div translate="no" class="notranslate" lang="ko">', unsafe_allow_html=True)
 
 # ----------------------------
 # 비밀번호 보호
@@ -117,7 +128,7 @@ else:
         },
     ]
     DEBATE_CATEGORIES = {
-        "all": {"name": "전체", "icon": "📋", "color": "#6b7280"},
+        "all": {"name": "전체", "icon": "", "color": "#6b7280"},
     }
 
 # AI 토론자 페르소나 (아바타 추가)
@@ -125,21 +136,21 @@ DEBATERS = {
     "pro": {
         "name": "김찬성",
         "style": "논리적이고 데이터 중심으로 주장",
-        "emoji": "👨‍💼",
+        "emoji": "",
         "color": "#3b82f6",
         "voice": "onyx",  # OpenAI TTS 남성 음성
     },
     "con": {
         "name": "이반대",
         "style": "감성적이고 사례 중심으로 반박",
-        "emoji": "👩‍💼",
+        "emoji": "",
         "color": "#ef4444",
         "voice": "nova",  # OpenAI TTS 여성 음성
     },
     "neutral": {
         "name": "박중립",
         "style": "양측 의견을 조율하며 균형 잡힌 시각 제시",
-        "emoji": "🧑‍💼",
+        "emoji": "",
         "color": "#8b5cf6",
         "voice": "shimmer",  # OpenAI TTS 여성 음성
     },
@@ -265,7 +276,7 @@ def get_user_debate_html(message: str, position: str) -> str:
                 align-items: center;
                 justify-content: center;
                 box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            ">✈️</div>
+            ">️</div>
         </div>
         <div style="flex: 1; text-align: right;">
             <div style="
@@ -505,7 +516,7 @@ def evaluate_debate(topic: dict, user_position: str, history: list, voice_analys
 
 ---
 
-### 📊 항목별 평가
+###  항목별 평가
 
 #### 1. 논리성 (X/20점)
 **평가:** (구체적인 분석)
@@ -529,22 +540,22 @@ def evaluate_debate(topic: dict, user_position: str, history: list, voice_analys
 
 ---
 
-### ✅ 잘한 점 (3가지)
+###  잘한 점 (3가지)
 1. (구체적으로 - 발언 인용 포함)
 2. (구체적으로)
 3. (구체적으로)
 
-### ⚠️ 개선할 점 (3가지)
+### ️ 개선할 점 (3가지)
 1. (구체적으로 - 어떻게 고치면 좋을지 포함)
 2. (구체적으로)
 3. (구체적으로)
 
 ---
 
-### 💡 면접관 코멘트
+###  면접관 코멘트
 (실제 면접관 시선에서 종합 평가 2-3문장)
 
-### 🎯 다음 토론을 위한 팁
+###  다음 토론을 위한 팁
 (구체적이고 실천 가능한 조언 2-3가지)
 """
 
@@ -580,7 +591,7 @@ def evaluate_debate(topic: dict, user_position: str, history: list, voice_analys
 # UI
 # =====================
 
-st.title("💬 토론면접 시뮬레이션")
+st.title("토론면접 시뮬레이션")
 st.caption("AI 토론자들과 함께 그룹 토론을 연습하세요.")
 
 if st.session_state.debate_topic is None:
@@ -602,15 +613,15 @@ if st.session_state.debate_topic is None:
 
     # 음성 모드 선택
     if VOICE_AVAILABLE:
-        voice_mode = st.checkbox("🔊 음성 모드 (토론자 발언을 음성으로 듣기)", value=False)
+        voice_mode = st.checkbox(" 음성 모드 (토론자 발언을 음성으로 듣기)", value=False)
         st.session_state.debate_voice_mode = voice_mode
 
     # 토론자 소개
-    st.markdown("### 👥 AI 토론자 소개")
+    st.markdown("### AI 토론자 소개")
     cols = st.columns(3)
     for i, (key, debater) in enumerate(DEBATERS.items()):
         with cols[i]:
-            position_kr = {"pro": "👍 찬성", "con": "👎 반대", "neutral": "⚖️ 중립"}[key]
+            position_kr = {"pro": " 찬성", "con": " 반대", "neutral": "️ 중립"}[key]
             st.markdown(f"""
             <div style="
                 text-align: center;
@@ -629,7 +640,7 @@ if st.session_state.debate_topic is None:
     st.markdown("---")
 
     # 카테고리 필터
-    st.subheader("📌 토론 주제 선택")
+    st.subheader(" 토론 주제 선택")
 
     if DEBATE_TOPICS_AVAILABLE:
         # 카테고리 탭
@@ -640,7 +651,7 @@ if st.session_state.debate_topic is None:
             st.session_state.selected_category = "all"
 
         with category_cols[0]:
-            if st.button("📋 전체", use_container_width=True,
+            if st.button("전체", use_container_width=True,
                         type="primary" if st.session_state.selected_category == "all" else "secondary"):
                 st.session_state.selected_category = "all"
                 st.rerun()
@@ -667,7 +678,7 @@ if st.session_state.debate_topic is None:
         cat_info = DEBATE_CATEGORIES.get(topic.get("category", ""), {})
         cat_badge = f"{cat_info.get('icon', '')} {cat_info.get('name', '')}" if cat_info else ""
 
-        with st.expander(f"💬 {topic['topic']}", expanded=(i == 0)):
+        with st.expander(f" {topic['topic']}", expanded=(i == 0)):
             if cat_badge:
                 st.markdown(f"""
                 <span style="
@@ -683,11 +694,11 @@ if st.session_state.debate_topic is None:
 
             col1, col2 = st.columns(2)
             with col1:
-                st.markdown("**👍 찬성 측 논점**")
+                st.markdown("** 찬성 측 논점**")
                 for p in topic["pro_points"]:
                     st.write(f"• {p}")
             with col2:
-                st.markdown("**👎 반대 측 논점**")
+                st.markdown("** 반대 측 논점**")
                 for p in topic["con_points"]:
                     st.write(f"• {p}")
 
@@ -699,7 +710,7 @@ elif st.session_state.debate_position is None:
     # 입장 선택
     topic = st.session_state.debate_topic
 
-    st.subheader(f"📌 {topic['topic']}")
+    st.subheader(f" {topic['topic']}")
     st.write(topic["background"])
 
     st.divider()
@@ -712,7 +723,7 @@ elif st.session_state.debate_position is None:
     with col1:
         st.markdown(f"""
         <div style="text-align: center; padding: 20px; background: #3b82f610; border-radius: 15px; border: 2px solid #3b82f630;">
-            <div style="font-size: 50px;">👍</div>
+            <div style="font-size: 50px;"></div>
             <h3 style="color: #3b82f6;">찬성</h3>
         </div>
         """, unsafe_allow_html=True)
@@ -727,7 +738,7 @@ elif st.session_state.debate_position is None:
     with col2:
         st.markdown(f"""
         <div style="text-align: center; padding: 20px; background: #ef444410; border-radius: 15px; border: 2px solid #ef444430;">
-            <div style="font-size: 50px;">👎</div>
+            <div style="font-size: 50px;"></div>
             <h3 style="color: #ef4444;">반대</h3>
         </div>
         """, unsafe_allow_html=True)
@@ -742,7 +753,7 @@ elif st.session_state.debate_position is None:
     with col3:
         st.markdown(f"""
         <div style="text-align: center; padding: 20px; background: #8b5cf610; border-radius: 15px; border: 2px solid #8b5cf630;">
-            <div style="font-size: 50px;">⚖️</div>
+            <div style="font-size: 50px;">️</div>
             <h3 style="color: #8b5cf6;">중립</h3>
         </div>
         """, unsafe_allow_html=True)
@@ -767,7 +778,7 @@ elif not st.session_state.debate_completed:
     # 상단 정보
     col1, col2, col3 = st.columns([3, 1, 1])
     with col1:
-        st.subheader(f"📌 {topic['topic']}")
+        st.subheader(f" {topic['topic']}")
     with col2:
         st.metric("라운드", f"{st.session_state.debate_round + 1}/4")
     with col3:
@@ -805,7 +816,7 @@ elif not st.session_state.debate_completed:
                     h['content'],
                     h['speaker'],
                     h.get('position', 'neutral'),
-                    debater.get('emoji', '👤'),
+                    debater.get('emoji', ''),
                     debater.get('color', '#6b7280'),
                     is_speaking=is_last
                 )
@@ -822,7 +833,7 @@ elif not st.session_state.debate_completed:
 
             # 음성 재생 버튼 (CLOVA TTS)
             if st.session_state.debate_voice_mode and VOICE_AVAILABLE:
-                if st.button(f"🔊 듣기", key=f"listen_{idx}_{h['content'][:10]}"):
+                if st.button(f" 듣기", key=f"listen_{idx}_{h['content'][:10]}"):
                     with st.spinner("음성 생성 중..."):
                         audio = generate_tts_audio(h['content'], voice=debater.get('voice', 'nova'))
                         if audio:
@@ -861,10 +872,10 @@ elif not st.session_state.debate_completed:
 
         if st.session_state.debate_input_mode == "voice" and VOICE_AVAILABLE:
             # 음성 입력 모드
-            st.info("🎤 녹음 버튼을 클릭하고 토론 발언을 하세요. (30초~2분 권장)")
+            st.info("녹음 버튼을 클릭하고 토론 발언을 하세요. (30초~2분 권장)")
 
             audio_data = st.audio_input(
-                "🎤 녹음하기",
+                " 녹음하기",
                 key=f"debate_voice_{st.session_state.debate_round}"
             )
 
@@ -896,11 +907,11 @@ elif not st.session_state.debate_completed:
                             st.session_state.debate_voice_analyses.append(voice_analysis)
                             st.session_state.debate_response_times.append(response_time)
 
-                            st.success(f"✅ 인식된 발언: {user_input[:100]}...")
+                            st.success(f" 인식된 발언: {user_input[:100]}...")
 
                             # 음성 분석 결과 미리보기
                             if voice_analysis:
-                                with st.expander("🎯 음성 분석 결과", expanded=False):
+                                with st.expander("음성 분석 결과", expanded=False):
                                     v_cols = st.columns(4)
                                     text_analysis = voice_analysis.get("text_analysis", {})
                                     with v_cols[0]:
@@ -920,7 +931,7 @@ elif not st.session_state.debate_completed:
                             user_input = None
 
             # 텍스트 폴백 입력
-            with st.expander("📝 텍스트로 직접 입력", expanded=False):
+            with st.expander("텍스트로 직접 입력", expanded=False):
                 fallback_input = st.text_area(
                     "음성 인식이 안 될 경우 여기에 입력하세요",
                     key=f"debate_fallback_{st.session_state.debate_round}"
@@ -993,7 +1004,7 @@ elif not st.session_state.debate_completed:
 
 else:
     # 토론 완료 - 평가
-    st.subheader("🎉 토론 완료!")
+    st.subheader(" 토론 완료!")
 
     # 종합 음성 분석 (음성 입력이 있었다면)
     if st.session_state.debate_audio_bytes_list and st.session_state.debate_combined_voice_analysis is None:
@@ -1031,7 +1042,7 @@ else:
         st.rerun()
     else:
         # 결과 탭
-        result_tabs = st.tabs(["📊 종합 평가", "🎤 음성 분석", "📜 토론 내용"])
+        result_tabs = st.tabs([" 종합 평가", " 음성 분석", " 토론 내용"])
 
         with result_tabs[0]:
             eval_result = st.session_state.debate_evaluation
@@ -1042,7 +1053,7 @@ else:
 
         with result_tabs[1]:
             if st.session_state.debate_voice_analyses:
-                st.subheader("🎯 음성 전달력 분석")
+                st.subheader(" 음성 전달력 분석")
 
                 # 종합 음성 분석
                 combined = st.session_state.debate_combined_voice_analysis
@@ -1083,12 +1094,12 @@ else:
                     # 개선 포인트
                     improvements = combined.get("priority_improvements", [])
                     if improvements:
-                        st.markdown("### 🎯 우선 개선 포인트")
+                        st.markdown("### 우선 개선 포인트")
                         for imp in improvements[:3]:
                             st.markdown(f"- {imp}")
 
                 # 발언별 음성 분석
-                st.markdown("### 📝 발언별 분석")
+                st.markdown("### 발언별 분석")
                 user_statements = [h for h in st.session_state.debate_history if h.get("is_user")]
                 for i, (stmt, va) in enumerate(zip(user_statements, st.session_state.debate_voice_analyses)):
                     with st.expander(f"발언 {i+1}: {stmt['content'][:50]}...", expanded=False):
@@ -1137,7 +1148,7 @@ else:
                 filename = get_debate_report_filename(st.session_state.debate_topic.get("topic", "토론"))
 
                 st.download_button(
-                    label="📥 PDF 리포트 다운로드",
+                    label= " PDF 리포트 다운로드",
                     data=pdf_bytes,
                     file_name=filename,
                     mime="application/pdf",

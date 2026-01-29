@@ -1,5 +1,6 @@
 # pages/99_관리자.py
-# 관리자 전용 페이지 - 채용 관리 + 합격자 DB 관리
+# 관리자 전용 페이지 - 채용 관리 + 합격자 DB 관리 + 시스템 모니터링
+# Stage 4: Enterprise Admin Dashboard
 
 import os
 import json
@@ -11,21 +12,25 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import AIRLINES
 from env_config import ADMIN_PASSWORD
-from sidebar_common import render_sidebar
+from sidebar_common import init_page, end_page
 from logging_config import get_logger
+
+# Stage 4 imports
+from monitoring import get_monitoring, health_check, get_error_summary, get_metrics_summary
+from analytics import get_analytics, get_summary_stats
+from health_check import run_health_check, HealthStatus
 
 logger = get_logger(__name__)
 
-st.set_page_config(
-    page_title="관리자 모드",
-    page_icon="🔐",
-    layout="wide"
+init_page(
+    title="관리자 모드",
+    current_page="관리자",
+    wide_layout=True
 )
-render_sidebar("관리자")
 
 # 관리자 인증 체크
 if not st.session_state.get("admin_authenticated", False):
-    st.warning("🔐 관리자 전용 페이지입니다.")
+    st.warning("관리자 전용 페이지입니다.")
     pw = st.text_input("관리자 비밀번호를 입력하세요", type="password")
     if pw == ADMIN_PASSWORD:
         st.session_state["admin_authenticated"] = True
@@ -60,11 +65,11 @@ CAREER_SITES = {
 
 # 합격 단계
 PASS_STAGES = {
-    "final": {"name": "최종 합격", "icon": "🏆", "order": 1},
-    "3rd": {"name": "3차 면접 합격", "icon": "🥉", "order": 2},
-    "2nd": {"name": "2차 면접 합격", "icon": "🥈", "order": 3},
-    "1st": {"name": "1차 면접 합격", "icon": "🥇", "order": 4},
-    "document": {"name": "서류 합격", "icon": "📄", "order": 5},
+    "final": {"name": "최종 합격", "icon": "", "order": 1},
+    "3rd": {"name": "3차 면접 합격", "icon": "", "order": 2},
+    "2nd": {"name": "2차 면접 합격", "icon": "", "order": 3},
+    "1st": {"name": "1차 면접 합격", "icon": "", "order": 4},
+    "document": {"name": "서류 합격", "icon": "", "order": 5},
 }
 
 # ----------------------------
@@ -93,14 +98,14 @@ def get_status(start_date_str, end_date_str):
         end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
     except (ValueError, TypeError) as e:
         logger.debug(f"날짜 파싱 실패: {e}")
-        return "마감", "⚫"
+        return "마감", ""
 
     if today < start_date:
-        return "예정", "🟡"
+        return "예정", ""
     elif today <= end_date:
-        return "진행중", "🟢"
+        return "진행중", ""
     else:
-        return "마감", "⚫"
+        return "마감", ""
 
 
 def get_dday(end_date_str):
@@ -188,15 +193,15 @@ def get_reward(stage, airline):
         return None
     elif stage == "1st":
         if final_round == 2:
-            return {"type": "gifticon", "name": "스타벅스", "icon": "☕", "description": "스타벅스 아메리카노"}
+            return {"type": "gifticon", "name": "스타벅스", "icon": "", "description": "스타벅스 아메리카노"}
         else:
             return {"type": "standard", "name": "스탠다드 1주일", "icon": "⭐", "description": "스탠다드 멤버십 1주일"}
     elif stage == "2nd":
         if final_round == 3:
-            return {"type": "gifticon", "name": "스타벅스", "icon": "☕", "description": "스타벅스 아메리카노"}
+            return {"type": "gifticon", "name": "스타벅스", "icon": "", "description": "스타벅스 아메리카노"}
         return None
     elif stage == "final":
-        return {"type": "premium", "name": "프리미엄", "icon": "👑", "description": "프리미엄 멤버십 1주일"}
+        return {"type": "premium", "name": "프리미엄", "icon": "", "description": "프리미엄 멤버십 1주일"}
     return None
 
 
@@ -204,25 +209,25 @@ def get_reward(stage, airline):
 # UI
 # =====================
 
-st.title("🔐 관리자 모드")
+st.title("관리자 모드")
 st.caption("채용 정보 및 합격자 DB 관리")
 
 # =====================
 # 탭 구성
 # =====================
-tab1, tab2, tab3, tab4 = st.tabs(["📅 채용 관리", "🏆 합격자 관리", "📬 구독자 관리", "🔗 채용사이트"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["채용 관리", "합격자 관리", "구독자 관리", "채용사이트", "시스템 모니터링"])
 
 # ========== 탭1: 채용 관리 ==========
 with tab1:
-    st.subheader("📅 채용 정보 관리")
+    st.subheader(" 채용 정보 관리")
 
     hiring_data = load_hiring_data()
     recruitments = hiring_data.get("recruitments", [])
 
-    st.info(f"📅 마지막 업데이트: **{hiring_data.get('last_updated', '없음')}** | 총 **{len(recruitments)}**건")
+    st.info(f" 마지막 업데이트: **{hiring_data.get('last_updated', '없음')}** | 총 **{len(recruitments)}**건")
 
     # 서브탭
-    sub_tab1, sub_tab2 = st.tabs(["📋 목록 관리", "➕ 새 채용 추가"])
+    sub_tab1, sub_tab2 = st.tabs([" 목록 관리", " 새 채용 추가"])
 
     with sub_tab1:
         if not recruitments:
@@ -253,19 +258,19 @@ with tab1:
                         st.caption(r.get("position", ""))
 
                     with col2:
-                        st.write(f"📅 {r.get('start_date', '')} ~ {r.get('end_date', '')}")
-                        st.write(f"👥 {r.get('expected_count', '미공개')}")
+                        st.write(f" {r.get('start_date', '')} ~ {r.get('end_date', '')}")
+                        st.write(f" {r.get('expected_count', '미공개')}")
 
                     with col3:
                         st.metric("상태", r["_status"])
                         st.caption(r["_dday"])
 
                     with col4:
-                        if st.button("✏️", key=f"edit_{r['id']}", help="수정"):
+                        if st.button("️", key=f"edit_{r['id']}", help="수정"):
                             st.session_state.edit_hire_id = r["id"]
                             st.rerun()
 
-                        if st.button("🗑️", key=f"del_{r['id']}", help="삭제"):
+                        if st.button("️", key=f"del_{r['id']}", help="삭제"):
                             hiring_data["recruitments"] = [x for x in recruitments if x.get("id") != r["id"]]
                             save_hiring_data(hiring_data)
                             st.success("삭제됨!")
@@ -279,7 +284,7 @@ with tab1:
                 edit_item = next((r for r in recruitments if r.get("id") == edit_id), None)
 
                 if edit_item:
-                    st.subheader(f"✏️ 수정: {edit_item['airline']}")
+                    st.subheader(f"️ 수정: {edit_item['airline']}")
 
                     with st.form("edit_hire_form"):
                         col1, col2 = st.columns(2)
@@ -327,7 +332,7 @@ with tab1:
                 new_end = st.date_input("마감일 *", value=date.today())
                 new_note = st.text_input("비고", placeholder="예: 4월 입사 예정")
 
-            st.caption(f"📌 출처: {CAREER_SITES.get(new_airline, '')}")
+            st.caption(f" 출처: {CAREER_SITES.get(new_airline, '')}")
 
             if st.form_submit_button("추가", type="primary", use_container_width=True):
                 if not new_position:
@@ -348,13 +353,13 @@ with tab1:
                     }
                     hiring_data["recruitments"].append(new_item)
                     save_hiring_data(hiring_data)
-                    st.success(f"✅ {new_airline} 채용 공고 추가됨!")
+                    st.success(f" {new_airline} 채용 공고 추가됨!")
                     st.rerun()
 
 
 # ========== 탭2: 합격자 관리 ==========
 with tab2:
-    st.subheader("🏆 합격자 후기 관리")
+    st.subheader(" 합격자 후기 관리")
 
     stories = load_stories()
 
@@ -395,7 +400,7 @@ with tab2:
             stage_info = PASS_STAGES.get(stage, PASS_STAGES["final"])
             reward = get_reward(stage, story.get("airline", ""))
 
-            status_badge = "✅ 승인됨" if approved_flag else "⏳ 대기중"
+            status_badge = " 승인됨" if approved_flag else "⏳ 대기중"
 
             with st.expander(f"{stage_info['icon']} {story.get('airline', '')} | {story.get('nickname', '익명')} | {status_badge}"):
                 # 증빙 이미지
@@ -417,7 +422,7 @@ with tab2:
                     st.write(f"**등록일:** {story.get('created_at', '-')[:10]}")
 
                 if reward:
-                    st.info(f"🎁 보상: {reward['icon']} {reward['description']}")
+                    st.info(f" 보상: {reward['icon']} {reward['description']}")
 
                 st.markdown("**수기 내용:**")
                 st.write(story.get("story", "")[:200] + "..." if len(story.get("story", "")) > 200 else story.get("story", ""))
@@ -428,7 +433,7 @@ with tab2:
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     if not approved_flag:
-                        if st.button("✅ 승인", key=f"approve_{story.get('id')}", use_container_width=True):
+                        if st.button("승인", key=f"approve_{story.get('id')}", use_container_width=True):
                             for s in stories:
                                 if s.get("id") == story.get("id"):
                                     s["approved"] = True
@@ -437,7 +442,7 @@ with tab2:
                             st.success("승인 완료!")
                             st.rerun()
                     else:
-                        st.write("✅ 이미 승인됨")
+                        st.write(" 이미 승인됨")
 
                 with col2:
                     if approved_flag:
@@ -450,7 +455,7 @@ with tab2:
                             st.rerun()
 
                 with col3:
-                    if st.button("🗑️ 삭제", key=f"del_story_{story.get('id')}", use_container_width=True):
+                    if st.button("️ 삭제", key=f"del_story_{story.get('id')}", use_container_width=True):
                         stories = [s for s in stories if s.get("id") != story.get("id")]
                         save_stories(stories)
                         st.success("삭제됨!")
@@ -459,20 +464,20 @@ with tab2:
 
 # ========== 탭4: 채용사이트 ==========
 with tab4:
-    st.subheader("🔗 공식 채용사이트 바로가기")
+    st.subheader(" 공식 채용사이트 바로가기")
     st.caption("채용 공고 확인 후 '채용 관리' 탭에서 등록하세요")
 
-    st.markdown("### 🏛️ FSC (대형항공사)")
+    st.markdown("### ️ FSC (대형항공사)")
     col1, col2 = st.columns(2)
     with col1:
         st.link_button("대한항공", "https://koreanair.recruiter.co.kr/", use_container_width=True)
     with col2:
         st.link_button("아시아나항공", "https://flyasiana.recruiter.co.kr/", use_container_width=True)
 
-    st.markdown("### 🌟 HSC (하이브리드)")
+    st.markdown("### HSC (하이브리드)")
     st.link_button("에어프레미아", "https://airpremia.career.greetinghr.com/", use_container_width=True)
 
-    st.markdown("### ✈️ LCC (저비용항공사)")
+    st.markdown("### ️ LCC (저비용항공사)")
 
     lcc_list = [
         ("진에어", "https://jinair.recruiter.co.kr/"),
@@ -495,7 +500,7 @@ with tab4:
 
 # ========== 탭3: 구독자 관리 ==========
 with tab3:
-    st.subheader("📬 채용 알림 구독자 관리")
+    st.subheader(" 채용 알림 구독자 관리")
 
     subscribers_data = load_subscribers()
     all_subscribers = subscribers_data.get("subscribers", [])
@@ -514,7 +519,7 @@ with tab3:
     st.markdown("---")
 
     # 서브탭
-    sub_tab1, sub_tab2 = st.tabs(["📋 구독자 목록", "📊 항공사별 현황"])
+    sub_tab1, sub_tab2 = st.tabs([" 구독자 목록", " 항공사별 현황"])
 
     with sub_tab1:
         if not all_subscribers:
@@ -538,11 +543,11 @@ with tab3:
                     col1, col2, col3 = st.columns([3, 2, 1])
 
                     with col1:
-                        status_emoji = "🟢" if sub.get("active", True) else "⚫"
+                        status_emoji = "" if sub.get("active", True) else ""
                         st.markdown(f"**{status_emoji} {sub.get('name', '이름없음')}**")
-                        st.caption(f"📧 {sub.get('email', '')}")
+                        st.caption(f" {sub.get('email', '')}")
                         if sub.get("phone"):
-                            st.caption(f"📱 {sub.get('phone')}")
+                            st.caption(f" {sub.get('phone')}")
 
                     with col2:
                         airlines = sub.get("airlines", [])
@@ -571,7 +576,7 @@ with tab3:
                     st.markdown("---")
 
     with sub_tab2:
-        st.markdown("### 📊 항공사별 관심 구독자")
+        st.markdown("### 항공사별 관심 구독자")
 
         airline_counts = {}
         no_preference = 0
@@ -585,23 +590,247 @@ with tab3:
                     airline_counts[airline] = airline_counts.get(airline, 0) + 1
 
         # 전체 선택
-        st.info(f"📢 **전체 항공사 알림 수신:** {no_preference}명")
+        st.info(f" **전체 항공사 알림 수신:** {no_preference}명")
 
         # 항공사별
         if airline_counts:
             sorted_airlines = sorted(airline_counts.items(), key=lambda x: x[1], reverse=True)
             for airline, count in sorted_airlines:
-                st.markdown(f"✈️ **{airline}:** {count}명")
+                st.markdown(f"️ **{airline}:** {count}명")
         else:
             st.caption("특정 항공사 선택 구독자가 없습니다.")
 
         st.markdown("---")
 
         # 알림 발송 안내
-        st.markdown("### 📧 알림 발송")
+        st.markdown("### 알림 발송")
         st.warning("""
         **알림 발송 방법:**
         1. 새 채용 공고 등록 시 자동으로 구독자 목록 확인
         2. 해당 항공사 관심 구독자 + 전체 구독자에게 발송
         3. 이메일 발송은 외부 서비스 연동 필요 (Mailchimp, SendGrid 등)
         """)
+
+
+# ========== 탭5: 시스템 모니터링 ==========
+with tab5:
+    st.subheader("시스템 모니터링 대시보드")
+    st.caption("Stage 4: Enterprise Monitoring & Analytics")
+
+    # 서브탭
+    mon_tab1, mon_tab2, mon_tab3, mon_tab4 = st.tabs(["시스템 상태", "에러 로그", "사용자 분석", "성능 메트릭"])
+
+    # === 시스템 상태 ===
+    with mon_tab1:
+        st.markdown("### 시스템 헬스 체크")
+
+        if st.button("상태 새로고침", key="refresh_health"):
+            st.rerun()
+
+        try:
+            health_result = run_health_check()
+
+            # 전체 상태 표시
+            status = health_result.get("status", "unknown")
+            status_colors = {
+                "healthy": "green",
+                "degraded": "orange",
+                "unhealthy": "red",
+                "unknown": "gray"
+            }
+            status_kr = {
+                "healthy": "정상",
+                "degraded": "주의",
+                "unhealthy": "문제 발생",
+                "unknown": "알 수 없음"
+            }
+
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("시스템 상태", status_kr.get(status, status))
+            with col2:
+                st.metric("업타임", health_result.get("uptime_formatted", "-"))
+            with col3:
+                summary = health_result.get("summary", {})
+                st.metric("정상 체크", f"{summary.get('healthy', 0)}/{summary.get('total', 0)}")
+            with col4:
+                st.metric("버전", health_result.get("version", "1.0.0"))
+
+            st.markdown("---")
+
+            # 개별 체크 결과
+            st.markdown("### 상세 체크 결과")
+            checks = health_result.get("checks", [])
+
+            for check in checks:
+                check_status = check.get("status", "unknown")
+                icon = {"healthy": "", "degraded": "", "unhealthy": "", "unknown": ""}
+                col1, col2, col3 = st.columns([1, 3, 2])
+                with col1:
+                    st.write(f"{icon.get(check_status, '')} **{check.get('name', '-')}**")
+                with col2:
+                    st.write(check.get("message", "-"))
+                with col3:
+                    st.caption(f"{check.get('duration_ms', 0):.1f}ms")
+
+        except Exception as e:
+            st.error(f"헬스 체크 실패: {e}")
+
+    # === 에러 로그 ===
+    with mon_tab2:
+        st.markdown("### 에러 요약")
+
+        try:
+            error_summary = get_error_summary(days=7)
+
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("7일간 에러", f"{error_summary.get('total_errors', 0)}건")
+            with col2:
+                by_type = error_summary.get("by_type", {})
+                st.metric("에러 유형", f"{len(by_type)}종류")
+            with col3:
+                by_page = error_summary.get("by_page", {})
+                st.metric("영향 페이지", f"{len(by_page)}개")
+
+            st.markdown("---")
+
+            # 에러 유형별
+            if by_type:
+                st.markdown("### 에러 유형별 분포")
+                for error_type, count in list(by_type.items())[:10]:
+                    st.write(f"- **{error_type}**: {count}건")
+            else:
+                st.success("최근 7일간 에러 없음")
+
+            # 페이지별
+            if by_page:
+                st.markdown("### 페이지별 에러 분포")
+                for page, count in list(by_page.items())[:10]:
+                    st.write(f"- **{page}**: {count}건")
+
+        except Exception as e:
+            st.error(f"에러 요약 조회 실패: {e}")
+
+        st.markdown("---")
+
+        # 최근 알림
+        st.markdown("### 최근 알림")
+        try:
+            monitoring = get_monitoring()
+            alerts = monitoring.get_alerts(limit=10)
+
+            if alerts:
+                for alert in alerts:
+                    level = alert.get("level", "info")
+                    level_icons = {"info": "", "warning": "", "error": "", "critical": ""}
+                    st.write(f"{level_icons.get(level, '')} [{alert.get('timestamp', '')[:19]}] {alert.get('message', '')}")
+            else:
+                st.info("최근 알림 없음")
+        except Exception as e:
+            st.error(f"알림 조회 실패: {e}")
+
+    # === 사용자 분석 ===
+    with mon_tab3:
+        st.markdown("### 사용자 분석")
+
+        try:
+            stats = get_summary_stats(days=7)
+
+            # 요약 메트릭
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("총 세션", f"{stats.get('total_sessions', 0):,}")
+            with col2:
+                st.metric("페이지뷰", f"{stats.get('total_page_views', 0):,}")
+            with col3:
+                st.metric("전환율", f"{stats.get('conversion_rate_percent', 0):.1f}%")
+            with col4:
+                st.metric("평균 페이지/세션", f"{stats.get('avg_pages_per_session', 0):.1f}")
+
+            st.markdown("---")
+
+            # 인기 페이지
+            st.markdown("### 인기 페이지 (Top 10)")
+            top_pages = stats.get("top_pages", {})
+            if top_pages:
+                for i, (page, count) in enumerate(list(top_pages.items())[:10], 1):
+                    st.write(f"{i}. **{page}**: {count:,}회")
+            else:
+                st.info("페이지 데이터 없음")
+
+            st.markdown("---")
+
+            # 인기 기능
+            st.markdown("### 인기 기능 (Top 10)")
+            top_features = stats.get("top_features", {})
+            if top_features:
+                for i, (feature, count) in enumerate(list(top_features.items())[:10], 1):
+                    st.write(f"{i}. **{feature}**: {count:,}회")
+            else:
+                st.info("기능 사용 데이터 없음")
+
+            st.markdown("---")
+
+            # 전환 통계
+            st.markdown("### 전환 통계")
+            conversions = stats.get("conversions", {})
+            if conversions:
+                for goal, count in conversions.items():
+                    st.write(f"- **{goal}**: {count}건")
+            else:
+                st.info("전환 데이터 없음")
+
+        except Exception as e:
+            st.error(f"분석 데이터 조회 실패: {e}")
+
+    # === 성능 메트릭 ===
+    with mon_tab4:
+        st.markdown("### 성능 메트릭")
+
+        try:
+            monitoring = get_monitoring()
+            system_status = monitoring.get_system_status()
+
+            # 기본 메트릭
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("총 이벤트", f"{system_status.get('total_events', 0):,}")
+            with col2:
+                st.metric("총 요청", f"{system_status.get('total_requests', 0):,}")
+            with col3:
+                st.metric("에러 수", f"{system_status.get('error_count', 0)}")
+            with col4:
+                st.metric("에러율", f"{system_status.get('error_rate_percent', 0):.2f}%")
+
+            st.markdown("---")
+
+            # API 응답 시간
+            st.markdown("### API 응답 시간")
+            api_metrics = get_metrics_summary("api_latency", days=1)
+            if api_metrics.get("count", 0) > 0:
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("호출 수", f"{api_metrics.get('count', 0)}")
+                with col2:
+                    st.metric("평균", f"{api_metrics.get('avg', 0):.0f}ms")
+                with col3:
+                    st.metric("P90", f"{api_metrics.get('p90', 0) or 0:.0f}ms")
+                with col4:
+                    st.metric("P99", f"{api_metrics.get('p99', 0) or 0:.0f}ms")
+            else:
+                st.info("API 메트릭 데이터 없음")
+
+            st.markdown("---")
+
+            # 메트릭 요약
+            st.markdown("### 모든 메트릭 요약")
+            metrics_summary = system_status.get("metrics_summary", {})
+            if metrics_summary:
+                for name, data in metrics_summary.items():
+                    st.write(f"- **{name}**: 최신값 {data.get('latest', '-')}, 평균 {data.get('avg', '-')}, 최대 {data.get('max', '-')} {data.get('unit', '')}")
+            else:
+                st.info("수집된 메트릭 없음")
+
+        except Exception as e:
+            st.error(f"성능 메트릭 조회 실패: {e}")

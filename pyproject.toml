@@ -1,0 +1,237 @@
+# pyproject.toml
+# FlyReady Lab - 대기업 수준 프로젝트 설정
+# Stage 3: 테스트 및 품질 보증
+
+[project]
+name = "flyready-lab"
+version = "2.0.0"
+description = "AI 승무원 면접 코칭 플랫폼"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "FlyReady Lab Team"}
+]
+keywords = ["ai", "interview", "coaching", "flight-attendant", "streamlit"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: Streamlit",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+# =============================================================================
+# pytest 설정
+# =============================================================================
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+    "--cov=src",
+    "--cov-report=term-missing",
+    "--cov-report=html:coverage_html",
+    "--cov-fail-under=70",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+    "ignore::UserWarning",
+]
+asyncio_mode = "auto"
+markers = [
+    "unit: 단위 테스트",
+    "integration: 통합 테스트",
+    "e2e: End-to-End 테스트",
+    "slow: 느린 테스트 (5초 이상)",
+    "api: API 호출이 필요한 테스트",
+    "ui: UI 관련 테스트",
+    "auth: 인증 관련 테스트",
+    "payment: 결제 관련 테스트",
+    "mentor: 멘토 관련 테스트",
+    "ai: AI/ML 관련 테스트",
+]
+
+# =============================================================================
+# Coverage 설정
+# =============================================================================
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "tests/*",
+    "pages/*",
+    "*/__pycache__/*",
+    "*.pyc",
+    "venv/*",
+    ".venv/*",
+    "test_*.py",
+]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "if typing.TYPE_CHECKING:",
+    "@abstractmethod",
+]
+show_missing = true
+precision = 2
+
+[tool.coverage.html]
+directory = "coverage_html"
+
+# =============================================================================
+# Flake8 설정 (via flake8-pyproject)
+# =============================================================================
+[tool.flake8]
+max-line-length = 120
+max-complexity = 15
+exclude = [
+    ".git",
+    "__pycache__",
+    "venv",
+    ".venv",
+    "build",
+    "dist",
+    "*.egg-info",
+    "tests/*",
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "W503",  # line break before binary operator
+    "E203",  # whitespace before ':'
+    "E266",  # too many # for block comment
+    "E402",  # module level import not at top
+]
+per-file-ignores = [
+    "pages/*:E501,E402",
+    "config.py:E501",
+]
+
+# =============================================================================
+# MyPy 설정
+# =============================================================================
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_ignores = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+ignore_missing_imports = true
+show_error_codes = true
+show_column_numbers = true
+pretty = true
+
+[[tool.mypy.overrides]]
+module = [
+    "streamlit.*",
+    "openai.*",
+    "fpdf.*",
+    "pydub.*",
+    "PIL.*",
+]
+ignore_missing_imports = true
+
+# =============================================================================
+# Pylint 설정
+# =============================================================================
+[tool.pylint.main]
+py-version = "3.9"
+jobs = 0  # auto-detect
+ignore-patterns = ["test_.*\\.py", "conftest\\.py"]
+
+[tool.pylint.messages_control]
+disable = [
+    "C0114",  # missing-module-docstring
+    "C0115",  # missing-class-docstring
+    "C0116",  # missing-function-docstring
+    "C0301",  # line-too-long
+    "R0903",  # too-few-public-methods
+    "R0913",  # too-many-arguments
+    "W0612",  # unused-variable
+    "W0613",  # unused-argument
+    "E0401",  # import-error
+]
+
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.pylint.design]
+max-args = 10
+max-locals = 25
+max-returns = 6
+max-branches = 20
+
+# =============================================================================
+# Black 포매터 설정 (선택)
+# =============================================================================
+[tool.black]
+line-length = 120
+target-version = ["py39", "py310", "py311"]
+include = "\\.pyi?$"
+exclude = '''
+/(
+    \.git
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+)/
+'''
+
+# =============================================================================
+# isort 설정
+# =============================================================================
+[tool.isort]
+profile = "black"
+line_length = 120
+skip_gitignore = true
+known_first_party = [
+    "config",
+    "env_config",
+    "ui_config",
+    "ui_components",
+    "error_handler",
+    "accessibility",
+    "security_utils",
+    "performance_utils",
+    "feedback_ux",
+    "responsive_design",
+    "enterprise_core",
+    "shared_utils",
+    "constants",
+]
+sections = [
+    "FUTURE",
+    "STDLIB",
+    "THIRDPARTY",
+    "FIRSTPARTY",
+    "LOCALFOLDER",
+]
+
+# =============================================================================
+# Bandit 보안 검사 설정
+# =============================================================================
+[tool.bandit]
+exclude_dirs = ["tests", "venv", ".venv"]
+skips = ["B101", "B311"]  # assert, random

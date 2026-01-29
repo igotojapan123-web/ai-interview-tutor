@@ -11,27 +11,32 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import AIRLINES
-from sidebar_common import render_sidebar
+from sidebar_common import init_page, end_page
 from logging_config import get_logger
 
 logger = get_logger(__name__)
 
-st.set_page_config(
-    page_title="합격자 DB",
-    page_icon="🏆",
-    layout="wide"
+init_page(
+    title="합격자 DB",
+    current_page="합격자DB",
+    wide_layout=True
 )
-render_sidebar("합격자DB")
 
 
 # 구글 번역 방지
-st.markdown(
-    """
-    <meta name="google" content="notranslate">
-    <style>html { translate: no; }</style>
-    """,
-    unsafe_allow_html=True,
-)
+st.markdown("""
+<meta name="google" content="notranslate">
+<meta http-equiv="Content-Language" content="ko">
+<style>
+html, body, .stApp, .main, [data-testid="stAppViewContainer"] {
+    translate: no !important;
+}
+.notranslate, [translate="no"] {
+    translate: no !important;
+}
+</style>
+""", unsafe_allow_html=True)
+st.markdown('<div translate="no" class="notranslate" lang="ko">', unsafe_allow_html=True)
 
 # ----------------------------
 # 상수
@@ -45,11 +50,11 @@ def get_final_round(airline):
     return AIRLINE_FINAL_ROUND.get(airline, 2)
 
 PASS_STAGES = {
-    "final": {"name": "최종 합격", "icon": "🏆", "order": 1},
-    "3rd": {"name": "3차 면접 합격", "icon": "🥉", "order": 2},
-    "2nd": {"name": "2차 면접 합격", "icon": "🥈", "order": 3},
-    "1st": {"name": "1차 면접 합격", "icon": "🥇", "order": 4},
-    "document": {"name": "서류 합격", "icon": "📄", "order": 5},
+    "final": {"name": "최종 합격", "icon": "", "order": 1},
+    "3rd": {"name": "3차 면접 합격", "icon": "", "order": 2},
+    "2nd": {"name": "2차 면접 합격", "icon": "", "order": 3},
+    "1st": {"name": "1차 면접 합격", "icon": "", "order": 4},
+    "document": {"name": "서류 합격", "icon": "", "order": 5},
 }
 
 # 보상 정의
@@ -60,18 +65,18 @@ def get_reward(stage, airline):
         return None
     elif stage == "1st":
         if final_round == 2:
-            return {"type": "gifticon", "name": "스타벅스 아메리카노", "icon": "☕", "description": "스타벅스 아메리카노 기프티콘"}
+            return {"type": "gifticon", "name": "스타벅스 아메리카노", "icon": "", "description": "스타벅스 아메리카노 기프티콘"}
         else:
             return {"type": "standard", "name": "스탠다드 1주일", "icon": "⭐", "description": "스탠다드 멤버십 1주일 추가"}
     elif stage == "2nd":
         if final_round == 2:
             return None
         else:
-            return {"type": "gifticon", "name": "스타벅스 아메리카노", "icon": "☕", "description": "스타벅스 아메리카노 기프티콘"}
+            return {"type": "gifticon", "name": "스타벅스 아메리카노", "icon": "", "description": "스타벅스 아메리카노 기프티콘"}
     elif stage == "3rd":
         return None
     elif stage == "final":
-        return {"type": "premium", "name": "프리미엄 1주일", "icon": "👑", "description": "프리미엄 멤버십 1주일 추가"}
+        return {"type": "premium", "name": "프리미엄 1주일", "icon": "", "description": "프리미엄 멤버십 1주일 추가"}
     return None
 
 # ----------------------------
@@ -352,6 +357,30 @@ CURATED_QUESTIONS = {
         "본인이 이 팀에 기여할 수 있는 점은?",
         "안전에 대한 본인의 생각을 말해주세요.",
     ],
+    "에어서울": [
+        "에어서울에 지원한 이유를 말씀해주세요.",
+        "에어서울에 대해 알고 있는 것을 말해주세요.",
+        "아시아나항공과 에어서울의 차이점은 무엇이라고 생각하나요?",
+        "일본어 또는 중국어를 할 수 있나요?",
+        "승무원이 되기 위해 어떤 준비를 했나요?",
+        "서비스 경험이 있다면 말씀해주세요.",
+        "인천공항 근무에 대해 어떻게 생각하나요?",
+        "팀워크가 중요한 이유는 무엇인가요?",
+        "스트레스 상황에서 어떻게 대처하시나요?",
+        "본인의 장점을 서비스와 연결해서 말해주세요.",
+    ],
+    "에어로케이": [
+        "에어로케이에 대해 알고 있는 것을 말씀해주세요.",
+        "청주/대전 지역에서 근무가 가능한가요?",
+        "소규모 항공사에서 일하는 것의 장점은 무엇이라고 생각하나요?",
+        "에어로케이에 지원한 이유는 무엇인가요?",
+        "승무원으로서 가장 중요한 자질은 무엇이라고 생각하나요?",
+        "체력 관리는 어떻게 하고 계신가요?",
+        "고객 불만 상황을 어떻게 해결하시겠습니까?",
+        "본인만의 강점을 말씀해주세요.",
+        "항공 서비스업에 대한 본인의 생각은?",
+        "5년 후 본인의 모습은 어떨 것 같나요?",
+    ],
 }
 
 # ----------------------------
@@ -457,7 +486,7 @@ st.markdown("""
 # ----------------------------
 # UI
 # ----------------------------
-st.title("🏆 합격자 DB")
+st.title("합격자 DB")
 st.caption("합격자들의 실제 경험, 면접 질문, 통계를 한눈에 확인하세요!")
 
 # 데이터 로드
@@ -466,7 +495,7 @@ likes_data = load_likes()
 comments_data = load_comments()
 
 # 탭 구성 (5개 탭)
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 통계 대시보드", "❓ 면접 질문 DB", "📖 후기 보기", "✍️ 후기 작성", "🎁 보상 안내"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs([" 통계 대시보드", " 면접 질문 DB", " 후기 보기", "️ 후기 작성", " 보상 안내"])
 
 # ----------------------------
 # 탭 1: 통계 대시보드
@@ -477,7 +506,7 @@ with tab1:
     if not stats:
         st.info("아직 승인된 후기가 없어 통계를 표시할 수 없습니다.")
     else:
-        st.markdown("### 📈 합격 현황 한눈에 보기")
+        st.markdown("### 합격 현황 한눈에 보기")
 
         # 핵심 지표 카드
         col1, col2, col3, col4 = st.columns(4)
@@ -521,7 +550,7 @@ with tab1:
 
         with col_left:
             # 항공사별 현황
-            st.markdown("#### ✈️ 항공사별 합격 현황")
+            st.markdown("#### ️ 항공사별 합격 현황")
 
             airline_data = dict(stats["by_airline"])
             if airline_data:
@@ -558,7 +587,7 @@ with tab1:
             st.markdown("---")
 
             # 연도별 추이
-            st.markdown("#### 📅 연도별 합격 현황")
+            st.markdown("#### 연도별 합격 현황")
             year_data = dict(stats["by_year"])
             if year_data:
                 sorted_years = sorted(year_data.items(), reverse=True)
@@ -569,7 +598,7 @@ with tab1:
 
         with col_right:
             # 전공 분포
-            st.markdown("#### 🎓 합격자 전공 분포")
+            st.markdown("#### 합격자 전공 분포")
             major_data = dict(stats["by_major"])
             if major_data:
                 sorted_majors = sorted(major_data.items(), key=lambda x: x[1], reverse=True)
@@ -590,7 +619,7 @@ with tab1:
             st.markdown("---")
 
             # 도전 횟수 분포
-            st.markdown("#### 🔄 도전 횟수 분포")
+            st.markdown("#### 도전 횟수 분포")
             attempts = stats["attempts_data"]
             if attempts:
                 attempts_counter = Counter(attempts)
@@ -629,13 +658,13 @@ with tab1:
 # 탭 2: 면접 질문 DB
 # ----------------------------
 with tab2:
-    st.markdown("### ❓ 면접 기출질문 모음")
+    st.markdown("### 면접 기출질문 모음")
     st.caption("항공사별 실제 기출질문 + 합격자 제보 질문을 모았습니다. 면접 준비에 활용하세요!")
 
     all_questions = get_all_questions(stories)
 
     # 기출질문 기본 데이터 항상 표시
-    st.markdown("#### 📚 항공사별 기출질문")
+    st.markdown("#### 항공사별 기출질문")
     curated_airline = st.selectbox("항공사 선택", list(CURATED_QUESTIONS.keys()), key="curated_airline")
     curated_qs = CURATED_QUESTIONS.get(curated_airline, [])
 
@@ -647,10 +676,10 @@ with tab2:
         """, unsafe_allow_html=True)
 
     st.markdown("")
-    st.info(f"💡 **{curated_airline}** 면접 준비 팁: 위 질문들에 대한 답변을 STAR 기법으로 준비하세요!")
+    st.info(f" **{curated_airline}** 면접 준비 팁: 위 질문들에 대한 답변을 STAR 기법으로 준비하세요!")
 
     st.markdown("---")
-    st.markdown("#### 💬 사용자 제보 질문")
+    st.markdown("#### 사용자 제보 질문")
 
     if not all_questions:
         st.caption("아직 사용자 제보 질문이 없습니다. 합격 후기를 작성하면서 질문을 공유해주세요!")
@@ -684,7 +713,7 @@ with tab2:
                 questions_by_airline[q["airline"]].append(q)
 
             for airline, qs in sorted(questions_by_airline.items(), key=lambda x: len(x[1]), reverse=True):
-                with st.expander(f"✈️ {airline} ({len(qs)}개 질문)", expanded=False):
+                with st.expander(f"️ {airline} ({len(qs)}개 질문)", expanded=False):
                     for q in qs:
                         stage_info = PASS_STAGES.get(q["stage"], PASS_STAGES["final"])
                         st.markdown(f"""
@@ -697,7 +726,7 @@ with tab2:
                         """, unsafe_allow_html=True)
         else:
             # 선택한 항공사 질문만
-            st.markdown(f"#### ✈️ {q_airline} 면접 질문 ({len(filtered_questions)}개)")
+            st.markdown(f"#### ️ {q_airline} 면접 질문 ({len(filtered_questions)}개)")
 
             for q in filtered_questions:
                 stage_info = PASS_STAGES.get(q["stage"], PASS_STAGES["final"])
@@ -712,7 +741,7 @@ with tab2:
 
         # 인기 질문 유형
         st.markdown("---")
-        st.markdown("#### 🔥 자주 나오는 질문 유형")
+        st.markdown("#### 자주 나오는 질문 유형")
 
         question_types = {
             "자기소개": 0,
@@ -762,7 +791,7 @@ with tab3:
 
         **합격하셨다면 후기를 작성해주세요!**
 
-        ✨ 후기 작성 시 단계별 보상이 있습니다! (🎁 보상 안내 탭 확인)
+         후기 작성 시 단계별 보상이 있습니다! ( 보상 안내 탭 확인)
         """)
     else:
         # 필터 및 정렬
@@ -813,7 +842,7 @@ with tab3:
             if like_count >= 5:
                 popular_badge = '<span class="popular-badge">인기 후기</span> '
 
-            with st.expander(f"{popular_badge}{stage_info['icon']} {story.get('airline', '미정')} | {story.get('nickname', '익명')} ({story.get('year', '?')}년) {reward_badge} | ❤️ {like_count} 💬 {comment_count}"):
+            with st.expander(f"{popular_badge}{stage_info['icon']} {story.get('airline', '미정')} | {story.get('nickname', '익명')} ({story.get('year', '?')}년) {reward_badge} | ️ {like_count}  {comment_count}"):
                 # 보상 표시
                 if approved and reward:
                     reward_color = {"gifticon": "#4a5568", "standard": "#3182ce", "premium": "#d69e2e"}
@@ -833,7 +862,7 @@ with tab3:
                     st.markdown(f"**면접:** {story.get('interview_type', '-') or '-'}")
 
                 st.divider()
-                st.markdown("#### 📝 합격 수기")
+                st.markdown("#### 합격 수기")
                 st.write(story.get('story', ''))
 
                 questions = story.get('questions', [])
@@ -843,12 +872,12 @@ with tab3:
                     col1, col2 = st.columns(2)
                     with col1:
                         if questions:
-                            st.markdown("#### ❓ 받은 질문")
+                            st.markdown("#### 받은 질문")
                             for q in questions:
                                 if q: st.markdown(f"• {q}")
                     with col2:
                         if tips:
-                            st.markdown("#### 💡 팁")
+                            st.markdown("#### 팁")
                             for t in tips:
                                 if t: st.markdown(f"• {t}")
 
@@ -858,13 +887,13 @@ with tab3:
                 col_like, col_comment = st.columns([1, 3])
 
                 with col_like:
-                    like_text = "❤️ 좋아요" if not user_liked else "💖 좋아요 취소"
+                    like_text = "️ 좋아요" if not user_liked else " 좋아요 취소"
                     if st.button(f"{like_text} ({like_count})", key=f"like_{story_id}"):
                         toggle_like(story_id, st.session_state.user_id)
                         st.rerun()
 
                 # 댓글 표시
-                st.markdown("#### 💬 댓글 / 질문")
+                st.markdown("#### 댓글 / 질문")
                 story_comments = get_comments(story_id, comments_data)
 
                 if story_comments:
@@ -905,16 +934,16 @@ with tab3:
 # 탭 4: 후기 작성
 # ----------------------------
 with tab4:
-    st.subheader("✍️ 합격 후기 작성")
+    st.subheader("️ 합격 후기 작성")
 
     st.warning("""
-    ⚠️ **증빙 필수** - 합격 문자/이메일 스크린샷이 필요합니다.
-    ⚠️ **개인정보 모자이크** 후 업로드해주세요.
-    ✨ **보상 안내** - 🎁 보상 안내 탭을 확인하세요!
+    ️ **증빙 필수** - 합격 문자/이메일 스크린샷이 필요합니다.
+    ️ **개인정보 모자이크** 후 업로드해주세요.
+     **보상 안내** -  보상 안내 탭을 확인하세요!
     """)
 
     with st.form("story_form"):
-        st.markdown("### 📋 합격 정보")
+        st.markdown("### 합격 정보")
         col1, col2, col3 = st.columns(3)
 
         with col1:
@@ -944,14 +973,14 @@ with tab4:
         if airline and airline != "선택":
             reward = get_reward(stage, airline)
             if reward:
-                st.success(f"🎁 **예상 보상:** {reward['icon']} {reward['description']}")
+                st.success(f" **예상 보상:** {reward['icon']} {reward['description']}")
             elif stage == "document":
-                st.info("📄 서류합격은 보상이 없습니다.")
+                st.info("서류합격은 보상이 없습니다.")
 
         st.markdown("---")
 
         # 증빙
-        st.markdown("### 📎 증빙 자료 *")
+        st.markdown("### 증빙 자료 *")
         proof_file = st.file_uploader("합격 문자/이메일 스크린샷", type=["png", "jpg", "jpeg"])
         if proof_file:
             st.image(proof_file, width=250)
@@ -960,7 +989,7 @@ with tab4:
         if airline and airline != "선택":
             reward = get_reward(stage, airline)
             if reward and reward["type"] == "gifticon":
-                st.markdown("### 📱 기프티콘 수령 연락처 *")
+                st.markdown("### 기프티콘 수령 연락처 *")
                 phone = st.text_input("휴대폰 번호", placeholder="010-0000-0000", help="승인 후 기프티콘 발송에 사용됩니다.")
             else:
                 phone = ""
@@ -970,7 +999,7 @@ with tab4:
         st.markdown("---")
 
         # 기본 정보
-        st.markdown("### 👤 기본 정보")
+        st.markdown("### 기본 정보")
         col1, col2 = st.columns(2)
         with col1:
             nickname = st.text_input("닉네임 *", placeholder="예: 꿈꾸는승무원")
@@ -983,11 +1012,11 @@ with tab4:
         st.markdown("---")
 
         # 수기
-        st.markdown("### 📝 합격 수기 *")
+        st.markdown("### 합격 수기 *")
         story_content = st.text_area("합격 경험을 자유롭게 작성해주세요", height=180)
 
         # 질문 & 팁
-        st.markdown("### ❓ 받은 질문 / 💡 팁 (선택)")
+        st.markdown("### 받은 질문 / 팁 (선택)")
         st.caption("실제로 받은 면접 질문을 공유해주시면 다른 지원자들에게 큰 도움이 됩니다!")
         col1, col2 = st.columns(2)
         questions = []
@@ -999,7 +1028,7 @@ with tab4:
                 tips.append(st.text_input(f"팁 {i+1}", key=f"t{i}"))
 
         st.markdown("---")
-        submitted = st.form_submit_button("📤 등록 신청", type="primary", use_container_width=True)
+        submitted = st.form_submit_button(" 등록 신청", type="primary", use_container_width=True)
 
         if submitted:
             if airline == "선택":
@@ -1038,50 +1067,50 @@ with tab4:
                 stories.append(new_story)
                 save_stories(stories)
 
-                st.success("🎉 등록 신청 완료! 증빙 확인 후 1-2일 내 승인됩니다.")
+                st.success("등록 신청 완료! 증빙 확인 후 1-2일 내 승인됩니다.")
                 st.balloons()
 
 # ----------------------------
 # 탭 5: 보상 안내
 # ----------------------------
 with tab5:
-    st.subheader("🎁 후기 작성 보상 안내")
+    st.subheader(" 후기 작성 보상 안내")
     st.markdown("합격 후기를 작성해주시면 단계별로 보상을 드립니다!")
 
     st.markdown("---")
 
-    st.markdown("### 📋 단계별 보상")
+    st.markdown("### 단계별 보상")
 
     col1, col2 = st.columns(2)
 
     with col1:
         st.markdown("""
-        #### 🏛️ 3차 면접이 있는 항공사
+        #### ️ 3차 면접이 있는 항공사
         <small>(대한항공, 제주항공)</small>
 
         | 단계 | 보상 |
         |------|------|
-        | 📄 서류합격 | - |
-        | 🥇 1차 합격 | ⭐ 스탠다드 1주일 |
-        | 🥈 2차 합격 | ☕ 스타벅스 아메리카노 |
-        | 🏆 최종 합격 | 👑 프리미엄 1주일 |
+        |  서류합격 | - |
+        |  1차 합격 | ⭐ 스탠다드 1주일 |
+        |  2차 합격 |  스타벅스 아메리카노 |
+        |  최종 합격 |  프리미엄 1주일 |
         """, unsafe_allow_html=True)
 
     with col2:
         st.markdown("""
-        #### ✈️ 2차가 최종인 항공사
+        #### ️ 2차가 최종인 항공사
         <small>(아시아나, 진에어, 티웨이, 에어부산 등)</small>
 
         | 단계 | 보상 |
         |------|------|
-        | 📄 서류합격 | - |
-        | 🥇 1차 합격 | ☕ 스타벅스 아메리카노 |
-        | 🏆 최종 합격 | 👑 프리미엄 1주일 |
+        |  서류합격 | - |
+        |  1차 합격 |  스타벅스 아메리카노 |
+        |  최종 합격 |  프리미엄 1주일 |
         """, unsafe_allow_html=True)
 
     st.markdown("---")
 
-    st.markdown("### 🎁 보상 상세")
+    st.markdown("### 보상 상세")
 
     col1, col2, col3 = st.columns(3)
 
@@ -1097,7 +1126,7 @@ with tab5:
     with col2:
         st.markdown("""
         <div style="padding: 20px; background: #f0fff4; border-radius: 10px; text-align: center;">
-            <div style="font-size: 40px;">☕</div>
+            <div style="font-size: 40px;"></div>
             <h4>스타벅스 기프티콘</h4>
             <p style="font-size: 13px; color: #666;">아메리카노 Tall<br/>기프티콘 발송</p>
         </div>
@@ -1106,7 +1135,7 @@ with tab5:
     with col3:
         st.markdown("""
         <div style="padding: 20px; background: #fffff0; border-radius: 10px; text-align: center;">
-            <div style="font-size: 40px;">👑</div>
+            <div style="font-size: 40px;"></div>
             <h4>프리미엄 1주일</h4>
             <p style="font-size: 13px; color: #666;">프리미엄 멤버십<br/>1주일 무료 이용</p>
         </div>

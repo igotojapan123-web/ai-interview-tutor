@@ -7,7 +7,7 @@ import time
 from openai import OpenAI
 
 # ===== API 설정 =====
-CLOVA_API_KEY = "nv-b671e9692d064b1abd4fee4a5553887fdARS"
+CLOVA_API_KEY = os.getenv("CLOVA_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # CLOVA Studio 클라이언트

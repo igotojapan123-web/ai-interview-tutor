@@ -12,10 +12,13 @@ logger = get_logger(__name__)
 import random
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from sidebar_common import render_sidebar
+from sidebar_common import init_page, end_page
 
-st.set_page_config(page_title="면접 꿀팁", page_icon="💡", layout="wide")
-render_sidebar("면접꿀팁")
+init_page(
+    title="면접 꿀팁",
+    current_page="면접꿀팁",
+    wide_layout=True
+)
 
 
 
@@ -69,28 +72,28 @@ def save_assessment(data):
 
 # 오늘의 팁 데이터 (매일 다른 팁 표시)
 DAILY_TIPS = [
-    {"category": "첫인상", "tip": "면접관과 눈을 마주치며 인사할 때, 고개를 15도만 숙이세요. 너무 깊은 인사는 오히려 자신감 없어 보입니다.", "icon": "👁️"},
-    {"category": "목소리", "tip": "답변 시작 전 0.5초 멈추고 시작하세요. 급하게 시작하면 긴장해 보이고, 잠깐의 여유가 프로페셔널한 인상을 줍니다.", "icon": "🎤"},
+    {"category": "첫인상", "tip": "면접관과 눈을 마주치며 인사할 때, 고개를 15도만 숙이세요. 너무 깊은 인사는 오히려 자신감 없어 보입니다.", "icon": "️"},
+    {"category": "목소리", "tip": "답변 시작 전 0.5초 멈추고 시작하세요. 급하게 시작하면 긴장해 보이고, 잠깐의 여유가 프로페셔널한 인상을 줍니다.", "icon": ""},
     {"category": "답변법", "tip": "답변은 30초~1분이 적정합니다. 타이머로 연습해보세요. 너무 짧으면 준비 부족, 너무 길면 핵심 전달력이 떨어집니다.", "icon": "⏱️"},
-    {"category": "서류", "tip": "자소서에 쓴 경험은 반드시 면접에서 물어봅니다. 자소서를 외우지 말고, 그 경험의 '감정'을 기억하세요.", "icon": "📝"},
-    {"category": "영어", "tip": "영어면접에서 'I think...'보다 'In my experience...'로 시작하면 더 구체적이고 설득력 있는 답변이 됩니다.", "icon": "🌐"},
-    {"category": "이미지", "tip": "면접 당일 옷은 전날 밤에 완벽히 준비하세요. 아침에 허둥대면 컨디션과 표정에 그대로 드러납니다.", "icon": "👗"},
-    {"category": "체력", "tip": "면접 전날 가벼운 스트레칭과 30분 산책을 추천합니다. 과한 운동은 피로감을, 적당한 활동은 자신감을 줍니다.", "icon": "🏋️"},
-    {"category": "긴장관리", "tip": "대기실에서 손을 따뜻하게 유지하세요. 차가운 손은 긴장의 신호입니다. 핫팩이나 손 비비기가 도움됩니다.", "icon": "💆"},
-    {"category": "태도", "tip": "면접관의 질문을 듣다가 끄덕이세요. 경청하는 태도는 소통 능력의 첫 번째 증거입니다.", "icon": "🙂"},
-    {"category": "마무리", "tip": "면접 마지막 '하고 싶은 말' 기회를 절대 놓치지 마세요. 30초짜리 클로징 멘트를 미리 준비하세요.", "icon": "🎯"},
-    {"category": "FSC", "tip": "대한항공/아시아나 면접에서는 '글로벌 서비스 마인드'를 강조하세요. FSC는 '품격'있는 서비스를 원합니다.", "icon": "✈️"},
-    {"category": "LCC", "tip": "LCC 면접에서는 '밝은 에너지'와 '팀워크'를 강조하세요. LCC는 적극적이고 활기찬 승무원을 원합니다.", "icon": "🛩️"},
-    {"category": "그룹면접", "tip": "그룹면접에서 다른 지원자 답변 시 적절히 고개를 끄덕이세요. 경쟁자가 아닌 동료로 보는 시선이 좋은 인상을 줍니다.", "icon": "👥"},
-    {"category": "꼬리질문", "tip": "꼬리질문은 당신의 답변에 관심이 있다는 신호입니다. 당황하지 말고 '좋은 질문 감사합니다'하고 차분히 답하세요.", "icon": "🔄"},
-    {"category": "실수대처", "tip": "답변 중 실수했을 때 '다시 정리해서 말씀드리겠습니다'라고 자연스럽게 리커버리하세요. 당황하는 것보다 대처력이 중요합니다.", "icon": "🔧"},
+    {"category": "서류", "tip": "자소서에 쓴 경험은 반드시 면접에서 물어봅니다. 자소서를 외우지 말고, 그 경험의 '감정'을 기억하세요.", "icon": ""},
+    {"category": "영어", "tip": "영어면접에서 'I think...'보다 'In my experience...'로 시작하면 더 구체적이고 설득력 있는 답변이 됩니다.", "icon": ""},
+    {"category": "이미지", "tip": "면접 당일 옷은 전날 밤에 완벽히 준비하세요. 아침에 허둥대면 컨디션과 표정에 그대로 드러납니다.", "icon": ""},
+    {"category": "체력", "tip": "면접 전날 가벼운 스트레칭과 30분 산책을 추천합니다. 과한 운동은 피로감을, 적당한 활동은 자신감을 줍니다.", "icon": "️"},
+    {"category": "긴장관리", "tip": "대기실에서 손을 따뜻하게 유지하세요. 차가운 손은 긴장의 신호입니다. 핫팩이나 손 비비기가 도움됩니다.", "icon": ""},
+    {"category": "태도", "tip": "면접관의 질문을 듣다가 끄덕이세요. 경청하는 태도는 소통 능력의 첫 번째 증거입니다.", "icon": ""},
+    {"category": "마무리", "tip": "면접 마지막 '하고 싶은 말' 기회를 절대 놓치지 마세요. 30초짜리 클로징 멘트를 미리 준비하세요.", "icon": ""},
+    {"category": "FSC", "tip": "대한항공/아시아나 면접에서는 '글로벌 서비스 마인드'를 강조하세요. FSC는 '품격'있는 서비스를 원합니다.", "icon": "️"},
+    {"category": "LCC", "tip": "LCC 면접에서는 '밝은 에너지'와 '팀워크'를 강조하세요. LCC는 적극적이고 활기찬 승무원을 원합니다.", "icon": "️"},
+    {"category": "그룹면접", "tip": "그룹면접에서 다른 지원자 답변 시 적절히 고개를 끄덕이세요. 경쟁자가 아닌 동료로 보는 시선이 좋은 인상을 줍니다.", "icon": ""},
+    {"category": "꼬리질문", "tip": "꼬리질문은 당신의 답변에 관심이 있다는 신호입니다. 당황하지 말고 '좋은 질문 감사합니다'하고 차분히 답하세요.", "icon": ""},
+    {"category": "실수대처", "tip": "답변 중 실수했을 때 '다시 정리해서 말씀드리겠습니다'라고 자연스럽게 리커버리하세요. 당황하는 것보다 대처력이 중요합니다.", "icon": ""},
 ]
 
 # 자가진단 항목
 ASSESSMENT_CATEGORIES = {
     "image": {
         "name": "이미지/첫인상",
-        "icon": "👗",
+        "icon": "",
         "items": [
             "면접 복장(정장/블라우스)을 완벽히 준비했다",
             "헤어스타일을 단정하게 정돈할 수 있다",
@@ -101,7 +104,7 @@ ASSESSMENT_CATEGORIES = {
     },
     "answer": {
         "name": "답변 준비",
-        "icon": "💬",
+        "icon": "",
         "items": [
             "자기소개를 1분 내로 자연스럽게 할 수 있다",
             "지원동기를 구체적으로 설명할 수 있다",
@@ -112,7 +115,7 @@ ASSESSMENT_CATEGORIES = {
     },
     "english": {
         "name": "영어 면접",
-        "icon": "🌐",
+        "icon": "",
         "items": [
             "영어 자기소개를 2분 내로 할 수 있다",
             "기본 영어 질문 5개 이상 답변을 준비했다",
@@ -123,7 +126,7 @@ ASSESSMENT_CATEGORIES = {
     },
     "fitness": {
         "name": "체력/수영",
-        "icon": "🏋️",
+        "icon": "️",
         "items": [
             "국민체력100 종목별 기준을 알고 있다",
             "현재 체력 등급이 3등급 이상이다",
@@ -134,7 +137,7 @@ ASSESSMENT_CATEGORIES = {
     },
     "knowledge": {
         "name": "항공 지식",
-        "icon": "✈️",
+        "icon": "️",
         "items": [
             "지원 항공사의 인재상을 정확히 알고 있다",
             "FSC와 LCC의 차이점을 설명할 수 있다",
@@ -299,7 +302,7 @@ st.markdown("""
 st.markdown("""
 <div style="text-align: center; padding: 20px 0;">
     <h1 style="background: linear-gradient(90deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2.5rem;">
-        💡 면접 꿀팁 모음
+         면접 꿀팁 모음
     </h1>
     <p style="color: #666; font-size: 1.1rem;">2026 항공사 채용 트렌드 및 합격 노하우</p>
 </div>
@@ -327,31 +330,31 @@ st.markdown(f"""
 # 탭 구성 (14개 탭)
 # ----------------------------
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12, tab13, tab14 = st.tabs([
-    "🎯 첫인상",
-    "👗 복장가이드",
-    "❓ 빈출질문",
-    "⭐ STAR기법",
-    "🗣️ 영어면접",
-    "👥 그룹면접",
-    "✈️ FSC/LCC",
-    "⚠️ 탈락사유",
-    "💆 긴장관리",
-    "📈 트렌드",
-    "🤖 AI면접",
-    "📹 영상면접",
-    "🏢 항공사별",
-    "✅ 자가진단"
+ " 첫인상",
+ " 복장가이드",
+ " 빈출질문",
+ "⭐ STAR기법",
+ "️ 영어면접",
+ " 그룹면접",
+ "️ FSC/LCC",
+ "️ 탈락사유",
+ " 긴장관리",
+ " 트렌드",
+ " AI면접",
+ " 영상면접",
+ " 항공사별",
+ " 자가진단"
 ])
 
 # ----------------------------
 # 탭 1: 메라비언 법칙 & 첫인상
 # ----------------------------
 with tab1:
-    st.markdown('<div class="section-header"><h2>🎯 메라비언 법칙 - 첫인상의 과학</h2></div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><h2> 메라비언 법칙 - 첫인상의 과학</h2></div>', unsafe_allow_html=True)
 
     st.markdown("""
     <div class="tip-card">
-        <h3 style="margin:0;">💡 면접의 승패는 첫 3초에 결정됩니다</h3>
+        <h3 style="margin:0;"> 면접의 승패는 첫 3초에 결정됩니다</h3>
         <p style="margin: 10px 0 0 0; opacity: 0.9;">화려한 스펙보다 첫인상이 훨씬 중요합니다. 메라비언 법칙을 이해하고 준비하세요.</p>
     </div>
     """, unsafe_allow_html=True)
@@ -364,13 +367,13 @@ with tab1:
     st.markdown(f"""
     <div style="margin: 20px 0;">
         <div class="merabian-bar" style="background: linear-gradient(90deg, #e53e3e, #fc8181); width: 100%;">
-            👁️ 시각 (이미지/비주얼) - {merabian.get('image', 55)}%
+            ️ 시각 (이미지/비주얼) - {merabian.get('image', 55)}%
         </div>
         <div class="merabian-bar" style="background: linear-gradient(90deg, #3182ce, #63b3ed); width: 70%;">
-            🎤 청각 (목소리 톤) - {merabian.get('voice', 38)}%
+             청각 (목소리 톤) - {merabian.get('voice', 38)}%
         </div>
         <div class="merabian-bar" style="background: linear-gradient(90deg, #38a169, #68d391); width: 15%;">
-            💬 내용 - {merabian.get('content', 7)}%
+             내용 - {merabian.get('content', 7)}%
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -380,7 +383,7 @@ with tab1:
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("### 👁️ 시각 55% - 이미지 관리")
+        st.markdown("### ️ 시각 55% - 이미지 관리")
         st.markdown("""
         <div class="info-card">
             <p><strong>첫인상을 결정짓는 핵심 요소들</strong></p>
@@ -388,18 +391,18 @@ with tab1:
         """, unsafe_allow_html=True)
 
         image_tips = [
-            "😊 밝고 자연스러운 미소 (치아 살짝 보이게)",
-            "👀 면접관과 자연스러운 눈 맞춤",
-            "🧍 바른 자세 - 어깨 펴고 턱 살짝 당기기",
-            "🚶 자신감 있는 워킹 - 너무 빠르지 않게",
-            "🙌 적절한 제스처 - 과하지 않게",
-            "💺 의자에 등 대지 않고 단정하게 앉기"
+            " 밝고 자연스러운 미소 (치아 살짝 보이게)",
+            " 면접관과 자연스러운 눈 맞춤",
+            " 바른 자세 - 어깨 펴고 턱 살짝 당기기",
+            " 자신감 있는 워킹 - 너무 빠르지 않게",
+            " 적절한 제스처 - 과하지 않게",
+            " 의자에 등 대지 않고 단정하게 앉기"
         ]
         for tip in image_tips:
             st.markdown(f'<div class="checklist-item">{tip}</div>', unsafe_allow_html=True)
 
     with col2:
-        st.markdown("### 🎤 청각 38% - 목소리 관리")
+        st.markdown("### 청각 38% - 목소리 관리")
         st.markdown("""
         <div class="info-card">
             <p><strong>목소리로 전달되는 자신감</strong></p>
@@ -407,11 +410,11 @@ with tab1:
         """, unsafe_allow_html=True)
 
         voice_tips = [
-            "🔊 적당한 크기 - 자신감 있지만 시끄럽지 않게",
+            " 적당한 크기 - 자신감 있지만 시끄럽지 않게",
             "⏱️ 적절한 속도 - 1분에 250~300자",
-            "🎵 톤 변화 - 단조롭지 않게 강약 조절",
-            "😌 떨리지 않는 목소리 - 호흡 조절",
-            "🎯 또렷한 발음 - 웅얼거리지 않기",
+            " 톤 변화 - 단조롭지 않게 강약 조절",
+            " 떨리지 않는 목소리 - 호흡 조절",
+            " 또렷한 발음 - 웅얼거리지 않기",
             "⏸️ 적절한 쉼 - 생각하며 말하기"
         ]
         for tip in voice_tips:
@@ -419,13 +422,13 @@ with tab1:
 
     st.markdown("---")
 
-    st.markdown("### 💬 내용 7% - 하지만 무시하면 안 됩니다!")
+    st.markdown("### 내용 7% - 하지만 무시하면 안 됩니다!")
     col1, col2, col3 = st.columns(3)
 
     with col1:
         st.markdown("""
         <div class="success-card">
-            <strong>✅ 두괄식 답변</strong><br/>
+            <strong> 두괄식 답변</strong><br/>
             결론 먼저, 이유는 나중에
         </div>
         """, unsafe_allow_html=True)
@@ -433,7 +436,7 @@ with tab1:
     with col2:
         st.markdown("""
         <div class="success-card">
-            <strong>✅ 구체적 경험</strong><br/>
+            <strong> 구체적 경험</strong><br/>
             숫자와 사례로 뒷받침
         </div>
         """, unsafe_allow_html=True)
@@ -441,7 +444,7 @@ with tab1:
     with col3:
         st.markdown("""
         <div class="success-card">
-            <strong>✅ 진정성</strong><br/>
+            <strong> 진정성</strong><br/>
             외운 티 나지 않게
         </div>
         """, unsafe_allow_html=True)
@@ -450,11 +453,11 @@ with tab1:
 # 탭 2: 복장/이미지 가이드
 # ----------------------------
 with tab2:
-    st.markdown('<div class="section-header"><h2>👗 면접 복장 & 이미지 가이드</h2></div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><h2> 면접 복장 & 이미지 가이드</h2></div>', unsafe_allow_html=True)
 
     st.markdown("""
     <div class="tip-card">
-        <h3 style="margin:0;">✨ 승무원 면접은 '이미지 면접'입니다</h3>
+        <h3 style="margin:0;"> 승무원 면접은 '이미지 면접'입니다</h3>
         <p style="margin: 10px 0 0 0; opacity: 0.9;">청결하고 단정한 이미지가 가장 중요합니다. 항공사마다 선호하는 스타일이 다르니 확인하세요.</p>
     </div>
     """, unsafe_allow_html=True)
@@ -462,7 +465,7 @@ with tab2:
     st.markdown("---")
 
     # 여성 / 남성 탭
-    gender_tab1, gender_tab2 = st.tabs(["👩 여성 지원자", "👨 남성 지원자"])
+    gender_tab1, gender_tab2 = st.tabs([" 여성 지원자", " 남성 지원자"])
 
     with gender_tab1:
         col1, col2, col3 = st.columns(3)
@@ -470,7 +473,7 @@ with tab2:
         with col1:
             st.markdown("""
             <div class="dress-card">
-                <div style="font-size: 50px;">👔</div>
+                <div style="font-size: 50px;"></div>
                 <h4>복장</h4>
                 <hr style="margin: 10px 0;">
                 <p style="text-align: left; font-size: 14px;">
@@ -479,7 +482,7 @@ with tab2:
                 • <strong>길이:</strong> 무릎 위 5~10cm<br/>
                 • <strong>스타킹:</strong> 살색 (울 없는 것)<br/>
                 • <strong>구두:</strong> 검정 펌프스 5~7cm<br/>
-                • <strong>주의:</strong> 화려한 색상/무늬 ❌
+                • <strong>주의:</strong> 화려한 색상/무늬 
                 </p>
             </div>
             """, unsafe_allow_html=True)
@@ -487,7 +490,7 @@ with tab2:
         with col2:
             st.markdown("""
             <div class="dress-card">
-                <div style="font-size: 50px;">💄</div>
+                <div style="font-size: 50px;"></div>
                 <h4>메이크업</h4>
                 <hr style="margin: 10px 0;">
                 <p style="text-align: left; font-size: 14px;">
@@ -496,7 +499,7 @@ with tab2:
                 • <strong>속눈썹:</strong> 자연스러운 펌/연장<br/>
                 • <strong>블러셔:</strong> 코랄/피치 톤<br/>
                 • <strong>립:</strong> MLBB or 코랄 핑크<br/>
-                • <strong>주의:</strong> 스모키/진한 립 ❌
+                • <strong>주의:</strong> 스모키/진한 립 
                 </p>
             </div>
             """, unsafe_allow_html=True)
@@ -504,7 +507,7 @@ with tab2:
         with col3:
             st.markdown("""
             <div class="dress-card">
-                <div style="font-size: 50px;">💇‍♀️</div>
+                <div style="font-size: 50px;">‍️</div>
                 <h4>헤어스타일</h4>
                 <hr style="margin: 10px 0;">
                 <p style="text-align: left; font-size: 14px;">
@@ -513,42 +516,42 @@ with tab2:
                 • <strong>앞머리:</strong> 이마 보이게<br/>
                 • <strong>잔머리:</strong> 헤어스프레이로 정리<br/>
                 • <strong>색상:</strong> 자연스러운 다크브라운<br/>
-                • <strong>주의:</strong> 밝은 염색/파마 ❌
+                • <strong>주의:</strong> 밝은 염색/파마 
                 </p>
             </div>
             """, unsafe_allow_html=True)
 
         st.markdown("---")
 
-        st.markdown("### 💅 세부 체크리스트")
+        st.markdown("### 세부 체크리스트")
         col1, col2 = st.columns(2)
 
         with col1:
             st.markdown("""
             **네일 & 손**
-            - ✅ 깔끔한 누드/연핑크 매니큐어
-            - ✅ 손톱 길이 적당히 (너무 길지 않게)
-            - ✅ 손 보습 관리
-            - ❌ 네일아트, 긴 손톱, 어두운 색상
+            -  깔끔한 누드/연핑크 매니큐어
+            -  손톱 길이 적당히 (너무 길지 않게)
+            -  손 보습 관리
+            -  네일아트, 긴 손톱, 어두운 색상
 
             **액세서리**
-            - ✅ 작은 진주/골드 귀걸이 (원터치)
-            - ✅ 심플한 시계
-            - ❌ 목걸이, 팔찌, 화려한 귀걸이
+            -  작은 진주/골드 귀걸이 (원터치)
+            -  심플한 시계
+            -  목걸이, 팔찌, 화려한 귀걸이
             """)
 
         with col2:
             st.markdown("""
             **향수 & 기타**
-            - ✅ 은은한 향수 또는 무향
-            - ✅ 깨끗한 치아 (미백 관리)
-            - ✅ 깔끔한 피부 관리
-            - ❌ 진한 향수, 강한 체취
+            -  은은한 향수 또는 무향
+            -  깨끗한 치아 (미백 관리)
+            -  깔끔한 피부 관리
+            -  진한 향수, 강한 체취
 
             **가방 & 서류**
-            - ✅ 심플한 A4 서류가방
-            - ✅ 서류 클리어파일로 정리
-            - ❌ 브랜드 로고 큰 가방
+            -  심플한 A4 서류가방
+            -  서류 클리어파일로 정리
+            -  브랜드 로고 큰 가방
             """)
 
     with gender_tab2:
@@ -557,7 +560,7 @@ with tab2:
         with col1:
             st.markdown("""
             <div class="dress-card">
-                <div style="font-size: 50px;">🤵</div>
+                <div style="font-size: 50px;"></div>
                 <h4>복장</h4>
                 <hr style="margin: 10px 0;">
                 <p style="text-align: left; font-size: 14px;">
@@ -574,7 +577,7 @@ with tab2:
         with col2:
             st.markdown("""
             <div class="dress-card">
-                <div style="font-size: 50px;">💇‍♂️</div>
+                <div style="font-size: 50px;">‍️</div>
                 <h4>헤어 & 그루밍</h4>
                 <hr style="margin: 10px 0;">
                 <p style="text-align: left; font-size: 14px;">
@@ -591,16 +594,16 @@ with tab2:
         with col3:
             st.markdown("""
             <div class="dress-card">
-                <div style="font-size: 50px;">⚠️</div>
+                <div style="font-size: 50px;">️</div>
                 <h4>주의사항</h4>
                 <hr style="margin: 10px 0;">
                 <p style="text-align: left; font-size: 14px;">
-                • ❌ 긴 머리, 파마<br/>
-                • ❌ 수염, 구레나룻<br/>
-                • ❌ 화려한 넥타이<br/>
-                • ❌ 향수 과다 사용<br/>
-                • ❌ 액세서리 (시계 외)<br/>
-                • ❌ 검정 정장 (장례식 느낌)
+                •  긴 머리, 파마<br/>
+                •  수염, 구레나룻<br/>
+                •  화려한 넥타이<br/>
+                •  향수 과다 사용<br/>
+                •  액세서리 (시계 외)<br/>
+                •  검정 정장 (장례식 느낌)
                 </p>
             </div>
             """, unsafe_allow_html=True)
@@ -608,14 +611,14 @@ with tab2:
     st.markdown("---")
 
     # 항공사별 이미지
-    st.markdown("### ✈️ 항공사별 선호 이미지")
+    st.markdown("### ️ 항공사별 선호 이미지")
 
     col1, col2 = st.columns(2)
 
     with col1:
         st.markdown("""
         <div class="info-card">
-            <h4>🏛️ FSC (대형 항공사)</h4>
+            <h4>️ FSC (대형 항공사)</h4>
             <p><strong>대한항공:</strong> 품격 있고 우아한 이미지, 클래식한 스타일</p>
             <p><strong>아시아나:</strong> 세련되고 따뜻한 이미지, 부드러운 미소</p>
             <p style="color: #666; font-size: 13px;">→ 보수적이고 단정한 스타일 선호</p>
@@ -625,7 +628,7 @@ with tab2:
     with col2:
         st.markdown("""
         <div class="info-card">
-            <h4>✈️ LCC (저비용 항공사)</h4>
+            <h4>️ LCC (저비용 항공사)</h4>
             <p><strong>제주항공:</strong> 밝고 활기찬 이미지</p>
             <p><strong>진에어:</strong> 젊고 트렌디한 이미지</p>
             <p><strong>티웨이:</strong> 친근하고 건강한 이미지</p>
@@ -637,11 +640,11 @@ with tab2:
 # 탭 3: 자주 나오는 질문
 # ----------------------------
 with tab3:
-    st.markdown('<div class="section-header"><h2>❓ 자주 나오는 면접 질문 TOP 10</h2></div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><h2> 자주 나오는 면접 질문 TOP 10</h2></div>', unsafe_allow_html=True)
 
     st.markdown("""
     <div class="tip-card">
-        <h3 style="margin:0;">📋 이 질문들은 반드시 준비하세요!</h3>
+        <h3 style="margin:0;"> 이 질문들은 반드시 준비하세요!</h3>
         <p style="margin: 10px 0 0 0; opacity: 0.9;">합격자들이 실제로 받은 질문들입니다. 각 질문에 대한 나만의 답변을 미리 준비해두세요.</p>
     </div>
     """, unsafe_allow_html=True)
@@ -689,7 +692,7 @@ with tab3:
             "q": "어려운 고객 응대 경험",
             "category": "경험",
             "color": "#38a169",
-            "tip": "해결 과정과 배운 점 강조, 감정적 대응 ❌",
+            "tip": "해결 과정과 배운 점 강조, 감정적 대응 ",
             "example": "카페 아르바이트 중 컴플레인 고객을 만났을 때, 먼저 공감하고 해결책을 제시했습니다..."
         },
         {
@@ -728,21 +731,21 @@ with tab3:
             with col1:
                 st.markdown(f"""
                 <div style="background: {item['color']}15; padding: 15px; border-radius: 10px; border-left: 4px solid {item['color']};">
-                    <strong>💡 답변 포인트</strong><br/>
+                    <strong> 답변 포인트</strong><br/>
                     {item['tip']}
                 </div>
                 """, unsafe_allow_html=True)
             with col2:
                 st.markdown(f"""
                 <div style="background: #f7fafc; padding: 15px; border-radius: 10px;">
-                    <strong>📝 예시 답변 시작</strong><br/>
+                    <strong> 예시 답변 시작</strong><br/>
                     <span style="color: #666; font-style: italic;">"{item['example']}"</span>
                 </div>
                 """, unsafe_allow_html=True)
 
     st.markdown("---")
 
-    st.info("💡 **팁:** 예시 답변을 그대로 외우지 마세요! 본인만의 경험과 언어로 재구성하세요.")
+    st.info("**팁:** 예시 답변을 그대로 외우지 마세요! 본인만의 경험과 언어로 재구성하세요.")
 
 # ----------------------------
 # 탭 4: STAR 기법
@@ -825,11 +828,11 @@ with tab4:
     st.markdown("---")
 
     # STAR 예시
-    st.markdown("### 📝 STAR 기법 적용 예시")
+    st.markdown("### STAR 기법 적용 예시")
 
     st.markdown("""
     <div class="info-card">
-        <h4>❓ 질문: "팀워크 경험을 말해주세요"</h4>
+        <h4> 질문: "팀워크 경험을 말해주세요"</h4>
     </div>
     """, unsafe_allow_html=True)
 
@@ -837,7 +840,7 @@ with tab4:
 
     with col1:
         st.markdown("""
-        **❌ 나쁜 예시**
+        ** 나쁜 예시**
         > "저는 팀워크를 잘합니다. 대학교 때 조별과제도 많이 했고, 아르바이트할 때도 팀원들과 잘 지냈습니다. 팀워크가 중요하다고 생각합니다."
 
         *→ 구체적인 상황이 없고, 추상적인 표현만 나열*
@@ -845,7 +848,7 @@ with tab4:
 
     with col2:
         st.markdown("""
-        **✅ 좋은 예시 (STAR)**
+        ** 좋은 예시 (STAR)**
         > **[S]** "대학 3학년 때 마케팅 공모전에 5명이 팀을 이뤄 참가했습니다."
         >
         > **[T]** "저는 팀장으로서 일정 관리와 팀원 간 의견 조율을 맡았습니다."
@@ -858,9 +861,9 @@ with tab4:
     st.markdown("---")
 
     # STAR 템플릿
-    st.markdown("### 📋 나만의 STAR 스토리 만들기")
+    st.markdown("### 나만의 STAR 스토리 만들기")
 
-    st.info("💡 아래 경험들에 대해 각각 STAR 스토리를 미리 준비해두세요!")
+    st.info("아래 경험들에 대해 각각 STAR 스토리를 미리 준비해두세요!")
 
     experiences = [
         "팀워크/협업 경험",
@@ -876,13 +879,13 @@ with tab4:
     col1, col2 = st.columns(2)
     for i, exp in enumerate(experiences):
         with col1 if i % 2 == 0 else col2:
-            st.markdown(f'<div class="checklist-item">📌 {exp}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="checklist-item"> {exp}</div>', unsafe_allow_html=True)
 
 # ----------------------------
 # 탭 5: 영어면접 꿀팁
 # ----------------------------
 with tab5:
-    st.markdown('<div class="section-header"><h2>🗣️ 영어 면접 완벽 대비</h2></div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><h2>️ 영어 면접 완벽 대비</h2></div>', unsafe_allow_html=True)
 
     st.markdown("""
     <div class="tip-card">
@@ -894,12 +897,12 @@ with tab5:
     # 영어 면접 있는 항공사
     st.markdown("---")
     eng_airlines = ", ".join(ENGLISH_INTERVIEW_AIRLINES) if ENGLISH_INTERVIEW_AIRLINES else "대한항공, 아시아나항공, 에어프레미아"
-    st.info(f"✈️ **영어 면접 전형 있는 항공사:** {eng_airlines}")
+    st.info(f"️ **영어 면접 전형 있는 항공사:** {eng_airlines}")
 
     st.markdown("---")
 
     # 자주 나오는 영어 질문
-    st.markdown("### 📋 자주 나오는 영어 질문 & 표현")
+    st.markdown("### 자주 나오는 영어 질문 & 표현")
 
     english_questions = [
         {
@@ -935,21 +938,21 @@ with tab5:
     ]
 
     for item in english_questions:
-        with st.expander(f"🔹 {item['question']}"):
+        with st.expander(f" {item['question']}"):
             st.markdown(f"**한글:** {item['korean']}")
             st.markdown("---")
             st.markdown(f"""
             <div class="english-phrase">
-                <strong>📝 예시 답변:</strong><br/>
+                <strong> 예시 답변:</strong><br/>
                 <p style="margin: 10px 0; line-height: 1.8;">{item['answer']}</p>
             </div>
             """, unsafe_allow_html=True)
-            st.caption(f"💡 **팁:** {item['tip']}")
+            st.caption(f" **팁:** {item['tip']}")
 
     st.markdown("---")
 
     # 유용한 영어 표현
-    st.markdown("### 💬 유용한 영어 표현")
+    st.markdown("### 유용한 영어 표현")
 
     col1, col2 = st.columns(2)
 
@@ -1016,7 +1019,7 @@ with tab5:
 
     st.markdown("""
     <div class="warning-card">
-        <strong>⚠️ 영어 면접 주의사항</strong>
+        <strong>️ 영어 면접 주의사항</strong>
         <ul style="margin: 10px 0;">
             <li>모르는 단어는 쉬운 표현으로 돌려 말하기</li>
             <li>너무 빠르게 말하지 않기 (긴장하면 빨라짐)</li>
@@ -1030,7 +1033,7 @@ with tab5:
 # 탭 6: 그룹/토론 면접
 # ----------------------------
 with tab6:
-    st.markdown('<div class="section-header"><h2>👥 그룹 면접 & 토론 면접 공략</h2></div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><h2> 그룹 면접 & 토론 면접 공략</h2></div>', unsafe_allow_html=True)
 
     st.markdown("""
     <div class="tip-card">
@@ -1042,14 +1045,14 @@ with tab6:
     st.markdown("---")
 
     # 그룹 면접 유형
-    st.markdown("### 📋 그룹 면접 유형")
+    st.markdown("### 그룹 면접 유형")
 
     col1, col2, col3 = st.columns(3)
 
     with col1:
         st.markdown("""
         <div class="dress-card">
-            <div style="font-size: 40px;">💬</div>
+            <div style="font-size: 40px;"></div>
             <h4>그룹 질의응답</h4>
             <hr/>
             <p style="font-size: 14px; text-align: left;">
@@ -1063,7 +1066,7 @@ with tab6:
     with col2:
         st.markdown("""
         <div class="dress-card">
-            <div style="font-size: 40px;">🗣️</div>
+            <div style="font-size: 40px;">️</div>
             <h4>그룹 토론</h4>
             <hr/>
             <p style="font-size: 14px; text-align: left;">
@@ -1077,7 +1080,7 @@ with tab6:
     with col3:
         st.markdown("""
         <div class="dress-card">
-            <div style="font-size: 40px;">🎭</div>
+            <div style="font-size: 40px;"></div>
             <h4>역할극/상황극</h4>
             <hr/>
             <p style="font-size: 14px; text-align: left;">
@@ -1091,14 +1094,14 @@ with tab6:
     st.markdown("---")
 
     # DO's and DON'Ts
-    st.markdown("### ✅ DO's & ❌ DON'Ts")
+    st.markdown("### DO's & DON'Ts")
 
     col1, col2 = st.columns(2)
 
     with col1:
         st.markdown("""
         <div class="success-card">
-            <h4>✅ 이렇게 하세요 (DO's)</h4>
+            <h4> 이렇게 하세요 (DO's)</h4>
             <ul style="margin: 10px 0;">
                 <li><strong>경청하기</strong> - 다른 사람 말할 때 끄덕이며 듣기</li>
                 <li><strong>연결하기</strong> - "OO님 말씀에 덧붙이면..."</li>
@@ -1113,12 +1116,12 @@ with tab6:
     with col2:
         st.markdown("""
         <div class="warning-card">
-            <h4>❌ 이것만은 피하세요 (DON'Ts)</h4>
+            <h4> 이것만은 피하세요 (DON'Ts)</h4>
             <ul style="margin: 10px 0;">
                 <li><strong>끼어들기</strong> - 남의 말 끊지 않기</li>
                 <li><strong>독점하기</strong> - 혼자 너무 오래 말하지 않기</li>
                 <li><strong>무시하기</strong> - 다른 의견 비난하지 않기</li>
-                <li><strong>공격하기</strong> - "그건 틀렸어요" ❌</li>
+                <li><strong>공격하기</strong> - "그건 틀렸어요" </li>
                 <li><strong>침묵하기</strong> - 아예 발언 안 하면 감점</li>
                 <li><strong>눈치 없이</strong> - 분위기 파악 못하기</li>
             </ul>
@@ -1128,19 +1131,19 @@ with tab6:
     st.markdown("---")
 
     # 토론 면접 전략
-    st.markdown("### 🎯 토론 면접 역할별 전략")
+    st.markdown("### 토론 면접 역할별 전략")
 
     col1, col2, col3 = st.columns(3)
 
     with col1:
         st.markdown("""
         <div class="info-card" style="border-left-color: #e53e3e;">
-            <h4>🎬 리더/사회자</h4>
+            <h4> 리더/사회자</h4>
             <p style="font-size: 14px;">
             • 토론 시작과 마무리<br/>
             • 시간 관리 및 진행<br/>
             • 의견 정리 및 결론 도출<br/>
-            • <span style="color: #e53e3e;">⚠️ 독단적이면 감점!</span>
+            • <span style="color: #e53e3e;">️ 독단적이면 감점!</span>
             </p>
         </div>
         """, unsafe_allow_html=True)
@@ -1148,12 +1151,12 @@ with tab6:
     with col2:
         st.markdown("""
         <div class="info-card" style="border-left-color: #3182ce;">
-            <h4>💡 아이디어맨</h4>
+            <h4> 아이디어맨</h4>
             <p style="font-size: 14px;">
             • 창의적인 의견 제시<br/>
             • 새로운 관점 소개<br/>
             • 예시와 근거 제시<br/>
-            • <span style="color: #3182ce;">💡 구체적 사례가 핵심</span>
+            • <span style="color: #3182ce;"> 구체적 사례가 핵심</span>
             </p>
         </div>
         """, unsafe_allow_html=True)
@@ -1161,12 +1164,12 @@ with tab6:
     with col3:
         st.markdown("""
         <div class="info-card" style="border-left-color: #38a169;">
-            <h4>🤝 조율자</h4>
+            <h4> 조율자</h4>
             <p style="font-size: 14px;">
             • 의견 갈등 시 중재<br/>
             • 공통점 찾아 연결<br/>
             • 침묵하는 사람 참여 유도<br/>
-            • <span style="color: #38a169;">✨ 협력 강조하면 가산점</span>
+            • <span style="color: #38a169;"> 협력 강조하면 가산점</span>
             </p>
         </div>
         """, unsafe_allow_html=True)
@@ -1174,7 +1177,7 @@ with tab6:
     st.markdown("---")
 
     # 유용한 표현
-    st.markdown("### 💬 토론에서 유용한 표현")
+    st.markdown("### 토론에서 유용한 표현")
 
     expressions = {
         "동의할 때": [
@@ -1210,7 +1213,7 @@ with tab6:
 # 탭 7: FSC vs LCC
 # ----------------------------
 with tab7:
-    st.markdown('<div class="section-header"><h2>✈️ FSC vs LCC 면접 스타일 차이</h2></div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><h2>️ FSC vs LCC 면접 스타일 차이</h2></div>', unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
 
@@ -1220,7 +1223,7 @@ with tab7:
     with col1:
         st.markdown(f"""
         <div class="compare-card fsc-card">
-            <h2 style="margin:0;">🏛️ FSC</h2>
+            <h2 style="margin:0;">️ FSC</h2>
             <h4>대형 항공사</h4>
             <p>대한항공, 아시아나항공</p>
             <hr style="border-color: rgba(255,255,255,0.3);">
@@ -1242,7 +1245,7 @@ with tab7:
     with col2:
         st.markdown(f"""
         <div class="compare-card lcc-card">
-            <h2 style="margin:0;">✈️ LCC</h2>
+            <h2 style="margin:0;">️ LCC</h2>
             <h4>저비용 항공사</h4>
             <p>제주항공, 진에어, 티웨이 등</p>
             <hr style="border-color: rgba(255,255,255,0.3);">
@@ -1264,7 +1267,7 @@ with tab7:
     st.markdown("---")
 
     # 비교 표
-    st.markdown("### 📊 한눈에 비교하기")
+    st.markdown("### 한눈에 비교하기")
 
     comparison_data = {
         "항목": ["면접 분위기", "답변 길이", "미소", "자세", "목소리", "어필 포인트"],
@@ -1277,7 +1280,7 @@ with tab7:
     st.markdown("---")
 
     # 이직 정보
-    st.markdown("### 🔄 FSC ↔ LCC 이직 시 주의점")
+    st.markdown("### FSC ↔ LCC 이직 시 주의점")
 
     col1, col2 = st.columns(2)
 
@@ -1311,7 +1314,7 @@ with tab7:
 # 탭 8: 탈락 사유
 # ----------------------------
 with tab8:
-    st.markdown('<div class="section-header"><h2>⚠️ 실제 탈락 사유 분석</h2></div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><h2>️ 실제 탈락 사유 분석</h2></div>', unsafe_allow_html=True)
 
     st.markdown("""
     <div class="warning-card">
@@ -1323,10 +1326,10 @@ with tab8:
     st.markdown("---")
 
     category_icons = {
-        "답변 실수": "💬",
-        "태도 실수": "🙋",
-        "이미지 실수": "👁️",
-        "그룹/디스커션 실수": "👥",
+        "답변 실수": "",
+        "태도 실수": "",
+        "이미지 실수": "️",
+        "그룹/디스커션 실수": "",
     }
 
     category_colors = {
@@ -1339,7 +1342,7 @@ with tab8:
     for item in COMMON_INTERVIEW_MISTAKES:
         category = item.get("category", "기타")
         mistakes = item.get("mistakes", [])
-        icon = category_icons.get(category, "⚠️")
+        icon = category_icons.get(category, "️")
         color = category_colors.get(category, "#666")
 
         st.markdown(f"""
@@ -1358,7 +1361,7 @@ with tab8:
     st.markdown("---")
 
     # 탈락 후 성장법
-    st.markdown("### 📝 탈락 후 성장하는 법")
+    st.markdown("### 탈락 후 성장하는 법")
 
     col1, col2 = st.columns(2)
 
@@ -1390,7 +1393,7 @@ with tab8:
 
     st.markdown("""
     <div class="success-card">
-        <strong>💪 기억하세요!</strong><br/>
+        <strong> 기억하세요!</strong><br/>
         대부분의 합격자들도 여러 번의 탈락을 경험했습니다. 포기하지 않는 것이 가장 중요합니다!
     </div>
     """, unsafe_allow_html=True)
@@ -1399,7 +1402,7 @@ with tab8:
 # 탭 9: 긴장 관리
 # ----------------------------
 with tab9:
-    st.markdown('<div class="section-header"><h2>💆 면접 긴장 관리 & 멘탈 케어</h2></div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><h2> 면접 긴장 관리 & 멘탈 케어</h2></div>', unsafe_allow_html=True)
 
     st.markdown("""
     <div class="tip-card">
@@ -1411,30 +1414,30 @@ with tab9:
     st.markdown("---")
 
     # 면접 전날
-    st.markdown("### 🌙 면접 전날")
+    st.markdown("### 면접 전날")
 
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("**✅ 해야 할 것**")
+        st.markdown("** 해야 할 것**")
         before_dos = [
-            "😴 일찍 자기 (최소 7시간 수면)",
-            "📋 준비물 미리 챙기기",
-            "🗺️ 면접장 위치/교통 확인",
-            "👗 면접 복장 미리 준비",
-            "📱 알람 여러 개 설정",
+            " 일찍 자기 (최소 7시간 수면)",
+            " 준비물 미리 챙기기",
+            "️ 면접장 위치/교통 확인",
+            " 면접 복장 미리 준비",
+            " 알람 여러 개 설정",
         ]
         for item in before_dos:
             st.markdown(f'<div class="calm-tip">{item}</div>', unsafe_allow_html=True)
 
     with col2:
-        st.markdown("**❌ 피해야 할 것**")
+        st.markdown("** 피해야 할 것**")
         before_donts = [
-            "🍺 음주, 야식",
-            "📺 늦게까지 영상 시청",
-            "📚 새벽까지 벼락치기",
-            "☕ 과도한 카페인 섭취",
-            "😰 SNS로 다른 지원자 비교",
+            " 음주, 야식",
+            " 늦게까지 영상 시청",
+            " 새벽까지 벼락치기",
+            " 과도한 카페인 섭취",
+            " SNS로 다른 지원자 비교",
         ]
         for item in before_donts:
             st.markdown(f'<div class="checklist-item">{item}</div>', unsafe_allow_html=True)
@@ -1442,13 +1445,13 @@ with tab9:
     st.markdown("---")
 
     # 면접 당일 아침
-    st.markdown("### ☀️ 면접 당일 아침")
+    st.markdown("### ️ 면접 당일 아침")
 
     morning_tips = [
-        ("🍳 가벼운 아침", "소화 잘 되는 음식으로, 배부르게 먹지 않기"),
-        ("💧 물 충분히", "목이 마르지 않도록, 화장실 가기 편한 시간 계산"),
-        ("🏃 가벼운 스트레칭", "몸을 깨우고 긴장 풀기"),
-        ("😊 거울 보며 미소 연습", "표정 근육 풀어주기"),
+        (" 가벼운 아침", "소화 잘 되는 음식으로, 배부르게 먹지 않기"),
+        (" 물 충분히", "목이 마르지 않도록, 화장실 가기 편한 시간 계산"),
+        (" 가벼운 스트레칭", "몸을 깨우고 긴장 풀기"),
+        (" 거울 보며 미소 연습", "표정 근육 풀어주기"),
         ("⏰ 여유 있게 출발", "30분~1시간 일찍 도착하기"),
     ]
 
@@ -1465,14 +1468,14 @@ with tab9:
     st.markdown("---")
 
     # 긴장 풀기 기법
-    st.markdown("### 🧘 긴장 풀기 기법 (면접 직전)")
+    st.markdown("### 긴장 풀기 기법 (면접 직전)")
 
     col1, col2, col3 = st.columns(3)
 
     with col1:
         st.markdown("""
         <div class="dress-card">
-            <div style="font-size: 40px;">🌬️</div>
+            <div style="font-size: 40px;">️</div>
             <h4>4-7-8 호흡법</h4>
             <hr/>
             <p style="font-size: 14px; text-align: left;">
@@ -1487,7 +1490,7 @@ with tab9:
     with col2:
         st.markdown("""
         <div class="dress-card">
-            <div style="font-size: 40px;">💪</div>
+            <div style="font-size: 40px;"></div>
             <h4>파워포즈</h4>
             <hr/>
             <p style="font-size: 14px; text-align: left;">
@@ -1502,7 +1505,7 @@ with tab9:
     with col3:
         st.markdown("""
         <div class="dress-card">
-            <div style="font-size: 40px;">💭</div>
+            <div style="font-size: 40px;"></div>
             <h4>긍정 확언</h4>
             <hr/>
             <p style="font-size: 14px; text-align: left;">
@@ -1517,14 +1520,14 @@ with tab9:
     st.markdown("---")
 
     # 면접 중 긴장 관리
-    st.markdown("### 🎯 면접 중 긴장 관리")
+    st.markdown("### 면접 중 긴장 관리")
 
     col1, col2 = st.columns(2)
 
     with col1:
         st.markdown("""
         <div class="success-card">
-            <h4>😰 머리가 하얘질 때</h4>
+            <h4> 머리가 하얘질 때</h4>
             <ul style="font-size: 14px;">
                 <li>"잠시만요, 생각을 정리하겠습니다"</li>
                 <li>물 한 모금 마시기</li>
@@ -1537,7 +1540,7 @@ with tab9:
     with col2:
         st.markdown("""
         <div class="success-card">
-            <h4>😬 손/목소리가 떨릴 때</h4>
+            <h4> 손/목소리가 떨릴 때</h4>
             <ul style="font-size: 14px;">
                 <li>손은 무릎 위에 자연스럽게</li>
                 <li>테이블 아래서 주먹 쥐었다 펴기</li>
@@ -1547,19 +1550,19 @@ with tab9:
         </div>
         """, unsafe_allow_html=True)
 
-    st.info("💡 **기억하세요:** 면접관도 여러분이 긴장하는 것을 알고 있습니다. 적당한 긴장감은 오히려 진지함으로 보일 수 있어요!")
+    st.info("**기억하세요:** 면접관도 여러분이 긴장하는 것을 알고 있습니다. 적당한 긴장감은 오히려 진지함으로 보일 수 있어요!")
 
 # ----------------------------
 # 탭 10: 2026 트렌드
 # ----------------------------
 with tab10:
-    st.markdown('<div class="section-header"><h2>📈 2026 채용 트렌드</h2></div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><h2> 2026 채용 트렌드</h2></div>', unsafe_allow_html=True)
 
     trends = HIRING_TRENDS_2026
 
     st.markdown(f"""
     <div class="tip-card">
-        <h3 style="margin:0;">🎯 2026 키워드: {trends.get('summary', '속도전과 다양성 존중')}</h3>
+        <h3 style="margin:0;"> 2026 키워드: {trends.get('summary', '속도전과 다양성 존중')}</h3>
         <p style="margin: 10px 0 0 0; opacity: 0.9;">최신 채용 트렌드를 파악하고 전략적으로 준비하세요.</p>
     </div>
     """, unsafe_allow_html=True)
@@ -1567,7 +1570,7 @@ with tab10:
     st.markdown("---")
 
     # 전반적 특징
-    st.markdown("### 📋 2026 채용 전반적 특징")
+    st.markdown("### 2026 채용 전반적 특징")
 
     col1, col2 = st.columns(2)
 
@@ -1578,7 +1581,7 @@ with tab10:
         for char in characteristics[:half]:
             st.markdown(f"""
             <div class="info-card">
-                <p style="margin: 0;">✔️ {char}</p>
+                <p style="margin: 0;">️ {char}</p>
             </div>
             """, unsafe_allow_html=True)
 
@@ -1586,14 +1589,14 @@ with tab10:
         for char in characteristics[half:]:
             st.markdown(f"""
             <div class="info-card">
-                <p style="margin: 0;">✔️ {char}</p>
+                <p style="margin: 0;">️ {char}</p>
             </div>
             """, unsafe_allow_html=True)
 
     st.markdown("---")
 
     # 합격생 공통 성공 요인
-    st.markdown("### ✨ 합격생 공통 성공 요인")
+    st.markdown("### 합격생 공통 성공 요인")
 
     success_factors = trends.get("success_factors", [])
 
@@ -1609,7 +1612,7 @@ with tab10:
     st.markdown("---")
 
     # 남성 지원자 정보
-    st.markdown("### 👨 남성 지원자 참고")
+    st.markdown("### 남성 지원자 참고")
 
     male_info = trends.get("male_applicant", {})
 
@@ -1618,7 +1621,7 @@ with tab10:
     with col1:
         st.markdown(f"""
         <div class="info-card">
-            <h4>📊 기본 스펙</h4>
+            <h4> 기본 스펙</h4>
             <p><strong>기준 학점:</strong> {male_info.get('gpa_baseline', 3.5)} 이상</p>
             <p><strong>참고:</strong> {male_info.get('note', '')}</p>
         </div>
@@ -1627,7 +1630,7 @@ with tab10:
     with col2:
         st.markdown(f"""
         <div class="success-card">
-            <h4>💡 합격 팁</h4>
+            <h4> 합격 팁</h4>
             <p>{male_info.get('tip', '차별화된 경험과 확실한 지원동기가 중요')}</p>
         </div>
         """, unsafe_allow_html=True)
@@ -1635,7 +1638,7 @@ with tab10:
     st.markdown("---")
 
     # 항공사별 인재상
-    st.markdown("### 🏢 항공사별 선호 인재상")
+    st.markdown("### 항공사별 선호 인재상")
 
     col1, col2 = st.columns(2)
 
@@ -1643,24 +1646,24 @@ with tab10:
     lcc_airlines = ["제주항공", "진에어", "티웨이항공", "에어부산", "에어프레미아"]
 
     with col1:
-        st.markdown("**🏛️ FSC**")
+        st.markdown("**️ FSC**")
         for airline in fsc_airlines:
             if airline in AIRLINE_PREFERRED_TYPE:
                 info = AIRLINE_PREFERRED_TYPE[airline]
                 st.markdown(f"""
                 <div class="info-card">
-                    <strong>✈️ {airline}</strong>: {info.get('nickname', '')}
+                    <strong>️ {airline}</strong>: {info.get('nickname', '')}
                 </div>
                 """, unsafe_allow_html=True)
 
     with col2:
-        st.markdown("**✈️ LCC**")
+        st.markdown("**️ LCC**")
         for airline in lcc_airlines:
             if airline in AIRLINE_PREFERRED_TYPE:
                 info = AIRLINE_PREFERRED_TYPE[airline]
                 st.markdown(f"""
                 <div class="info-card">
-                    <strong>✈️ {airline}</strong>: {info.get('nickname', '')}
+                    <strong>️ {airline}</strong>: {info.get('nickname', '')}
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -1668,7 +1671,7 @@ with tab10:
 # 탭 11: AI면접 대비
 # ----------------------------
 with tab11:
-    st.markdown('<div class="section-header"><h2>🤖 AI 면접 완벽 대비</h2></div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><h2> AI 면접 완벽 대비</h2></div>', unsafe_allow_html=True)
 
     st.markdown("""
     <div class="tip-card">
@@ -1680,19 +1683,19 @@ with tab11:
     st.markdown("---")
 
     # AI 면접 도입 항공사
-    st.info("✈️ **AI 면접 도입 항공사:** 대한항공, 아시아나항공, 제주항공, 진에어, 티웨이항공 등 대부분의 항공사가 1차 면접에 AI 역량 검사 도입")
+    st.info("️ **AI 면접 도입 항공사:** 대한항공, 아시아나항공, 제주항공, 진에어, 티웨이항공 등 대부분의 항공사가 1차 면접에 AI 역량 검사 도입")
 
     st.markdown("---")
 
     # AI 면접 유형
-    st.markdown("### 📋 AI 면접 유형")
+    st.markdown("### AI 면접 유형")
 
     col1, col2, col3 = st.columns(3)
 
     with col1:
         st.markdown("""
         <div class="dress-card">
-            <div style="font-size: 40px;">🎤</div>
+            <div style="font-size: 40px;"></div>
             <h4>음성 답변형</h4>
             <hr/>
             <p style="font-size: 14px; text-align: left;">
@@ -1707,7 +1710,7 @@ with tab11:
     with col2:
         st.markdown("""
         <div class="dress-card">
-            <div style="font-size: 40px;">🎮</div>
+            <div style="font-size: 40px;"></div>
             <h4>게임형 역량검사</h4>
             <hr/>
             <p style="font-size: 14px; text-align: left;">
@@ -1722,7 +1725,7 @@ with tab11:
     with col3:
         st.markdown("""
         <div class="dress-card">
-            <div style="font-size: 40px;">📝</div>
+            <div style="font-size: 40px;"></div>
             <h4>상황판단형</h4>
             <hr/>
             <p style="font-size: 14px; text-align: left;">
@@ -1737,14 +1740,14 @@ with tab11:
     st.markdown("---")
 
     # AI 분석 항목
-    st.markdown("### 🔍 AI가 분석하는 항목")
+    st.markdown("### AI가 분석하는 항목")
 
     col1, col2 = st.columns(2)
 
     with col1:
         st.markdown("""
         <div class="info-card">
-            <h4>😊 표정 분석</h4>
+            <h4> 표정 분석</h4>
             <ul style="font-size: 14px; margin: 10px 0;">
                 <li>자연스러운 미소 유지</li>
                 <li>눈 깜빡임 빈도 (너무 잦으면 긴장)</li>
@@ -1756,7 +1759,7 @@ with tab11:
 
         st.markdown("""
         <div class="info-card">
-            <h4>🎤 음성 분석</h4>
+            <h4> 음성 분석</h4>
             <ul style="font-size: 14px; margin: 10px 0;">
                 <li>말의 속도 (너무 빠르거나 느림)</li>
                 <li>목소리 크기와 안정성</li>
@@ -1769,7 +1772,7 @@ with tab11:
     with col2:
         st.markdown("""
         <div class="info-card">
-            <h4>💬 내용 분석</h4>
+            <h4> 내용 분석</h4>
             <ul style="font-size: 14px; margin: 10px 0;">
                 <li>답변의 논리적 구조</li>
                 <li>핵심 키워드 포함 여부</li>
@@ -1781,7 +1784,7 @@ with tab11:
 
         st.markdown("""
         <div class="info-card">
-            <h4>🧠 성향 분석</h4>
+            <h4> 성향 분석</h4>
             <ul style="font-size: 14px; margin: 10px 0;">
                 <li>외향성 / 내향성</li>
                 <li>안정성 / 민감성</li>
@@ -1794,14 +1797,14 @@ with tab11:
     st.markdown("---")
 
     # AI 면접 핵심 팁
-    st.markdown("### 💡 AI 면접 핵심 팁")
+    st.markdown("### AI 면접 핵심 팁")
 
     col1, col2 = st.columns(2)
 
     with col1:
         st.markdown("""
         <div class="success-card">
-            <h4>✅ 이렇게 하세요</h4>
+            <h4> 이렇게 하세요</h4>
             <ul style="margin: 10px 0;">
                 <li><strong>카메라 정면 응시</strong> - 렌즈가 면접관 눈</li>
                 <li><strong>밝은 조명</strong> - 얼굴이 잘 보이게</li>
@@ -1816,7 +1819,7 @@ with tab11:
     with col2:
         st.markdown("""
         <div class="warning-card">
-            <h4>❌ 이것만은 피하세요</h4>
+            <h4> 이것만은 피하세요</h4>
             <ul style="margin: 10px 0;">
                 <li><strong>화면 외 시선</strong> - 대본 보는 듯한 인상</li>
                 <li><strong>역광 조명</strong> - 얼굴 어두워짐</li>
@@ -1831,15 +1834,15 @@ with tab11:
     st.markdown("---")
 
     # 환경 체크리스트
-    st.markdown("### 🖥️ AI 면접 환경 체크리스트")
+    st.markdown("### ️ AI 면접 환경 체크리스트")
 
     env_checks = [
-        ("💻 노트북/PC", "카메라 눈높이에 위치, 배터리 충분히 충전"),
-        ("📶 인터넷", "유선 연결 권장, Wi-Fi는 안정적인지 확인"),
-        ("💡 조명", "얼굴 정면에서 밝게, 역광 절대 금지"),
-        ("🔇 소음", "조용한 공간, 알람/알림 모두 끄기"),
-        ("🎧 오디오", "헤드셋 or 이어폰 권장, 마이크 테스트 필수"),
-        ("👔 복장", "상의는 면접 복장, 하의도 만약을 대비해"),
+        (" 노트북/PC", "카메라 눈높이에 위치, 배터리 충분히 충전"),
+        (" 인터넷", "유선 연결 권장, Wi-Fi는 안정적인지 확인"),
+        (" 조명", "얼굴 정면에서 밝게, 역광 절대 금지"),
+        (" 소음", "조용한 공간, 알람/알림 모두 끄기"),
+        (" 오디오", "헤드셋 or 이어폰 권장, 마이크 테스트 필수"),
+        (" 복장", "상의는 면접 복장, 하의도 만약을 대비해"),
     ]
 
     col1, col2 = st.columns(2)
@@ -1854,13 +1857,13 @@ with tab11:
 
     st.markdown("---")
 
-    st.info("💡 **팁:** AI 면접 전에 해당 플랫폼의 연습 모드를 꼭 활용하세요! 실전처럼 여러 번 연습하면 훨씬 자연스러워집니다.")
+    st.info("**팁:** AI 면접 전에 해당 플랫폼의 연습 모드를 꼭 활용하세요! 실전처럼 여러 번 연습하면 훨씬 자연스러워집니다.")
 
 # ----------------------------
 # 탭 12: 영상면접 팁
 # ----------------------------
 with tab12:
-    st.markdown('<div class="section-header"><h2>📹 영상 면접 완벽 가이드</h2></div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><h2> 영상 면접 완벽 가이드</h2></div>', unsafe_allow_html=True)
 
     st.markdown("""
     <div class="tip-card">
@@ -1872,14 +1875,14 @@ with tab12:
     st.markdown("---")
 
     # 영상 면접 유형
-    st.markdown("### 📋 영상 면접 유형")
+    st.markdown("### 영상 면접 유형")
 
     col1, col2 = st.columns(2)
 
     with col1:
         st.markdown("""
         <div class="dress-card">
-            <div style="font-size: 40px;">🔴</div>
+            <div style="font-size: 40px;"></div>
             <h4>실시간 화상 면접</h4>
             <hr/>
             <p style="font-size: 14px; text-align: left;">
@@ -1913,14 +1916,14 @@ with tab12:
     st.markdown("---")
 
     # 카메라 앵글 가이드
-    st.markdown("### 📐 완벽한 카메라 앵글")
+    st.markdown("### 완벽한 카메라 앵글")
 
     col1, col2, col3 = st.columns(3)
 
     with col1:
         st.markdown("""
         <div class="success-card">
-            <h4>✅ Good</h4>
+            <h4> Good</h4>
             <p style="font-size: 14px;">
             • 카메라가 눈높이<br/>
             • 얼굴~가슴 상단 보임<br/>
@@ -1933,7 +1936,7 @@ with tab12:
     with col2:
         st.markdown("""
         <div class="warning-card">
-            <h4>❌ 위에서 내려다봄</h4>
+            <h4> 위에서 내려다봄</h4>
             <p style="font-size: 14px;">
             • 이마가 커보임<br/>
             • 턱이 돌출되어 보임<br/>
@@ -1946,7 +1949,7 @@ with tab12:
     with col3:
         st.markdown("""
         <div class="warning-card">
-            <h4>❌ 아래에서 올려다봄</h4>
+            <h4> 아래에서 올려다봄</h4>
             <p style="font-size: 14px;">
             • 콧구멍이 보임<br/>
             • 턱살이 강조됨<br/>
@@ -1958,7 +1961,7 @@ with tab12:
 
     st.markdown("""
     <div class="info-card">
-        <strong>💡 꿀팁:</strong> 노트북은 책이나 박스 위에 올려 카메라가 눈높이에 오도록 하세요.
+        <strong> 꿀팁:</strong> 노트북은 책이나 박스 위에 올려 카메라가 눈높이에 오도록 하세요.
         스마트폰의 경우 삼각대 사용을 권장합니다.
     </div>
     """, unsafe_allow_html=True)
@@ -1966,14 +1969,14 @@ with tab12:
     st.markdown("---")
 
     # 조명 가이드
-    st.markdown("### 💡 조명 세팅 가이드")
+    st.markdown("### 조명 세팅 가이드")
 
     col1, col2 = st.columns(2)
 
     with col1:
         st.markdown("""
         <div class="success-card">
-            <h4>✅ 좋은 조명</h4>
+            <h4> 좋은 조명</h4>
             <ul style="font-size: 14px;">
                 <li><strong>3점 조명:</strong> 정면 + 양옆 45도</li>
                 <li><strong>자연광:</strong> 창문을 정면에 두기</li>
@@ -1987,7 +1990,7 @@ with tab12:
     with col2:
         st.markdown("""
         <div class="warning-card">
-            <h4>❌ 나쁜 조명</h4>
+            <h4> 나쁜 조명</h4>
             <ul style="font-size: 14px;">
                 <li><strong>역광:</strong> 창문을 등 뒤에 두면 실루엣만</li>
                 <li><strong>위에서만:</strong> 눈 밑 그림자 생김</li>
@@ -2001,21 +2004,21 @@ with tab12:
     st.markdown("---")
 
     # 배경 가이드
-    st.markdown("### 🖼️ 배경 세팅")
+    st.markdown("### ️ 배경 세팅")
 
     bg_options = [
-        ("✅ 흰 벽", "가장 무난하고 깔끔한 선택"),
-        ("✅ 정돈된 책장", "지적인 이미지, 단 너무 화려하지 않게"),
-        ("✅ 단색 커튼", "깔끔하고 집중도 높음"),
-        ("❌ 침대/이불", "비전문적인 이미지"),
-        ("❌ 지저분한 방", "정리정돈 능력 의심"),
-        ("❌ 가상 배경", "부자연스러움, 움직이면 깨짐"),
+        (" 흰 벽", "가장 무난하고 깔끔한 선택"),
+        (" 정돈된 책장", "지적인 이미지, 단 너무 화려하지 않게"),
+        (" 단색 커튼", "깔끔하고 집중도 높음"),
+        (" 침대/이불", "비전문적인 이미지"),
+        (" 지저분한 방", "정리정돈 능력 의심"),
+        (" 가상 배경", "부자연스러움, 움직이면 깨짐"),
     ]
 
     col1, col2 = st.columns(2)
     for i, (item, desc) in enumerate(bg_options):
         with col1 if i < 3 else col2:
-            is_good = item.startswith("✅")
+            is_good = item.startswith("")
             card_class = "success-card" if is_good else "warning-card"
             st.markdown(f"""
             <div class="{card_class}" style="padding: 10px 15px; margin: 5px 0;">
@@ -2026,7 +2029,7 @@ with tab12:
     st.markdown("---")
 
     # 영상 면접 체크리스트
-    st.markdown("### ✅ 영상 면접 D-1 체크리스트")
+    st.markdown("### 영상 면접 D-1 체크리스트")
 
     checklist = [
         "카메라/마이크 테스트 완료",
@@ -2042,7 +2045,7 @@ with tab12:
     col1, col2 = st.columns(2)
     for i, item in enumerate(checklist):
         with col1 if i % 2 == 0 else col2:
-            st.markdown(f'<div class="checklist-item">☐ {item}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="checklist-item"> {item}</div>', unsafe_allow_html=True)
 
     st.markdown("---")
 
@@ -2054,7 +2057,7 @@ with tab12:
     with col1:
         st.markdown("""
         <div class="info-card">
-            <h4>📶 인터넷이 끊겼을 때</h4>
+            <h4> 인터넷이 끊겼을 때</h4>
             <ul style="font-size: 14px;">
                 <li>당황하지 말고 재접속 시도</li>
                 <li>스마트폰 테더링으로 전환</li>
@@ -2067,7 +2070,7 @@ with tab12:
     with col2:
         st.markdown("""
         <div class="info-card">
-            <h4>🔊 소음이 발생했을 때</h4>
+            <h4> 소음이 발생했을 때</h4>
             <ul style="font-size: 14px;">
                 <li>"죄송합니다, 잠시만요"</li>
                 <li>마이크 일시 음소거</li>
@@ -2077,13 +2080,13 @@ with tab12:
         </div>
         """, unsafe_allow_html=True)
 
-    st.info("💡 **핵심:** 기술적 문제가 생겨도 침착하게 대처하는 모습이 오히려 플러스가 될 수 있습니다!")
+    st.info("**핵심:** 기술적 문제가 생겨도 침착하게 대처하는 모습이 오히려 플러스가 될 수 있습니다!")
 
 # ----------------------------
 # 탭 13: 항공사별 특화 정보
 # ----------------------------
 with tab13:
-    st.markdown('<div class="section-header"><h2>🏢 항공사별 면접 특화 정보</h2></div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><h2> 항공사별 면접 특화 정보</h2></div>', unsafe_allow_html=True)
 
     st.markdown("""
     <div class="tip-card">
@@ -2335,7 +2338,7 @@ with tab13:
         type_color = {"FSC": "#003876", "LCC": "#FF6600", "HSC": "#1E3A5F"}.get(data["type"], "#666")
         st.markdown(f"""
         <div style="background: {data['color']}; padding: 30px; border-radius: 15px; color: white; text-align: center;">
-            <h2 style="margin: 0;">✈️ {airline_choice}</h2>
+            <h2 style="margin: 0;">️ {airline_choice}</h2>
             <p style="font-size: 14px; opacity: 0.9; margin: 10px 0;">{data['slogan']}</p>
             <span style="background: white; color: {data['color']}; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold;">{data['type']}</span>
         </div>
@@ -2344,9 +2347,9 @@ with tab13:
     with col2:
         st.markdown(f"""
         <div class="info-card">
-            <h4>🎯 인재상</h4>
+            <h4> 인재상</h4>
             <p>{', '.join(data['values'])}</p>
-            <h4>👤 선호 이미지</h4>
+            <h4> 선호 이미지</h4>
             <p>{data['image']}</p>
         </div>
         """, unsafe_allow_html=True)
@@ -2354,7 +2357,7 @@ with tab13:
     st.markdown("---")
 
     # 면접 프로세스
-    st.markdown(f"### 📋 {airline_choice} 면접 프로세스")
+    st.markdown(f"###  {airline_choice} 면접 프로세스")
 
     process_cols = st.columns(len(data['process']))
     for i, step in enumerate(data['process']):
@@ -2369,7 +2372,7 @@ with tab13:
     st.markdown("---")
 
     # 예상 질문
-    st.markdown(f"### ❓ {airline_choice} 예상 질문")
+    st.markdown(f"###  {airline_choice} 예상 질문")
 
     for i, q in enumerate(data['questions'], 1):
         st.markdown(f"""
@@ -2381,30 +2384,30 @@ with tab13:
     st.markdown("---")
 
     # 면접 팁
-    st.markdown(f"### 💡 {airline_choice} 면접 팁")
+    st.markdown(f"###  {airline_choice} 면접 팁")
 
     col1, col2 = st.columns(2)
     for i, tip in enumerate(data['tips']):
         with col1 if i % 2 == 0 else col2:
             st.markdown(f"""
             <div class="success-card">
-                ✅ {tip}
+                 {tip}
             </div>
             """, unsafe_allow_html=True)
 
     st.markdown("---")
 
-    st.info(f"💡 **최종 팁:** {airline_choice}의 공식 홈페이지, 인스타그램, 최근 뉴스를 반드시 확인하세요. 면접관은 지원자가 회사에 대해 얼마나 알고 있는지 궁금해합니다!")
+    st.info(f" **최종 팁:** {airline_choice}의 공식 홈페이지, 인스타그램, 최근 뉴스를 반드시 확인하세요. 면접관은 지원자가 회사에 대해 얼마나 알고 있는지 궁금해합니다!")
 
 # ----------------------------
 # 탭 14: 자가진단
 # ----------------------------
 with tab14:
-    st.markdown('<div class="section-header"><h2>✅ 면접 준비도 자가진단</h2></div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><h2> 면접 준비도 자가진단</h2></div>', unsafe_allow_html=True)
 
     st.markdown("""
     <div class="tip-card">
-        <h3 style="margin:0;">📋 나의 면접 준비 수준을 체크해보세요</h3>
+        <h3 style="margin:0;"> 나의 면접 준비 수준을 체크해보세요</h3>
         <p style="margin: 10px 0 0 0; opacity: 0.9;">5개 분야별로 준비 상태를 점검하고, 부족한 부분을 집중 보강하세요.</p>
     </div>
     """, unsafe_allow_html=True)
@@ -2415,7 +2418,7 @@ with tab14:
     assessment_data = load_assessment()
 
     # 분야별 체크리스트
-    st.markdown("### 📝 분야별 준비도 체크")
+    st.markdown("### 분야별 준비도 체크")
     st.markdown("각 항목을 읽고 현재 준비 상태에 체크하세요.")
 
     results = {}
@@ -2435,7 +2438,7 @@ with tab14:
 
     # 결과 분석
     st.markdown("---")
-    st.markdown("### 📊 진단 결과")
+    st.markdown("### 진단 결과")
 
     total_checked = sum(r["checked"] for r in results.values())
     total_items = sum(r["total"] for r in results.values())
@@ -2499,7 +2502,7 @@ with tab14:
 
     # 약점 분석 + 추천
     st.markdown("---")
-    st.markdown("### 💡 맞춤 보강 추천")
+    st.markdown("### 맞춤 보강 추천")
 
     weak_areas = [(k, v) for k, v in results.items() if v["pct"] < 60]
     if weak_areas:
@@ -2526,14 +2529,14 @@ with tab14:
     else:
         st.markdown("""
         <div style="background: #f0fff4; border-left: 4px solid #38a169; border-radius: 10px; padding: 15px 20px;">
-            <div style="font-weight: 600; color: #22543d;">🎉 모든 분야가 60% 이상! 골고루 잘 준비하고 있어요.</div>
+            <div style="font-weight: 600; color: #22543d;"> 모든 분야가 60% 이상! 골고루 잘 준비하고 있어요.</div>
             <div style="font-size: 0.85rem; color: #64748b; margin-top: 3px;">약한 분야 없이 균형잡힌 준비 상태입니다. 실전 모의면접으로 마무리하세요!</div>
         </div>
         """, unsafe_allow_html=True)
 
     # 진단 결과 저장
     st.markdown("---")
-    if st.button("📥 진단 결과 저장", use_container_width=True):
+    if st.button("진단 결과 저장", use_container_width=True):
         save_record = {
             "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
             "overall_pct": overall_pct,
@@ -2548,7 +2551,7 @@ with tab14:
 
     # 이전 진단 기록
     if assessment_data.get("results"):
-        with st.expander("📈 이전 진단 기록"):
+        with st.expander("이전 진단 기록"):
             for record in reversed(assessment_data["results"][-5:]):
                 date = record.get("date", "")
                 pct = record.get("overall_pct", 0)

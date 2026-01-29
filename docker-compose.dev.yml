@@ -1,0 +1,30 @@
+# docker-compose.dev.yml
+# FlyReady Lab - Development Environment
+# Stage 5: Samsung-level DevOps
+# 사용법: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+version: '3.8'
+
+services:
+  flyready-lab:
+    build:
+      target: production
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    container_name: flyready-lab-dev
+    environment:
+      - ENV=development
+      - STREAMLIT_SERVER_RUN_ON_SAVE=true
+      - STREAMLIT_LOGGER_LEVEL=debug
+    volumes:
+      # Mount source code for hot reload
+      - .:/app:cached
+      - /app/__pycache__
+      - /app/.pytest_cache
+    ports:
+      - "8501:8501"
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G

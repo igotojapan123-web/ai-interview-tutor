@@ -10,10 +10,13 @@ from datetime import datetime, date, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sidebar_common import render_sidebar
+from sidebar_common import init_page, end_page
 
-st.set_page_config(page_title="기내방송 연습", page_icon="🎙️", layout="wide")
-render_sidebar("기내방송연습")
+init_page(
+    title="기내방송 연습",
+    current_page="기내방송연습",
+    wide_layout=True
+)
 
 
 # ========================================
@@ -90,18 +93,18 @@ def analyze_announcement(original_script, user_transcript, language, ann_type):
 4. 자연스러움 (기내방송 느낌)
 
 피드백 형식:
-## 📊 종합 점수: X/100점
+##  종합 점수: X/100점
 
-## ✅ 잘한 점
+##  잘한 점
 - (구체적으로 2~3개)
 
-## 📝 개선할 점
+##  개선할 점
 - (구체적으로 2~3개)
 
-## 🎯 핵심 누락 체크
+##  핵심 누락 체크
 - (놓친 내용이 있으면)
 
-## 💡 발음/톤 팁
+##  발음/톤 팁
 - (구체적 조언 2개)
 """
     try:
@@ -663,16 +666,16 @@ st.markdown("""
 # ========================================
 # 메인
 # ========================================
-st.title("🎙️ 기내방송 연습")
+st.title("️ 기내방송 연습")
 st.markdown("실제 기내방송 스크립트로 연습하고, AI 피드백으로 실력을 키우세요!")
 
 # 탭 구성
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "📜 스크립트 학습",
-    "🎤 녹음 연습",
-    "📖 쉐도잉/암기",
-    "🔊 모범 음성",
-    "📊 연습 대시보드",
+ " 스크립트 학습",
+ " 녹음 연습",
+ " 쉐도잉/암기",
+ " 모범 음성",
+ " 연습 대시보드",
 ])
 
 
@@ -680,7 +683,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 # 탭1: 스크립트 학습
 # ========================================
 with tab1:
-    st.markdown("### 📜 기내방송 스크립트")
+    st.markdown("### 기내방송 스크립트")
 
     # 필터
     col1, col2 = st.columns(2)
@@ -735,17 +738,17 @@ with tab1:
         col1, col2, col3 = st.columns(3)
 
         with col1:
-            st.markdown("#### 🎯 핵심 포인트")
+            st.markdown("#### 핵심 포인트")
             for point in ann.get("key_points", []):
-                st.markdown(f"✓ {point}")
+                st.markdown(f" {point}")
 
         with col2:
-            st.markdown("#### 💡 방송 팁")
+            st.markdown("#### 방송 팁")
             for tip in ann.get("tips", []):
                 st.info(tip)
 
         with col3:
-            st.markdown("#### 🗣️ 발음 주의")
+            st.markdown("#### ️ 발음 주의")
             for word, guide in ann.get("pronunciation_kr", {}).items():
                 st.markdown(f'<div class="pron-card">🇰🇷 <strong>{word}</strong><br><small>{guide}</small></div>', unsafe_allow_html=True)
             for word, guide in ann.get("pronunciation_en", {}).items():
@@ -758,10 +761,10 @@ with tab1:
 # 탭2: 녹음 연습
 # ========================================
 with tab2:
-    st.markdown("### 🎤 녹음 연습 + AI 피드백")
+    st.markdown("### 녹음 연습 + AI 피드백")
 
     if not API_AVAILABLE:
-        st.warning("⚠️ OpenAI API가 설정되지 않아 음성 분석 기능을 사용할 수 없습니다. 자가 평가는 가능합니다.")
+        st.warning("️ OpenAI API가 설정되지 않아 음성 분석 기능을 사용할 수 없습니다. 자가 평가는 가능합니다.")
 
     # 방송/언어 선택
     col1, col2 = st.columns(2)
@@ -785,13 +788,13 @@ with tab2:
     st.markdown("---")
 
     # 녹음
-    st.markdown("#### 🎙️ 음성 녹음")
+    st.markdown("#### ️ 음성 녹음")
     audio_value = st.audio_input("녹음하기", key="audio_rec")
 
     if audio_value:
         st.audio(audio_value)
 
-        if st.button("🔍 AI 분석 받기", type="primary", use_container_width=True, key="analyze_btn"):
+        if st.button("AI 분석 받기", type="primary", use_container_width=True, key="analyze_btn"):
             if API_AVAILABLE:
                 with st.spinner("음성 분석 중... (Whisper → GPT-4o-mini)"):
                     audio_bytes = audio_value.getvalue()
@@ -800,12 +803,12 @@ with tab2:
 
                     if transcript and not transcript.startswith("오류"):
                         st.markdown("---")
-                        st.markdown("#### 📝 음성 인식 결과")
+                        st.markdown("#### 음성 인식 결과")
                         st.write(transcript)
 
                         # AI 분석
                         st.markdown("---")
-                        st.markdown("#### 📊 AI 피드백")
+                        st.markdown("#### AI 피드백")
                         feedback = analyze_announcement(script_text, transcript, practice_lang, practice_type)
 
                         if feedback:
@@ -834,7 +837,7 @@ with tab2:
 
     # 자가 평가
     st.markdown("---")
-    st.markdown("#### ✍️ 자가 평가 (녹음 없이)")
+    st.markdown("#### ️ 자가 평가 (녹음 없이)")
 
     with st.form("self_eval_form"):
         col1, col2 = st.columns(2)
@@ -871,7 +874,7 @@ with tab2:
 # 탭3: 쉐도잉/암기 모드
 # ========================================
 with tab3:
-    st.markdown("### 📖 쉐도잉 & 암기 연습")
+    st.markdown("### 쉐도잉 & 암기 연습")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -889,7 +892,7 @@ with tab3:
 
     # --- 문장별 따라읽기 ---
     if shadow_mode == "문장별 따라읽기":
-        st.markdown("#### 📖 한 문장씩 따라 읽어보세요")
+        st.markdown("#### 한 문장씩 따라 읽어보세요")
         st.caption("체크하면서 한 문장씩 연습하세요. 모두 체크하면 완료!")
 
         checked_count = 0
@@ -903,12 +906,12 @@ with tab3:
             st.progress(progress, text=f"진행률: {checked_count}/{len(sentences)} ({int(progress*100)}%)")
 
             if checked_count == len(sentences):
-                st.success("🎉 모든 문장을 완료했습니다! 이제 스크립트 없이 도전해보세요!")
+                st.success("모든 문장을 완료했습니다! 이제 스크립트 없이 도전해보세요!")
                 st.balloons()
 
     # --- 빈칸 채우기 ---
     elif shadow_mode == "빈칸 채우기":
-        st.markdown("#### ✏️ 핵심 단어를 채워보세요")
+        st.markdown("#### ️ 핵심 단어를 채워보세요")
         st.caption("밑줄 부분에 알맞은 단어를 입력하세요.")
 
         # 핵심 키워드 추출 (key_points 기반)
@@ -950,21 +953,21 @@ with tab3:
             )
             if user_answer:
                 if user_answer.strip().lower() == word.lower():
-                    st.success(f"✅ 정답! ({word})")
+                    st.success(f" 정답! ({word})")
                     correct_count += 1
                 else:
-                    st.error(f"❌ 오답 (정답: {word})")
+                    st.error(f" 오답 (정답: {word})")
 
         if total_blanks > 0:
             st.markdown("---")
             if correct_count == total_blanks and all(
                 st.session_state.get(f"blank_{shadow_type}_{shadow_lang}_{i}", "") for i in range(total_blanks)
             ):
-                st.success(f"🎉 모두 정답! ({correct_count}/{total_blanks})")
+                st.success(f" 모두 정답! ({correct_count}/{total_blanks})")
 
     # --- 전체 암기 테스트 ---
     else:
-        st.markdown("#### 🧠 스크립트를 보지 않고 전체 입력하세요")
+        st.markdown("#### 스크립트를 보지 않고 전체 입력하세요")
         st.caption("기억나는 만큼 전체 스크립트를 작성해보세요.")
 
         user_script = st.text_area(
@@ -976,7 +979,7 @@ with tab3:
 
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("📊 정답 확인 & 비교", use_container_width=True, key="check_memory"):
+            if st.button("정답 확인 & 비교", use_container_width=True, key="check_memory"):
                 if user_script.strip():
                     st.markdown("---")
 
@@ -1000,14 +1003,14 @@ with tab3:
                     st.markdown(f"**암기 점수: {score}/100점** (문장 매칭 {int(sentence_match*100)}%)")
 
                     if score >= 80:
-                        st.success("🏆 훌륭합니다! 거의 완벽하게 암기했어요!")
+                        st.success("훌륭합니다! 거의 완벽하게 암기했어요!")
                     elif score >= 50:
-                        st.info("👍 절반 이상 기억하고 있어요! 조금 더 연습하면 완벽!")
+                        st.info("절반 이상 기억하고 있어요! 조금 더 연습하면 완벽!")
                     else:
-                        st.warning("📚 아직 연습이 필요해요. 스크립트를 더 읽어보세요!")
+                        st.warning("아직 연습이 필요해요. 스크립트를 더 읽어보세요!")
 
         with col2:
-            if st.button("📜 정답 스크립트 보기", use_container_width=True, key="show_answer"):
+            if st.button("정답 스크립트 보기", use_container_width=True, key="show_answer"):
                 lang_class = "script-kr" if shadow_lang == "한국어" else "script-en"
                 st.markdown(f'<div class="script-box {lang_class}">{script}</div>', unsafe_allow_html=True)
 
@@ -1016,10 +1019,10 @@ with tab3:
 # 탭4: 모범 음성 (TTS)
 # ========================================
 with tab4:
-    st.markdown("### 🔊 모범 음성 듣기")
+    st.markdown("### 모범 음성 듣기")
 
     if not API_AVAILABLE:
-        st.warning("⚠️ OpenAI API가 필요합니다. API가 설정되면 모범 음성을 생성할 수 있습니다.")
+        st.warning("️ OpenAI API가 필요합니다. API가 설정되면 모범 음성을 생성할 수 있습니다.")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -1032,7 +1035,7 @@ with tab4:
 
     # 음성 스타일 선택
     st.markdown("---")
-    st.markdown("#### 🎵 음성 설정")
+    st.markdown("#### 음성 설정")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -1053,7 +1056,7 @@ with tab4:
     # TTS 생성
     st.markdown("---")
     if API_AVAILABLE:
-        if st.button("🔊 모범 음성 생성", type="primary", use_container_width=True, key="gen_tts"):
+        if st.button("모범 음성 생성", type="primary", use_container_width=True, key="gen_tts"):
             with st.spinner("음성 생성 중... (OpenAI TTS)"):
                 audio_data = generate_tts(tts_script, voice_name)
                 if audio_data:
@@ -1063,11 +1066,11 @@ with tab4:
                     st.error("음성 생성에 실패했습니다.")
 
         if "tts_audio" in st.session_state:
-            st.markdown("#### 🎧 모범 음성 재생")
+            st.markdown("#### 모범 음성 재생")
             st.audio(st.session_state.tts_audio, format="audio/mp3")
 
             st.markdown("---")
-            st.markdown("#### 🔄 비교 연습")
+            st.markdown("#### 비교 연습")
             st.info("위 모범 음성을 듣고, 아래에서 직접 녹음하여 비교해보세요!")
 
             compare_audio = st.audio_input("내 녹음", key="compare_rec")
@@ -1080,12 +1083,12 @@ with tab4:
 
     # 발음 가이드
     st.markdown("---")
-    st.markdown("#### 🗣️ 발음 가이드")
+    st.markdown("#### ️ 발음 가이드")
 
     pron_data = ann.get("pronunciation_kr" if tts_lang == "한국어" else "pronunciation_en", {})
     if pron_data:
         for word, guide in pron_data.items():
-            st.markdown(f'<div class="pron-card">🔤 <strong>{word}</strong> → {guide}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="pron-card"> <strong>{word}</strong> → {guide}</div>', unsafe_allow_html=True)
     else:
         st.caption("이 스크립트에 대한 발음 가이드가 없습니다.")
 
@@ -1094,7 +1097,7 @@ with tab4:
 # 탭5: 연습 대시보드
 # ========================================
 with tab5:
-    st.markdown("### 📊 연습 대시보드")
+    st.markdown("### 연습 대시보드")
 
     practices = load_practice()
 
@@ -1111,11 +1114,11 @@ with tab5:
 
         col1, col2, col3, col4, col5 = st.columns(5)
         with col1:
-            st.markdown(f"""<div class="stat-box"><div style="font-size: 24px;">🎙️</div>
+            st.markdown(f"""<div class="stat-box"><div style="font-size: 24px;">️</div>
             <div style="font-size: 22px; font-weight: bold;">{total_practices}</div>
             <div style="font-size: 12px; color: #666;">총 연습</div></div>""", unsafe_allow_html=True)
         with col2:
-            st.markdown(f"""<div class="stat-box"><div style="font-size: 24px;">🤖</div>
+            st.markdown(f"""<div class="stat-box"><div style="font-size: 24px;"></div>
             <div style="font-size: 22px; font-weight: bold;">{ai_practices}</div>
             <div style="font-size: 12px; color: #666;">AI 분석</div></div>""", unsafe_allow_html=True)
         with col3:
@@ -1129,7 +1132,7 @@ with tab5:
             <div style="font-size: 22px; font-weight: bold;">{en_count}</div>
             <div style="font-size: 12px; color: #666;">영어</div></div>""", unsafe_allow_html=True)
         with col5:
-            st.markdown(f"""<div class="stat-box"><div style="font-size: 24px;">📊</div>
+            st.markdown(f"""<div class="stat-box"><div style="font-size: 24px;"></div>
             <div style="font-size: 22px; font-weight: bold;">{avg_score}</div>
             <div style="font-size: 12px; color: #666;">평균 점수</div></div>""", unsafe_allow_html=True)
 
@@ -1137,7 +1140,7 @@ with tab5:
 
         # 점수 추이 그래프
         if len(scores) >= 2:
-            st.markdown("#### 📈 점수 추이")
+            st.markdown("#### 점수 추이")
             import pandas as pd
             score_data = []
             for p in practices:
@@ -1152,7 +1155,7 @@ with tab5:
 
         # 스크립트별 연습 현황
         st.markdown("---")
-        st.markdown("#### 📋 스크립트별 연습 현황")
+        st.markdown("#### 스크립트별 연습 현황")
 
         script_stats = {}
         for p in practices:
@@ -1184,10 +1187,10 @@ with tab5:
 
         # 추천
         st.markdown("---")
-        st.markdown("#### 🎯 연습 추천")
+        st.markdown("#### 연습 추천")
 
         if unpracticed:
-            st.warning(f"⚠️ **아직 연습하지 않은 스크립트 ({len(unpracticed)}개):** {', '.join(unpracticed)}")
+            st.warning(f"️ **아직 연습하지 않은 스크립트 ({len(unpracticed)}개):** {', '.join(unpracticed)}")
 
         # 가장 점수 낮은 스크립트
         weak_scripts = [(name, stats) for name, stats in script_stats.items() if stats["scores"]]
@@ -1197,22 +1200,22 @@ with tab5:
             weakest = weak_scripts[0]
             weakest_avg = int(sum(weakest[1]["scores"]) / len(weakest[1]["scores"]))
             if weakest_avg < 80:
-                st.info(f"📚 **가장 약한 스크립트:** {weakest[0]} (평균 {weakest_avg}점) - 이것부터 연습하세요!")
+                st.info(f" **가장 약한 스크립트:** {weakest[0]} (평균 {weakest_avg}점) - 이것부터 연습하세요!")
 
         # 연습 비율 (한국어 vs 영어)
         if kr_count + en_count > 0:
             kr_ratio = kr_count / (kr_count + en_count)
             if kr_ratio > 0.7:
-                st.caption("💡 영어 방송 연습 비율이 낮습니다. 영어도 함께 연습해보세요!")
+                st.caption(" 영어 방송 연습 비율이 낮습니다. 영어도 함께 연습해보세요!")
             elif kr_ratio < 0.3:
-                st.caption("💡 한국어 방송 연습 비율이 낮습니다. 한국어도 함께 연습해보세요!")
+                st.caption(" 한국어 방송 연습 비율이 낮습니다. 한국어도 함께 연습해보세요!")
 
         # 최근 연습 기록
         st.markdown("---")
-        with st.expander("📋 최근 연습 기록 (최근 15건)"):
+        with st.expander("최근 연습 기록 (최근 15건)"):
             for p in sorted(practices, key=lambda x: x.get("date", ""), reverse=True)[:15]:
                 has_ai = bool(p.get("transcript"))
                 score = p.get("score", "-")
                 score_str = f"| {score}점" if score else ""
-                label = "🤖" if has_ai else "✍️"
+                label = "" if has_ai else "️"
                 st.caption(f"{label} {p.get('date', '')[:10]} | {p.get('type', '')} ({p.get('language', '')}) {score_str}")

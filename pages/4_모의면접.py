@@ -68,25 +68,38 @@ except ImportError:
     REPORT_AVAILABLE = False
 
 
-from sidebar_common import render_sidebar
+# Use new layout system
+from sidebar_common import init_page, end_page
 
-st.set_page_config(
-    page_title="모의면접 | FlyReady Lab",
-    page_icon="✈️",
-    layout="wide"
+# 공용 유틸리티 (Stage 2)
+try:
+    from shared_utils import get_api_key, load_json, save_json
+except ImportError:
+    pass
+
+# Initialize page with new layout
+init_page(
+    title="AI 모의면접",
+    current_page="모의면접",
+    wide_layout=True
 )
-render_sidebar("모의면접")
 
 
 
 # 구글 번역 방지
-st.markdown(
-    """
-    <meta name="google" content="notranslate">
-    <style>html { translate: no; }</style>
-    """,
-    unsafe_allow_html=True,
-)
+st.markdown("""
+<meta name="google" content="notranslate">
+<meta http-equiv="Content-Language" content="ko">
+<style>
+html, body, .stApp, .main, [data-testid="stAppViewContainer"] {
+    translate: no !important;
+}
+.notranslate, [translate="no"] {
+    translate: no !important;
+}
+</style>
+""", unsafe_allow_html=True)
+st.markdown('<div translate="no" class="notranslate" lang="ko">', unsafe_allow_html=True)
 
 # ----------------------------
 # 비밀번호 보호
@@ -336,8 +349,7 @@ def evaluate_interview_combined(
 # UI
 # =====================
 
-st.title("실전 모의면접")
-st.caption("AI 면접관과 함께하는 실전 연습 | 음성/텍스트 선택 가능")
+# Page description already handled by init_page
 
 # D-ID API 상태 확인
 did_available = VIDEO_UTILS_AVAILABLE and check_did_api_available() if VIDEO_UTILS_AVAILABLE else False
@@ -769,9 +781,9 @@ else:
                         ]):
                             with cols[j]:
                                 if star.get(key):
-                                    st.success(f"✅ {label}")
+                                    st.success(f" {label}")
                                 else:
-                                    st.error(f"❌ {label}")
+                                    st.error(f" {label}")
 
                     # 개선점
                     improvements = content.get("improvements", [])

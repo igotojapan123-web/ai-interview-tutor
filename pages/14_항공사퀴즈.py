@@ -15,14 +15,28 @@ logger = get_logger(__name__)
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sidebar_common import render_sidebar
+from sidebar_common import init_page, end_page
 
-st.set_page_config(page_title="항공 퀴즈", page_icon="✈️", layout="wide")
-render_sidebar("항공사퀴즈")
+init_page(
+    title="항공 퀴즈",
+    current_page="항공사퀴즈",
+    wide_layout=True
+)
 
 
-st.markdown('<meta name="google" content="notranslate"><style>html{translate:no;}</style>', unsafe_allow_html=True)
-st.markdown('<div translate="no" class="notranslate">', unsafe_allow_html=True)
+st.markdown("""
+<meta name="google" content="notranslate">
+<meta http-equiv="Content-Language" content="ko">
+<style>
+html, body, .stApp, .main, [data-testid="stAppViewContainer"] {
+    translate: no !important;
+}
+.notranslate, [translate="no"] {
+    translate: no !important;
+}
+</style>
+""", unsafe_allow_html=True)
+st.markdown('<div translate="no" class="notranslate" lang="ko">', unsafe_allow_html=True)
 
 # 누적 기록 파일
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
@@ -315,7 +329,7 @@ if "quiz_persistent_history" not in st.session_state:
 # ========================================
 # 메인 UI
 # ========================================
-st.title("✈️ 항공 퀴즈")
+st.title("️ 항공 퀴즈")
 st.markdown("항공사 기업분석부터 항공 상식까지, 면접에 필요한 모든 지식을 퀴즈로!")
 
 st.markdown("---")
@@ -329,30 +343,30 @@ if st.session_state.quiz_type is None:
     with col1:
         st.markdown("""
         <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 20px; padding: 30px; text-align: center; min-height: 200px;">
-            <div style="font-size: 48px;">🏢</div>
+            <div style="font-size: 48px;"></div>
             <div style="font-size: 22px; font-weight: bold; margin: 10px 0;">항공사별 퀴즈</div>
             <div style="font-size: 14px; opacity: 0.8;">11개 항공사 기업분석<br>미션/비전/인재상/채용조건</div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("🏢 항공사별 퀴즈 시작", use_container_width=True, key="start_airline"):
+        if st.button("항공사별 퀴즈 시작", use_container_width=True, key="start_airline"):
             st.session_state.quiz_type = "airline"
             st.rerun()
 
     with col2:
         st.markdown("""
         <div style="background: linear-gradient(135deg, #f093fb, #f5576c); color: white; border-radius: 20px; padding: 30px; text-align: center; min-height: 200px;">
-            <div style="font-size: 48px;">📚</div>
+            <div style="font-size: 48px;"></div>
             <div style="font-size: 22px; font-weight: bold; margin: 10px 0;">항공 상식 퀴즈</div>
             <div style="font-size: 14px; opacity: 0.8;">5개 카테고리 50문제<br>기초/서비스/공항/안전/용어</div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("📚 항공 상식 퀴즈 시작", use_container_width=True, key="start_knowledge"):
+        if st.button("항공 상식 퀴즈 시작", use_container_width=True, key="start_knowledge"):
             st.session_state.quiz_type = "knowledge"
             st.rerun()
 
     # 전체 랜덤
     st.markdown("---")
-    if st.button("🎲 전체 랜덤 퀴즈 (항공사 + 상식 혼합 10문제)", type="primary", use_container_width=True):
+    if st.button("전체 랜덤 퀴즈 (항공사 + 상식 혼합 10문제)", type="primary", use_container_width=True):
         all_q = []
         for qs in AIRLINE_QUIZZES.values():
             all_q.extend(qs)
@@ -372,13 +386,13 @@ if st.session_state.quiz_type is None:
 # 항공사 선택 화면
 # ========================================
 elif st.session_state.quiz_type == "airline" and st.session_state.quiz_airline is None:
-    st.markdown("### 🏢 퀴즈 볼 항공사를 선택하세요")
+    st.markdown("### 퀴즈 볼 항공사를 선택하세요")
     airlines = list(AIRLINE_QUIZZES.keys())
     cols = st.columns(3)
     for i, airline in enumerate(airlines):
         with cols[i % 3]:
             q_count = len(AIRLINE_QUIZZES[airline])
-            if st.button(f"✈️ {airline} ({q_count}문제)", key=f"sel_{airline}", use_container_width=True):
+            if st.button(f"️ {airline} ({q_count}문제)", key=f"sel_{airline}", use_container_width=True):
                 st.session_state.quiz_airline = airline
                 questions = AIRLINE_QUIZZES[airline].copy()
                 random.shuffle(questions)
@@ -402,13 +416,13 @@ elif st.session_state.quiz_type == "airline" and st.session_state.quiz_airline i
 # 상식 카테고리 선택 화면
 # ========================================
 elif st.session_state.quiz_type == "knowledge" and st.session_state.quiz_category is None:
-    st.markdown("### 📚 카테고리를 선택하세요")
+    st.markdown("### 카테고리를 선택하세요")
     categories = list(KNOWLEDGE_QUIZZES.keys())
     cols = st.columns(3)
     for i, cat in enumerate(categories):
         with cols[i % 3]:
             q_count = len(KNOWLEDGE_QUIZZES[cat])
-            if st.button(f"📖 {cat} ({q_count}문제)", key=f"cat_{cat}", use_container_width=True):
+            if st.button(f" {cat} ({q_count}문제)", key=f"cat_{cat}", use_container_width=True):
                 st.session_state.quiz_category = cat
                 questions = KNOWLEDGE_QUIZZES[cat].copy()
                 random.shuffle(questions)
@@ -421,7 +435,7 @@ elif st.session_state.quiz_type == "knowledge" and st.session_state.quiz_categor
                 st.rerun()
 
     st.markdown("---")
-    if st.button("🎲 전체 상식 랜덤 (10문제)", type="primary", use_container_width=True):
+    if st.button("전체 상식 랜덤 (10문제)", type="primary", use_container_width=True):
         all_knowledge = []
         for qs in KNOWLEDGE_QUIZZES.values():
             all_knowledge.extend(qs)
@@ -446,7 +460,7 @@ elif not st.session_state.quiz_finished:
     idx = st.session_state.quiz_index
     category = st.session_state.quiz_category or ""
 
-    st.markdown(f"### ✈️ {category} 퀴즈")
+    st.markdown(f"### ️ {category} 퀴즈")
     progress = (idx + 1) / len(questions)
     st.progress(progress)
     st.caption(f"문제 {idx + 1} / {len(questions)} | 현재 점수: {st.session_state.quiz_score}점")
@@ -478,12 +492,12 @@ elif not st.session_state.quiz_finished:
                     st.rerun()
     else:
         if st.session_state.last_correct:
-            st.success("🎉 정답입니다!")
+            st.success("정답입니다!")
         else:
-            st.error(f"❌ 틀렸습니다. 정답: **{st.session_state.last_answer}**")
-        st.info(f"💡 {st.session_state.last_explanation}")
+            st.error(f" 틀렸습니다. 정답: **{st.session_state.last_answer}**")
+        st.info(f" {st.session_state.last_explanation}")
 
-        if st.button("➡️ 다음 문제", use_container_width=True):
+        if st.button("️ 다음 문제", use_container_width=True):
             if idx + 1 < len(questions):
                 st.session_state.quiz_index += 1
                 st.session_state.quiz_answered = False
@@ -501,31 +515,31 @@ else:
     percentage = int(score / total * 100)
 
     if percentage >= 90:
-        grade, emoji, color = "S", "🏆", "#667eea"
+        grade, emoji, color = "S", "", "#667eea"
     elif percentage >= 80:
-        grade, emoji, color = "A", "🌟", "#28a745"
+        grade, emoji, color = "A", "", "#28a745"
     elif percentage >= 70:
-        grade, emoji, color = "B", "👍", "#17a2b8"
+        grade, emoji, color = "B", "", "#17a2b8"
     elif percentage >= 60:
-        grade, emoji, color = "C", "💪", "#ffc107"
+        grade, emoji, color = "C", "", "#ffc107"
     else:
-        grade, emoji, color = "D", "📚", "#dc3545"
+        grade, emoji, color = "D", "", "#dc3545"
 
     st.markdown(f"""
     <div style="background: linear-gradient(135deg, {color}20, {color}10); border: 3px solid {color}; border-radius: 25px; padding: 40px; text-align: center; margin: 20px 0;">
         <div style="font-size: 60px;">{emoji}</div>
-        <div style="font-size: 28px; font-weight: bold; margin: 10px 0;">✈️ {category} 퀴즈 완료!</div>
+        <div style="font-size: 28px; font-weight: bold; margin: 10px 0;">️ {category} 퀴즈 완료!</div>
         <div style="font-size: 48px; font-weight: bold; color: {color};">{score} / {total}</div>
         <div style="font-size: 24px; color: #666;">{percentage}% | {grade}등급</div>
     </div>
     """, unsafe_allow_html=True)
 
     if percentage >= 80:
-        st.success(f"🎉 {category}에 대해 잘 알고 계시네요!")
+        st.success(f" {category}에 대해 잘 알고 계시네요!")
     elif percentage >= 60:
-        st.info("👍 조금만 더 공부하면 완벽해요!")
+        st.info("조금만 더 공부하면 완벽해요!")
     else:
-        st.warning("📚 복습이 필요합니다. 다시 도전해보세요!")
+        st.warning("복습이 필요합니다. 다시 도전해보세요!")
 
     # 기록 저장
     record = {
@@ -542,7 +556,7 @@ else:
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        if st.button("🔄 같은 퀴즈 다시", use_container_width=True):
+        if st.button("같은 퀴즈 다시", use_container_width=True):
             if st.session_state.quiz_type == "airline" and st.session_state.quiz_airline:
                 questions = AIRLINE_QUIZZES[st.session_state.quiz_airline].copy()
                 random.shuffle(questions)
@@ -560,7 +574,7 @@ else:
             st.session_state.quiz_finished = False
             st.rerun()
     with col2:
-        if st.button("✈️ 다른 퀴즈 선택", use_container_width=True):
+        if st.button("️ 다른 퀴즈 선택", use_container_width=True):
             st.session_state.quiz_airline = None
             st.session_state.quiz_category = None
             st.session_state.quiz_questions = []
@@ -571,7 +585,7 @@ else:
             st.session_state.quiz_finished = False
             st.rerun()
     with col3:
-        if st.button("🏠 처음으로", use_container_width=True):
+        if st.button("처음으로", use_container_width=True):
             for k, v in DEFAULT_QUIZ_STATE.items():
                 st.session_state[k] = v
             st.rerun()
@@ -583,7 +597,7 @@ st.markdown("---")
 
 history = st.session_state.quiz_persistent_history
 if history:
-    st.markdown("### 📊 나의 퀴즈 기록")
+    st.markdown("### 나의 퀴즈 기록")
 
     scores = [h["percentage"] for h in history]
     col1, col2, col3, col4 = st.columns(4)
@@ -597,10 +611,10 @@ if history:
         airline_count = len(set(h["category"] for h in history if h.get("type") == "airline"))
         st.metric("도전한 항공사", f"{airline_count}개")
 
-    with st.expander("📋 최근 기록"):
+    with st.expander("최근 기록"):
         for h in reversed(history[-15:]):
             ts = h.get("timestamp", "")[:10]
-            type_icon = "🏢" if h.get("type") == "airline" else "📚"
+            type_icon = "" if h.get("type") == "airline" else ""
             st.caption(f"{ts} | {type_icon} {h['category']} | {h['score']}/{h['total']} ({h['percentage']}%) | {h['grade']}등급")
 
 st.markdown('</div>', unsafe_allow_html=True)

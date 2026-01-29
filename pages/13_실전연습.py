@@ -17,14 +17,28 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import AIRLINES, AIRLINE_TYPE
 from env_config import OPENAI_API_KEY
 
-from sidebar_common import render_sidebar
+from sidebar_common import init_page, end_page
 
-st.set_page_config(page_title="실전 면접 연습", page_icon="🎯", layout="wide")
-render_sidebar("실전연습")
+init_page(
+    title="실전 면접 연습",
+    current_page="실전연습",
+    wide_layout=True
+)
 
 
-st.markdown('<meta name="google" content="notranslate"><style>html{translate:no;}</style>', unsafe_allow_html=True)
-st.markdown('<div translate="no" class="notranslate">', unsafe_allow_html=True)
+st.markdown("""
+<meta name="google" content="notranslate">
+<meta http-equiv="Content-Language" content="ko">
+<style>
+html, body, .stApp, .main, [data-testid="stAppViewContainer"] {
+    translate: no !important;
+}
+.notranslate, [translate="no"] {
+    translate: no !important;
+}
+</style>
+""", unsafe_allow_html=True)
+st.markdown('<div translate="no" class="notranslate" lang="ko">', unsafe_allow_html=True)
 
 # API
 OPENAI_API_URL = "https://api.openai.com/v1"
@@ -350,14 +364,14 @@ def calc_total(voice: Dict, content: Dict, expr: Dict, mode: str = "text") -> Di
 def get_directions(voice: Dict, content: Dict, expr: Dict) -> List[str]:
     d = []
     if voice and voice.get("speech_rate", {}).get("score", 10) < 7:
-        d.append(f"🎤 **말 속도**: {voice['speech_rate'].get('feedback', '')}")
+        d.append(f" **말 속도**: {voice['speech_rate'].get('feedback', '')}")
     if voice and voice.get("filler", {}).get("score", 10) < 7:
-        d.append(f"🎤 **추임새**: '음', '어' 등을 줄여보세요.")
+        d.append(f" **추임새**: '음', '어' 등을 줄여보세요.")
     if content and not content.get("error"):
         for i in content.get("improvements", [])[:2]:
-            d.append(f"📝 {i}")
+            d.append(f" {i}")
     if len(d) < 3:
-        d.extend(["🎯 핵심 키워드를 정리하고 답변하세요.", "⏱️ 60~90초 내 답변을 완성하세요."])
+        d.extend([" 핵심 키워드를 정리하고 답변하세요.", "⏱️ 60~90초 내 답변을 완성하세요."])
     return d[:5]
 
 
@@ -368,14 +382,14 @@ def run_analysis(question: str, airline: str, atype: str, audio_bytes=None, text
     answer_text = text_answer
 
     if mode == "voice" and audio_bytes:
-        st.info("🎤 음성 인식 중...")
+        st.info("음성 인식 중...")
         transcription = transcribe_audio(audio_bytes)
         if transcription and transcription.get("text"):
             answer_text = transcription["text"]
             voice_analysis = analyze_voice(transcription)
 
     if answer_text:
-        st.info("📝 내용 분석 중...")
+        st.info("내용 분석 중...")
         content_analysis = analyze_content(question, answer_text, airline, atype)
 
     total = calc_total(voice_analysis, content_analysis, {}, mode)
@@ -407,24 +421,24 @@ def display_result(r: Dict, show_followup: bool = True, show_rewrite: bool = Tru
     """, unsafe_allow_html=True)
 
     if r.get("mode") == "text":
-        st.metric("📝 답변 내용", f"{t['breakdown']['content']}점")
+        st.metric(" 답변 내용", f"{t['breakdown']['content']}점")
     else:
         c1, c2 = st.columns(2)
         with c1:
-            st.metric("📝 답변 내용 (70%)", f"{t['breakdown']['content']}점")
+            st.metric(" 답변 내용 (70%)", f"{t['breakdown']['content']}점")
         with c2:
-            st.metric("🎤 음성 전달 (30%)", f"{t['breakdown']['voice']}점")
+            st.metric(" 음성 전달 (30%)", f"{t['breakdown']['voice']}점")
 
     if r.get("answer"):
-        st.markdown("#### 🎤 인식된 답변")
+        st.markdown("#### 인식된 답변")
         st.markdown(f"""<div style="background: #f8f9fa; border-left: 4px solid #667eea; padding: 20px; border-radius: 0 10px 10px 0;">{r['answer']}</div>""", unsafe_allow_html=True)
 
-    st.markdown("#### 🎯 개선 방향")
+    st.markdown("#### 개선 방향")
     for d in r.get("directions", []):
         st.markdown(d)
 
     # 상세 분석
-    st.markdown("#### 📋 상세 분석")
+    st.markdown("#### 상세 분석")
     content_data = r.get("content", {})
     if r.get("mode") == "text":
         if content_data and not content_data.get("error"):
@@ -438,13 +452,13 @@ def display_result(r: Dict, show_followup: bool = True, show_rewrite: bool = Tru
                 st.caption(content_data.get('relevance_feedback', ''))
             with col2:
                 for s in content_data.get("strengths", []):
-                    st.success(f"✓ {s}")
+                    st.success(f" {s}")
                 for i in content_data.get("improvements", []):
                     st.warning(f"△ {i}")
             if content_data.get("sample_answer"):
-                st.info(f"💡 모범답변: {content_data['sample_answer']}")
+                st.info(f" 모범답변: {content_data['sample_answer']}")
     else:
-        tab_a, tab_b = st.tabs(["📝 답변", "🎤 음성"])
+        tab_a, tab_b = st.tabs([" 답변", " 음성"])
         with tab_a:
             if content_data and not content_data.get("error"):
                 col1, col2 = st.columns(2)
@@ -455,11 +469,11 @@ def display_result(r: Dict, show_followup: bool = True, show_rewrite: bool = Tru
                     st.caption(content_data.get('structure_feedback', ''))
                 with col2:
                     for s in content_data.get("strengths", []):
-                        st.success(f"✓ {s}")
+                        st.success(f" {s}")
                     for i in content_data.get("improvements", []):
                         st.warning(f"△ {i}")
                 if content_data.get("sample_answer"):
-                    st.info(f"💡 모범답변: {content_data['sample_answer']}")
+                    st.info(f" 모범답변: {content_data['sample_answer']}")
         with tab_b:
             v = r.get("voice", {})
             if v:
@@ -476,7 +490,7 @@ def display_result(r: Dict, show_followup: bool = True, show_rewrite: bool = Tru
     # 답변 리라이트
     if show_rewrite and r.get("answer") and content_data and not content_data.get("error"):
         st.markdown("---")
-        if st.button("✨ 내 답변 개선 버전 보기", key=f"{key_prefix}_rewrite_btn"):
+        if st.button("내 답변 개선 버전 보기", key=f"{key_prefix}_rewrite_btn"):
             with st.spinner("답변을 다듬고 있습니다..."):
                 rewritten = rewrite_answer(
                     r["question"], r["answer"],
@@ -488,17 +502,17 @@ def display_result(r: Dict, show_followup: bool = True, show_rewrite: bool = Tru
                     st.session_state[f"{key_prefix}_rewritten"] = rewritten
 
         if st.session_state.get(f"{key_prefix}_rewritten"):
-            st.markdown("#### ✨ 개선된 답변")
+            st.markdown("#### 개선된 답변")
             st.markdown(f"""<div style="background: #e8f5e9; border-left: 4px solid #4caf50; padding: 20px; border-radius: 0 10px 10px 0;">
                 <strong>Before (원래 답변):</strong><br>{r['answer']}<br><br>
                 <strong>After (개선 버전):</strong><br>{st.session_state[f"{key_prefix}_rewritten"]}
             </div>""", unsafe_allow_html=True)
-            st.caption("💡 개선 버전은 참고용입니다. 본인의 경험과 스타일을 유지하면서 구조만 참고하세요.")
+            st.caption(" 개선 버전은 참고용입니다. 본인의 경험과 스타일을 유지하면서 구조만 참고하세요.")
 
     # 꼬리질문 버튼
     if show_followup and r.get("answer"):
         st.markdown("---")
-        if st.button("🔗 꼬리질문 받기", key=f"{key_prefix}_followup_btn"):
+        if st.button("꼬리질문 받기", key=f"{key_prefix}_followup_btn"):
             with st.spinner("면접관이 꼬리질문을 생각하고 있습니다..."):
                 followup = generate_followup_question(
                     r["question"], r["answer"],
@@ -515,7 +529,7 @@ def display_result(r: Dict, show_followup: bool = True, show_rewrite: bool = Tru
 # ========================================
 # 메인 UI
 # ========================================
-st.title("🎯 실전 면접 연습")
+st.title("실전 면접 연습")
 st.markdown("텍스트 또는 음성으로 답변하고 **AI 종합 분석** + **꼬리질문** + **답변 개선**까지!")
 
 if not OPENAI_API_KEY:
@@ -528,7 +542,7 @@ st.markdown("---")
 # 연습 시작 전 설정
 # ========================================
 if not st.session_state.practice_started:
-    st.markdown("### ✈️ 연습 설정")
+    st.markdown("### ️ 연습 설정")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -538,7 +552,7 @@ if not st.session_state.practice_started:
 
     st.markdown("---")
 
-    st.markdown("### 🎮 연습 모드")
+    st.markdown("### 연습 모드")
     mode_col1, mode_col2 = st.columns(2)
     with mode_col1:
         practice_mode = st.radio(
@@ -551,22 +565,22 @@ if not st.session_state.practice_started:
         answer_mode = st.radio(
             "답변 방식",
             ["text", "voice"],
-            format_func=lambda x: "⌨️ 텍스트 입력" if x == "text" else "🎤 음성 녹음",
+            format_func=lambda x: "⌨️ 텍스트 입력" if x == "text" else " 음성 녹음",
             horizontal=True
         )
 
     if practice_mode == "continuous":
         continuous_count = st.slider("연속 질문 수", min_value=3, max_value=5, value=3)
-        st.caption("💡 연속 모드: 여러 질문에 연달아 답변 후 종합 리포트를 받습니다.")
+        st.caption(" 연속 모드: 여러 질문에 연달아 답변 후 종합 리포트를 받습니다.")
     else:
         continuous_count = 1
 
     st.markdown("---")
-    st.markdown("### 📋 질문 예시")
+    st.markdown("### 질문 예시")
     for i, q in enumerate(INTERVIEW_QUESTIONS[cat][:3], 1):
         st.caption(f"{i}. {q}")
 
-    if st.button("🚀 연습 시작", type="primary", use_container_width=True):
+    if st.button("연습 시작", type="primary", use_container_width=True):
         if practice_mode == "continuous":
             questions = random.sample(INTERVIEW_QUESTIONS[cat], min(continuous_count, len(INTERVIEW_QUESTIONS[cat])))
             st.session_state.continuous_questions = questions
@@ -616,7 +630,7 @@ else:
     # 연속 모드 종합 리포트
     # ========================================
     if st.session_state.practice_mode == "continuous" and st.session_state.continuous_done:
-        st.markdown("## 📊 연속 면접 종합 리포트")
+        st.markdown("## 연속 면접 종합 리포트")
         results = st.session_state.continuous_results
 
         avg_score = sum(r["total"]["total_score"] for r in results) / len(results)
@@ -637,7 +651,7 @@ else:
         """, unsafe_allow_html=True)
 
         # 질문별 점수 차트
-        st.markdown("### 📈 질문별 점수")
+        st.markdown("### 질문별 점수")
         import pandas as pd
         chart_data = pd.DataFrame({
             "질문": [f"Q{i+1}" for i in range(len(results))],
@@ -651,7 +665,7 @@ else:
                 display_result(r, show_followup=False, show_rewrite=True, key_prefix=f"cont_{i}")
 
         # 종합 피드백
-        st.markdown("### 💡 종합 코칭")
+        st.markdown("### 종합 코칭")
         all_improvements = []
         all_strengths = []
         for r in results:
@@ -661,20 +675,20 @@ else:
                 all_strengths.extend(c.get("strengths", []))
 
         if all_strengths:
-            st.success("**강점:** " + " / ".join(list(dict.fromkeys(all_strengths))[:5]))
+            st.success("**강점:**" + " / ".join(list(dict.fromkeys(all_strengths))[:5]))
         if all_improvements:
-            st.warning("**개선점:** " + " / ".join(list(dict.fromkeys(all_improvements))[:5]))
+            st.warning("**개선점:**" + " / ".join(list(dict.fromkeys(all_improvements))[:5]))
 
         st.markdown("---")
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("🔄 다시 연습", use_container_width=True):
+            if st.button("다시 연습", use_container_width=True):
                 st.session_state.practice_started = False
                 st.session_state.continuous_done = False
                 st.session_state.continuous_results = []
                 st.rerun()
         with col2:
-            if st.button("🏠 처음으로", use_container_width=True):
+            if st.button("처음으로", use_container_width=True):
                 for k, v in DEFAULT_STATE.items():
                     st.session_state[k] = v
                 st.rerun()
@@ -685,7 +699,7 @@ else:
     elif not st.session_state.result:
         if mode == "text":
             st.markdown("### ⌨️ 텍스트로 답변하기")
-            st.caption("💡 실제 면접에서 말할 내용을 그대로 작성해보세요. 60~90초 분량(200~300자)이 적당합니다.")
+            st.caption(" 실제 면접에서 말할 내용을 그대로 작성해보세요. 60~90초 분량(200~300자)이 적당합니다.")
             text_answer = st.text_area(
                 "답변 입력",
                 height=200,
@@ -697,8 +711,8 @@ else:
                 color = "#28a745" if 150 <= char_count <= 350 else "#ffc107" if char_count < 150 else "#dc3545"
                 st.markdown(f"<span style='color:{color};'>{char_count}자</span> (권장: 200~300자)", unsafe_allow_html=True)
 
-            if text_answer and st.button("🔍 분석하기", type="primary", use_container_width=True):
-                with st.spinner("🤖 답변 분석 중..."):
+            if text_answer and st.button("분석하기", type="primary", use_container_width=True):
+                with st.spinner(" 답변 분석 중..."):
                     result = run_analysis(q, airline, atype, text_answer=text_answer, mode="text")
                     st.session_state.result = result
                     st.session_state.history.append(result)
@@ -711,15 +725,15 @@ else:
                     save_history(st.session_state.persistent_history)
                     st.rerun()
         else:
-            st.markdown("### 🎤 음성으로 답변하기")
-            st.caption("💡 질문을 읽고, 마이크 버튼을 눌러 답변을 녹음하세요. 60~90초가 적당합니다.")
+            st.markdown("### 음성으로 답변하기")
+            st.caption(" 질문을 읽고, 마이크 버튼을 눌러 답변을 녹음하세요. 60~90초가 적당합니다.")
 
-            audio_value = st.audio_input("🎙️ 녹음하기", key="voice_answer_input")
+            audio_value = st.audio_input("️ 녹음하기", key="voice_answer_input")
 
             if audio_value:
                 st.audio(audio_value)
-                if st.button("🔍 분석하기", type="primary", use_container_width=True):
-                    with st.spinner("🤖 음성 분석 중..."):
+                if st.button("분석하기", type="primary", use_container_width=True):
+                    with st.spinner(" 음성 분석 중..."):
                         audio_bytes = audio_value.getvalue()
                         result = run_analysis(q, airline, atype, audio_bytes=audio_bytes, mode="voice")
                         st.session_state.result = result
@@ -737,7 +751,7 @@ else:
     # 결과 + 꼬리질문
     # ========================================
     else:
-        st.markdown("### 📊 분석 결과")
+        st.markdown("### 분석 결과")
         display_result(st.session_state.result, show_followup=True, show_rewrite=True, key_prefix="main")
 
         # 꼬리질문 답변 UI
@@ -758,7 +772,7 @@ else:
                         placeholder="꼬리질문에 대한 답변을 작성하세요...",
                         key="followup_text"
                     )
-                    if followup_answer and st.button("🔍 꼬리질문 답변 분석", type="primary", key="followup_analyze"):
+                    if followup_answer and st.button("꼬리질문 답변 분석", type="primary", key="followup_analyze"):
                         with st.spinner("분석 중..."):
                             followup_result = run_analysis(
                                 st.session_state.followup_question, airline, atype,
@@ -767,9 +781,9 @@ else:
                             st.session_state.followup_result = followup_result
                             st.rerun()
                 else:
-                    st.markdown("##### 🎤 꼬리질문 음성 답변")
-                    followup_audio = st.audio_input("🎙️ 녹음하기", key="followup_audio")
-                    if followup_audio and st.button("🔍 꼬리질문 답변 분석", type="primary", key="followup_analyze"):
+                    st.markdown("#####  꼬리질문 음성 답변")
+                    followup_audio = st.audio_input("️ 녹음하기", key="followup_audio")
+                    if followup_audio and st.button("꼬리질문 답변 분석", type="primary", key="followup_analyze"):
                         with st.spinner("분석 중..."):
                             followup_result = run_analysis(
                                 st.session_state.followup_question, airline, atype,
@@ -789,7 +803,7 @@ else:
             total_q = st.session_state.continuous_count
 
             if idx + 1 < total_q:
-                if st.button(f"➡️ 다음 질문 ({idx + 2}/{total_q})", type="primary", use_container_width=True):
+                if st.button(f"️ 다음 질문 ({idx + 2}/{total_q})", type="primary", use_container_width=True):
                     st.session_state.continuous_results.append(st.session_state.result)
                     st.session_state.continuous_index += 1
                     st.session_state.question = st.session_state.continuous_questions[st.session_state.continuous_index]
@@ -799,7 +813,7 @@ else:
                     st.session_state.followup_depth = 0
                     st.rerun()
             else:
-                if st.button("📊 종합 리포트 보기", type="primary", use_container_width=True):
+                if st.button("종합 리포트 보기", type="primary", use_container_width=True):
                     st.session_state.continuous_results.append(st.session_state.result)
                     st.session_state.continuous_done = True
                     st.session_state.result = None
@@ -807,14 +821,14 @@ else:
         else:
             col1, col2, col3 = st.columns(3)
             with col1:
-                if st.button("🔄 같은 질문 다시"):
+                if st.button("같은 질문 다시"):
                     st.session_state.result = None
                     st.session_state.followup_question = None
                     st.session_state.followup_result = None
                     st.session_state.followup_depth = 0
                     st.rerun()
             with col2:
-                if st.button("➡️ 다음 질문"):
+                if st.button("️ 다음 질문"):
                     st.session_state.question = random.choice(INTERVIEW_QUESTIONS[st.session_state.category])
                     st.session_state.result = None
                     st.session_state.followup_question = None
@@ -822,7 +836,7 @@ else:
                     st.session_state.followup_depth = 0
                     st.rerun()
             with col3:
-                if st.button("🏠 처음으로"):
+                if st.button("처음으로"):
                     for k, v in DEFAULT_STATE.items():
                         st.session_state[k] = v
                     st.rerun()
@@ -834,7 +848,7 @@ st.markdown("---")
 
 persistent = st.session_state.persistent_history
 if persistent:
-    st.markdown("### 📈 나의 성장 기록")
+    st.markdown("### 나의 성장 기록")
 
     col1, col2, col3, col4 = st.columns(4)
     scores = [h["score"] for h in persistent]
@@ -858,7 +872,7 @@ if persistent:
         })
         st.line_chart(chart_df.set_index("회차"))
 
-    with st.expander("📊 상세 통계"):
+    with st.expander("상세 통계"):
         cat_stats = {}
         for h in persistent:
             cat = h.get("category", "unknown")
@@ -875,11 +889,11 @@ if persistent:
         st.markdown("**최근 10회 기록**")
         for h in reversed(persistent[-10:]):
             ts = h.get("timestamp", "")[:10]
-            mode_icon = "⌨️" if h.get("mode") == "text" else "🎬"
+            mode_icon = "⌨️" if h.get("mode") == "text" else ""
             st.caption(f"{ts} | {mode_icon} {h.get('airline', '')} | {QUESTION_CATEGORIES.get(h.get('category', ''), '')} | {h['grade']} ({h['score']}점)")
 
 elif st.session_state.history:
-    with st.expander(f"📊 이번 세션 기록 ({len(st.session_state.history)}회)"):
+    with st.expander(f" 이번 세션 기록 ({len(st.session_state.history)}회)"):
         scores = [h["total"]["total_score"] for h in st.session_state.history]
         col1, col2, col3 = st.columns(3)
         with col1:

@@ -13,10 +13,13 @@ from collections import defaultdict
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import AIRLINES
 
-from sidebar_common import render_sidebar
+from sidebar_common import init_page, end_page
 
-st.set_page_config(page_title="D-Day 캘린더", page_icon="📅", layout="wide")
-render_sidebar("D-Day캘린더")
+init_page(
+    title="D-Day 캘린더",
+    current_page="D-Day캘린더",
+    wide_layout=True
+)
 
 
 # ========================================
@@ -64,18 +67,18 @@ def get_dday(target_date_str):
 # 상수 데이터
 # ========================================
 EVENT_CATEGORIES = {
-    "서류 접수": {"icon": "📝", "color": "#3b82f6"},
+    "서류 접수": {"icon": "", "color": "#3b82f6"},
     "서류 마감": {"icon": "⏰", "color": "#ef4444"},
-    "서류 발표": {"icon": "📢", "color": "#f59e0b"},
-    "1차 면접": {"icon": "🎤", "color": "#8b5cf6"},
-    "2차 면접": {"icon": "🎯", "color": "#6366f1"},
-    "영어 면접": {"icon": "🌍", "color": "#0891b2"},
-    "체력 테스트": {"icon": "💪", "color": "#10b981"},
-    "수영 테스트": {"icon": "🏊", "color": "#06b6d4"},
-    "최종 발표": {"icon": "🎉", "color": "#ec4899"},
-    "건강검진": {"icon": "🏥", "color": "#14b8a6"},
-    "입사": {"icon": "✈️", "color": "#f43f5e"},
-    "기타": {"icon": "📌", "color": "#6b7280"},
+    "서류 발표": {"icon": "", "color": "#f59e0b"},
+    "1차 면접": {"icon": "", "color": "#8b5cf6"},
+    "2차 면접": {"icon": "", "color": "#6366f1"},
+    "영어 면접": {"icon": "", "color": "#0891b2"},
+    "체력 테스트": {"icon": "", "color": "#10b981"},
+    "수영 테스트": {"icon": "", "color": "#06b6d4"},
+    "최종 발표": {"icon": "", "color": "#ec4899"},
+    "건강검진": {"icon": "", "color": "#14b8a6"},
+    "입사": {"icon": "️", "color": "#f43f5e"},
+    "기타": {"icon": "", "color": "#6b7280"},
 }
 
 # 항공사별 채용 전형 템플릿
@@ -396,7 +399,7 @@ st.markdown("""
 # ========================================
 # 메인
 # ========================================
-st.title("📅 D-Day 캘린더")
+st.title("D-Day 캘린더")
 st.markdown("면접 일정, 목표, 체크리스트를 한 곳에서 관리하세요!")
 
 cal_data = load_calendar()
@@ -407,12 +410,12 @@ processes = cal_data.get("processes", [])
 
 # 탭 구성
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "📊 대시보드",
-    "📅 월간 캘린더",
-    "📋 일정 관리",
-    "✅ 일일 체크리스트",
-    "🎯 목표 설정",
-    "💡 D-Day 가이드",
+ " 대시보드",
+ " 월간 캘린더",
+ " 일정 관리",
+ " 일일 체크리스트",
+ " 목표 설정",
+ " D-Day 가이드",
 ])
 
 
@@ -420,7 +423,7 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
 # 탭1: 대시보드
 # ========================================
 with tab1:
-    st.markdown("### 📊 준비 현황 대시보드")
+    st.markdown("### 준비 현황 대시보드")
 
     # 상단 메트릭
     today_str = date.today().strftime("%Y-%m-%d")
@@ -434,7 +437,7 @@ with tab1:
     with col1:
         st.markdown(f"""
         <div class="stat-box">
-            <div style="font-size: 28px;">📋</div>
+            <div style="font-size: 28px;"></div>
             <div style="font-size: 24px; font-weight: bold; color: #3b82f6;">{len(upcoming_events)}</div>
             <div style="font-size: 13px; color: #666;">예정된 일정</div>
         </div>
@@ -443,7 +446,7 @@ with tab1:
         interview_count = len([e for e in upcoming_events if "면접" in e.get("category", "")])
         st.markdown(f"""
         <div class="stat-box">
-            <div style="font-size: 28px;">🎤</div>
+            <div style="font-size: 28px;"></div>
             <div style="font-size: 24px; font-weight: bold; color: #8b5cf6;">{interview_count}</div>
             <div style="font-size: 13px; color: #666;">면접 예정</div>
         </div>
@@ -452,7 +455,7 @@ with tab1:
         goal_pct = int(len(completed_goals) / max(len(goals), 1) * 100)
         st.markdown(f"""
         <div class="stat-box">
-            <div style="font-size: 28px;">🎯</div>
+            <div style="font-size: 28px;"></div>
             <div style="font-size: 24px; font-weight: bold; color: #10b981;">{goal_pct}%</div>
             <div style="font-size: 13px; color: #666;">목표 달성률</div>
         </div>
@@ -461,7 +464,7 @@ with tab1:
         todo_pct = int(today_done / max(len(today_todos), 1) * 100) if today_todos else 0
         st.markdown(f"""
         <div class="stat-box">
-            <div style="font-size: 28px;">✅</div>
+            <div style="font-size: 28px;"></div>
             <div style="font-size: 24px; font-weight: bold; color: #f59e0b;">{todo_pct}%</div>
             <div style="font-size: 13px; color: #666;">오늘 할 일</div>
         </div>
@@ -470,7 +473,7 @@ with tab1:
     st.markdown("---")
 
     # 가장 가까운 D-Day 표시
-    st.markdown("#### 🎯 다가오는 일정 TOP 3")
+    st.markdown("#### 다가오는 일정 TOP 3")
 
     upcoming_sorted = sorted(upcoming_events, key=lambda x: x.get("date", ""))[:3]
 
@@ -498,7 +501,7 @@ with tab1:
     st.markdown("---")
 
     # 항공사별 진행 현황
-    st.markdown("#### ✈️ 항공사별 진행 현황")
+    st.markdown("#### ️ 항공사별 진행 현황")
 
     # 이벤트에서 항공사별 그룹핑
     airline_events = defaultdict(list)
@@ -522,7 +525,7 @@ with tab1:
 
             col1, col2 = st.columns([3, 1])
             with col1:
-                st.markdown(f"**✈️ {airline}** - 다음: {current_stage}")
+                st.markdown(f"**️ {airline}** - 다음: {current_stage}")
                 st.progress(progress, text=f"{done_stages}/{total_stages} 단계 완료")
             with col2:
                 next_event = next((e for e in a_events_sorted if e.get("date", "") >= today_str), None)
@@ -534,7 +537,7 @@ with tab1:
 
     # 이번 주 일정
     st.markdown("---")
-    st.markdown("#### 📋 이번 주 일정")
+    st.markdown("#### 이번 주 일정")
 
     week_start = date.today()
     week_end = week_start + timedelta(days=7)
@@ -554,7 +557,7 @@ with tab1:
 # 탭2: 월간 캘린더 뷰
 # ========================================
 with tab2:
-    st.markdown("### 📅 월간 캘린더")
+    st.markdown("### 월간 캘린더")
 
     # 월 선택
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -640,7 +643,7 @@ with tab2:
     # 해당 월 일정 목록
     if month_events:
         st.markdown("---")
-        st.markdown(f"#### 📋 {cal_month}월 일정 목록")
+        st.markdown(f"####  {cal_month}월 일정 목록")
         for event in sorted(month_events, key=lambda x: x.get("date", "")):
             cat = EVENT_CATEGORIES.get(event.get("category", "기타"), EVENT_CATEGORIES["기타"])
             dday_str, _ = get_dday(event.get("date", ""))
@@ -651,13 +654,13 @@ with tab2:
 # 탭3: 일정 관리 (템플릿 포함)
 # ========================================
 with tab3:
-    st.markdown("### 📋 일정 관리")
+    st.markdown("### 일정 관리")
 
-    sub_tab1, sub_tab2, sub_tab3 = st.tabs(["➕ 일정 추가", "📑 전형 템플릿", "📋 전체 일정"])
+    sub_tab1, sub_tab2, sub_tab3 = st.tabs([" 일정 추가", " 전형 템플릿", " 전체 일정"])
 
     # ----- 일정 추가 -----
     with sub_tab1:
-        st.markdown("#### ➕ 새 일정 추가")
+        st.markdown("#### 새 일정 추가")
 
         with st.form("add_event_form"):
             col1, col2 = st.columns(2)
@@ -694,7 +697,7 @@ with tab3:
 
     # ----- 전형 템플릿 -----
     with sub_tab2:
-        st.markdown("#### 📑 채용 전형 템플릿")
+        st.markdown("#### 채용 전형 템플릿")
         st.info("항공사를 선택하고 서류 접수일만 입력하면, 전형 전체 일정이 자동 생성됩니다!")
 
         col1, col2 = st.columns(2)
@@ -705,7 +708,7 @@ with tab3:
         with col2:
             if tmpl_airline in AIRLINE_TEMPLATES:
                 tmpl = AIRLINE_TEMPLATES[tmpl_airline]
-                st.caption(f"💡 {tmpl['note']}")
+                st.caption(f" {tmpl['note']}")
                 st.markdown("**전형 단계 미리보기:**")
                 for stage in tmpl["stages"]:
                     stage_date = tmpl_start + timedelta(days=stage["offset"])
@@ -713,7 +716,7 @@ with tab3:
                     st.markdown(f"{cat['icon']} {stage_date.strftime('%m/%d')} - {stage['name']}")
 
         if tmpl_airline in AIRLINE_TEMPLATES:
-            if st.button("📅 전체 일정 자동 생성", type="primary", use_container_width=True, key="gen_tmpl"):
+            if st.button("전체 일정 자동 생성", type="primary", use_container_width=True, key="gen_tmpl"):
                 tmpl = AIRLINE_TEMPLATES[tmpl_airline]
                 generated = 0
                 for stage in tmpl["stages"]:
@@ -732,14 +735,14 @@ with tab3:
                     cal_data["events"].append(new_event)
                     generated += 1
                 save_calendar(cal_data)
-                st.success(f"✅ {tmpl_airline} 전형 일정 {generated}개가 생성되었습니다!")
+                st.success(f" {tmpl_airline} 전형 일정 {generated}개가 생성되었습니다!")
                 st.rerun()
         else:
             st.warning("해당 항공사의 템플릿이 없습니다.")
 
     # ----- 전체 일정 -----
     with sub_tab3:
-        st.markdown("#### 📋 전체 일정 목록")
+        st.markdown("#### 전체 일정 목록")
 
         # 필터
         col1, col2 = st.columns(2)
@@ -778,7 +781,7 @@ with tab3:
                     color = "#dc3545" if diff is not None and 0 <= diff <= 3 else cat["color"]
                     st.markdown(f"<span style='color: {color}; font-weight: 700; font-size: 16px;'>{dday_str}</span>", unsafe_allow_html=True)
                 with col_c:
-                    if st.button("🗑️", key=f"del_ev_{event.get('id', '')}", help="삭제"):
+                    if st.button("️", key=f"del_ev_{event.get('id', '')}", help="삭제"):
                         cal_data["events"] = [e for e in cal_data["events"] if e.get("id") != event.get("id")]
                         save_calendar(cal_data)
                         st.rerun()
@@ -787,7 +790,7 @@ with tab3:
         # 일정 초기화
         if events:
             st.markdown("---")
-            with st.expander("⚠️ 일정 전체 삭제"):
+            with st.expander("️ 일정 전체 삭제"):
                 st.warning("모든 일정이 삭제됩니다. 되돌릴 수 없습니다.")
                 if st.button("모든 일정 삭제", type="primary", key="clear_events"):
                     cal_data["events"] = []
@@ -800,7 +803,7 @@ with tab3:
 # 탭4: 일일 체크리스트
 # ========================================
 with tab4:
-    st.markdown("### ✅ 일일 체크리스트")
+    st.markdown("### 일일 체크리스트")
 
     # 날짜 선택
     selected_date = st.date_input("날짜 선택", value=date.today(), key="todo_date")
@@ -814,7 +817,7 @@ with tab4:
     col1, col2 = st.columns([2, 1])
 
     with col1:
-        st.markdown(f"#### 📋 {selected_date.strftime('%m월 %d일')} 할 일")
+        st.markdown(f"####  {selected_date.strftime('%m월 %d일')} 할 일")
 
         # 할 일 표시 및 체크
         if day_todos:
@@ -831,7 +834,7 @@ with tab4:
                     style = "text-decoration: line-through; opacity: 0.5;" if todo.get("done") else ""
                     st.markdown(f"<span style='{style}'>{todo.get('text', '')}</span>", unsafe_allow_html=True)
                 with col_c:
-                    if st.button("✕", key=f"del_todo_{sel_date_str}_{idx}", help="삭제"):
+                    if st.button("", key=f"del_todo_{sel_date_str}_{idx}", help="삭제"):
                         cal_data["daily_todos"][sel_date_str].pop(idx)
                         save_calendar(cal_data)
                         st.rerun()
@@ -856,10 +859,10 @@ with tab4:
                     st.rerun()
 
     with col2:
-        st.markdown("#### 📑 빠른 추가 (템플릿)")
+        st.markdown("#### 빠른 추가 (템플릿)")
 
         for tmpl_name, tmpl_items in DAILY_TEMPLATES.items():
-            with st.expander(f"📋 {tmpl_name}"):
+            with st.expander(f" {tmpl_name}"):
                 if st.button(f"전체 추가", key=f"tmpl_add_{tmpl_name}_{sel_date_str}", use_container_width=True):
                     existing_texts = [t.get("text", "") for t in cal_data["daily_todos"][sel_date_str]]
                     added = 0
@@ -883,7 +886,7 @@ with tab4:
         undone_yesterday = [t for t in yesterday_todos if not t.get("done")]
 
         if undone_yesterday:
-            st.markdown("#### ⚠️ 어제 미완료")
+            st.markdown("#### ️ 어제 미완료")
             if st.button("미완료 항목 가져오기", key="bring_yesterday", use_container_width=True):
                 existing_texts = [t.get("text", "") for t in cal_data["daily_todos"][sel_date_str]]
                 added = 0
@@ -900,7 +903,7 @@ with tab4:
 
     # 주간 달성률 그래프
     st.markdown("---")
-    st.markdown("#### 📊 최근 7일 달성률")
+    st.markdown("#### 최근 7일 달성률")
 
     week_stats = []
     for i in range(6, -1, -1):
@@ -926,12 +929,12 @@ with tab4:
 # 탭5: 목표 설정
 # ========================================
 with tab5:
-    st.markdown("### 🎯 목표 관리")
+    st.markdown("### 목표 관리")
 
     col1, col2 = st.columns([1, 2])
 
     with col1:
-        st.markdown("#### ➕ 새 목표 추가")
+        st.markdown("#### 새 목표 추가")
 
         with st.form("add_goal_form"):
             goal_title = st.text_input("목표 *", placeholder="예: 이번 달 모의면접 10회")
@@ -954,7 +957,7 @@ with tab5:
                     st.rerun()
 
     with col2:
-        st.markdown("#### 📋 진행 중인 목표")
+        st.markdown("#### 진행 중인 목표")
 
         active_goals = [g for g in goals if not g.get("completed")]
         done_goals = [g for g in goals if g.get("completed")]
@@ -979,7 +982,7 @@ with tab5:
                     st.markdown(f"<span style='{overdue_style}'>{goal.get('title', '')}</span>", unsafe_allow_html=True)
                     st.caption(f"{goal.get('type', '')} | 기한: {goal.get('deadline', '')} ({dday_str})")
                 with col_c:
-                    if st.button("🗑️", key=f"del_goal_{goal.get('id')}"):
+                    if st.button("️", key=f"del_goal_{goal.get('id')}"):
                         cal_data["goals"] = [g for g in cal_data["goals"] if g.get("id") != goal.get("id")]
                         save_calendar(cal_data)
                         st.rerun()
@@ -996,7 +999,7 @@ with tab5:
 
         # 완료된 목표
         if done_goals:
-            with st.expander(f"✅ 달성 완료 ({len(done_goals)}개)"):
+            with st.expander(f" 달성 완료 ({len(done_goals)}개)"):
                 for g in done_goals:
                     st.markdown(f"~~{g.get('title', '')}~~ ({g.get('type', '')})")
 
@@ -1005,7 +1008,7 @@ with tab5:
 # 탭6: D-Day 맞춤 가이드
 # ========================================
 with tab6:
-    st.markdown("### 💡 D-Day 맞춤 가이드")
+    st.markdown("### D-Day 맞춤 가이드")
     st.info("다가오는 일정에 맞춰 지금 해야 할 일을 자동으로 안내합니다!")
 
     # 다가오는 이벤트 중 가이드 대상 찾기
@@ -1077,26 +1080,26 @@ with tab6:
 
             st.markdown("")
     else:
-        st.markdown("#### 📅 30일 내 예정된 일정이 없습니다")
+        st.markdown("#### 30일 내 예정된 일정이 없습니다")
         st.markdown("일정을 등록하면 남은 기간에 맞는 맞춤 가이드를 제공합니다.")
 
         # 일반 가이드 참고용 표시
         st.markdown("---")
-        st.markdown("#### 📖 가이드 참고 (면접 기준)")
+        st.markdown("#### 가이드 참고 (면접 기준)")
 
         for days, guide in sorted(DDAY_GUIDES["면접"].items(), reverse=True):
-            with st.expander(f"{'📋' if days > 7 else '⚠️' if days > 1 else '🔥'} {guide['title']}"):
+            with st.expander(f"{'' if days > 7 else '️' if days > 1 else ''} {guide['title']}"):
                 for task in guide["tasks"]:
                     st.markdown(f"- {task}")
 
     # 꿀팁
     st.markdown("---")
-    st.markdown("#### 💡 면접 준비 핵심 팁")
+    st.markdown("#### 면접 준비 핵심 팁")
 
     tips_cols = st.columns(3)
     with tips_cols[0]:
         st.markdown("""
-        **🎯 D-30~D-14**
+        ** D-30~D-14**
         - 자소서 기반 예상질문 준비
         - 모의면접 주 2회 이상
         - 항공사 뉴스 매일 체크
@@ -1104,7 +1107,7 @@ with tab6:
         """)
     with tips_cols[1]:
         st.markdown("""
-        **⚡ D-7~D-3**
+        ** D-7~D-3**
         - 면접 복장 리허설
         - 면접장 위치/교통 확인
         - 1분 자기소개 자연스럽게
@@ -1112,7 +1115,7 @@ with tab6:
         """)
     with tips_cols[2]:
         st.markdown("""
-        **🔥 D-1~당일**
+        ** D-1~당일**
         - 준비물 전날 세팅
         - 알람 2개 이상 설정
         - 30분 전 도착 목표

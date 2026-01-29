@@ -46,14 +46,20 @@ try:
 except ImportError:
     SCORE_UTILS_AVAILABLE = False
 
-from sidebar_common import render_sidebar
+from sidebar_common import init_page, end_page
 
-st.set_page_config(
-    page_title="영어면접 연습",
-    page_icon="🌍",
-    layout="wide"
+# 공용 유틸리티 (Stage 2)
+try:
+    from shared_utils import get_api_key, load_json, save_json
+except ImportError:
+    pass
+
+# Initialize page with new layout
+init_page(
+    title="영어 면접 연습",
+    current_page="영어면접",
+    wide_layout=True
 )
-render_sidebar("영어면접")
 
 
 
@@ -281,7 +287,7 @@ Generate a natural follow-up question:"""
 # UI
 # =====================
 
-st.title("🌍 영어면접 연습")
+st.title("영어면접 연습")
 st.caption(f"항공사 영어면접을 준비하세요. 총 {get_questions_count()}개 질문 | 음성 분석 & PDF 리포트")
 
 # 모드 선택
@@ -291,7 +297,7 @@ if st.session_state.eng_mode is None:
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("### 📚 카테고리별 연습")
+        st.markdown("### 카테고리별 연습")
         st.write("원하는 카테고리의 질문을 선택해서 연습합니다.")
         st.write("- 모범 답변 참고 가능")
         st.write("- 질문별 즉시 피드백")
@@ -301,7 +307,7 @@ if st.session_state.eng_mode is None:
             st.rerun()
 
     with col2:
-        st.markdown("### 🎯 모의면접")
+        st.markdown("### 모의면접")
         st.write("실제 면접처럼 랜덤 질문 5개를 답변합니다.")
         st.write("- 모범 답변 숨김")
         st.write("- 전체 완료 후 종합 피드백")
@@ -309,7 +315,7 @@ if st.session_state.eng_mode is None:
 
         if VOICE_AVAILABLE:
             listening_mode = st.checkbox(
-                "🎧 리스닝 모드 (질문을 음성으로 먼저 듣기)",
+                " 리스닝 모드 (질문을 음성으로 먼저 듣기)",
                 value=True,
                 help="질문이 영어 음성으로 먼저 재생됩니다."
             )
@@ -332,7 +338,7 @@ if st.session_state.eng_mode is None:
             st.rerun()
 
     st.divider()
-    with st.expander("💡 영어면접 Tips", expanded=False):
+    with st.expander("영어면접 Tips", expanded=False):
         for tip in ENGLISH_INTERVIEW_TIPS:
             st.write(f"• {tip}")
 
@@ -360,7 +366,7 @@ elif st.session_state.eng_mode == "practice":
     with col_mode:
         if VOICE_AVAILABLE:
             practice_listening = st.checkbox(
-                "🎧 리스닝 모드",
+                " 리스닝 모드",
                 value=True,
                 help="질문을 음성으로 먼저 듣기"
             )
@@ -370,7 +376,7 @@ elif st.session_state.eng_mode == "practice":
     questions = get_questions_by_category(selected_cat_key)
 
     if practice_listening:
-        st.info("🎧 **리스닝 모드**: 질문을 먼저 듣고, '텍스트 보기'를 클릭하면 영어 텍스트가 표시됩니다.")
+        st.info("**리스닝 모드**: 질문을 먼저 듣고, '텍스트 보기'를 클릭하면 영어 텍스트가 표시됩니다.")
 
     st.divider()
 
@@ -392,7 +398,7 @@ elif st.session_state.eng_mode == "practice":
             if st.session_state.get(show_text_key, False):
                 expander_title = f"Q{i+1}: {question_text}"
             else:
-                expander_title = f"🎧 Question {i+1} - 듣기"
+                expander_title = f" Question {i+1} - 듣기"
         else:
             expander_title = f"Q{i+1}: {question_text}"
 
@@ -401,7 +407,7 @@ elif st.session_state.eng_mode == "practice":
             if practice_listening and VOICE_AVAILABLE:
                 col_audio1, col_audio2 = st.columns([1, 1])
                 with col_audio1:
-                    if st.button("🔊 질문 듣기", key=f"play_practice_q_{selected_cat_key}_{i}", use_container_width=True):
+                    if st.button("질문 듣기", key=f"play_practice_q_{selected_cat_key}_{i}", use_container_width=True):
                         with st.spinner("음성 생성 중..."):
                             audio = generate_tts_audio(question_text, voice="alloy", speed=0.85, use_clova=False)
                             if audio:
@@ -410,19 +416,19 @@ elif st.session_state.eng_mode == "practice":
                                 st.error("음성 생성 실패")
 
                 with col_audio2:
-                    if st.button("📝 텍스트 보기", key=f"show_text_btn_{selected_cat_key}_{i}", use_container_width=True):
+                    if st.button("텍스트 보기", key=f"show_text_btn_{selected_cat_key}_{i}", use_container_width=True):
                         st.session_state[show_text_key] = True
                         st.rerun()
 
                 if st.session_state.get(show_text_key, False):
-                    st.markdown(f"**🎤 {question_text}**")
-                    st.caption(f"💡 힌트: {q['korean_hint']}")
+                    st.markdown(f"** {question_text}**")
+                    st.caption(f" 힌트: {q['korean_hint']}")
 
             else:
-                st.caption(f"💡 힌트: {q['korean_hint']}")
+                st.caption(f" 힌트: {q['korean_hint']}")
 
                 if VOICE_AVAILABLE:
-                    if st.button("🔊 질문 듣기", key=f"play_q_practice_{selected_cat_key}_{i}"):
+                    if st.button("질문 듣기", key=f"play_q_practice_{selected_cat_key}_{i}"):
                         with st.spinner("음성 생성 중..."):
                             audio = generate_tts_audio(question_text, voice="alloy", speed=0.85, use_clova=False)
                             if audio:
@@ -437,13 +443,13 @@ elif st.session_state.eng_mode == "practice":
             if VOICE_AVAILABLE:
                 input_mode = st.radio(
                     "답변 방식",
-                    ["⌨️ 텍스트 입력", "🎤 음성 녹음"],
+                    ["⌨️ 텍스트 입력", " 음성 녹음"],
                     horizontal=True,
                     key=f"input_mode_practice_{selected_cat_key}_{i}"
                 )
 
-                if input_mode == "🎤 음성 녹음":
-                    st.markdown("**🎤 음성으로 답변하기**")
+                if input_mode == " 음성 녹음":
+                    st.markdown("** 음성으로 답변하기**")
                     st.caption("영어로 답변을 녹음하세요. 발음이 명확할수록 인식률이 높아집니다.")
 
                     try:
@@ -455,7 +461,7 @@ elif st.session_state.eng_mode == "practice":
                             if audio_id != st.session_state[processed_audio_key]:
                                 st.audio(audio_data, format="audio/wav")
 
-                                if st.button("📤 음성 변환", key=f"submit_voice_practice_{selected_cat_key}_{i}", type="primary"):
+                                if st.button("음성 변환", key=f"submit_voice_practice_{selected_cat_key}_{i}", type="primary"):
                                     with st.spinner("음성 인식 중..."):
                                         transcription = transcribe_audio(audio_data.getvalue(), language="en")
                                         if transcription and transcription.get("text"):
@@ -470,7 +476,7 @@ elif st.session_state.eng_mode == "practice":
 
                         if st.session_state[transcription_key]:
                             st.markdown("---")
-                            st.markdown("**📝 인식된 답변 (발음 확인):**")
+                            st.markdown("** 인식된 답변 (발음 확인):**")
                             st.success(st.session_state[transcription_key])
                             st.caption("위 텍스트가 실제로 말한 내용과 다르면, 발음을 더 명확히 해보세요.")
                             answer = st.session_state[transcription_key]
@@ -535,16 +541,16 @@ elif st.session_state.eng_mode == "practice":
                     st.error(fb["error"])
                 else:
                     st.markdown("---")
-                    st.markdown("#### 📝 피드백")
+                    st.markdown("#### 피드백")
                     st.markdown(fb.get("result", ""))
 
             if show_sample:
                 st.markdown("---")
-                st.markdown("#### ✅ Sample Answer")
+                st.markdown("#### Sample Answer")
                 st.info(q.get("sample_answer", ""))
 
                 if VOICE_AVAILABLE:
-                    if st.button("🔊 모범 답변 듣기", key=f"play_sample_{selected_cat_key}_{i}"):
+                    if st.button("모범 답변 듣기", key=f"play_sample_{selected_cat_key}_{i}"):
                         with st.spinner("음성 생성 중..."):
                             sample_audio = generate_tts_audio(q.get("sample_answer", ""), voice="alloy", speed=0.85, use_clova=False)
                             if sample_audio:
@@ -570,11 +576,11 @@ elif st.session_state.eng_mode == "mock":
                 st.session_state.eng_question_start_time = time.time()
 
             if st.session_state.eng_listening_mode and VOICE_AVAILABLE:
-                st.markdown("### 🎧 Listen to the question")
+                st.markdown("### Listen to the question")
 
                 col_audio1, col_audio2 = st.columns([1, 1])
                 with col_audio1:
-                    if st.button("🔊 질문 듣기", key=f"play_q_{current_idx}", use_container_width=True):
+                    if st.button("질문 듣기", key=f"play_q_{current_idx}", use_container_width=True):
                         with st.spinner("음성 생성 중..."):
                             audio = generate_tts_audio(
                                 question_text,
@@ -589,11 +595,11 @@ elif st.session_state.eng_mode == "mock":
                                 st.error("음성 생성에 실패했습니다.")
 
                 with col_audio2:
-                    if st.button("📝 텍스트 보기", key=f"show_text_{current_idx}", use_container_width=True):
+                    if st.button("텍스트 보기", key=f"show_text_{current_idx}", use_container_width=True):
                         st.session_state.eng_show_text[current_idx] = True
 
                 if st.session_state.eng_show_text.get(current_idx, False):
-                    st.markdown(f"### 🎤 {question_text}")
+                    st.markdown(f"###  {question_text}")
                     st.caption(f"힌트: {q['korean_hint']}")
                 else:
                     st.info("질문을 먼저 듣고, 필요하면 '텍스트 보기'를 클릭하세요.")
@@ -601,12 +607,12 @@ elif st.session_state.eng_mode == "mock":
                 st.caption(f"카테고리: {q.get('category', '')}")
 
             else:
-                st.markdown(f"### 🎤 {question_text}")
+                st.markdown(f"###  {question_text}")
                 st.caption(f"힌트: {q['korean_hint']}")
                 st.caption(f"카테고리: {q.get('category', '')}")
 
                 if VOICE_AVAILABLE:
-                    if st.button("🔊 질문 듣기", key=f"play_q_normal_{current_idx}"):
+                    if st.button("질문 듣기", key=f"play_q_normal_{current_idx}"):
                         with st.spinner("음성 생성 중..."):
                             audio = generate_tts_audio(question_text, voice="alloy", speed=0.85, use_clova=False)
                             if audio:
@@ -626,13 +632,13 @@ elif st.session_state.eng_mode == "mock":
             if VOICE_AVAILABLE:
                 input_mode = st.radio(
                     "답변 방식",
-                    ["⌨️ 텍스트", "🎤 음성"],
+                    ["⌨️ 텍스트", " 음성"],
                     horizontal=True,
                     key=f"input_mode_{current_idx}"
                 )
 
-                if input_mode == "🎤 음성":
-                    st.markdown("**🎤 음성으로 답변하기**")
+                if input_mode == " 음성":
+                    st.markdown("** 음성으로 답변하기**")
                     st.caption("영어로 답변을 녹음하세요. 발음이 명확할수록 인식률이 높아집니다.")
 
                     try:
@@ -644,7 +650,7 @@ elif st.session_state.eng_mode == "mock":
                             if audio_id != st.session_state[mock_processed_audio_key]:
                                 st.audio(audio_data, format="audio/wav")
 
-                                if st.button("📤 음성 변환", key=f"submit_voice_{current_idx}", type="primary"):
+                                if st.button("음성 변환", key=f"submit_voice_{current_idx}", type="primary"):
                                     with st.spinner("음성 인식 중..."):
                                         transcription = transcribe_audio(audio_data.getvalue(), language="en")
                                         if transcription and transcription.get("text"):
@@ -664,7 +670,7 @@ elif st.session_state.eng_mode == "mock":
 
                         if st.session_state[mock_transcription_key]:
                             st.markdown("---")
-                            st.markdown("**📝 인식된 답변 (발음 확인):**")
+                            st.markdown("** 인식된 답변 (발음 확인):**")
                             st.success(st.session_state[mock_transcription_key])
                             st.caption("위 텍스트가 실제로 말한 내용과 다르면, 발음을 더 명확히 해보세요.")
                             answer = st.session_state[mock_transcription_key]
@@ -732,7 +738,7 @@ elif st.session_state.eng_mode == "mock":
 
     else:
         # 완료 - 결과 표시
-        st.subheader("🎉 모의면접 완료!")
+        st.subheader(" 모의면접 완료!")
 
         # 전체 답변 평가
         if "mock_final_feedback" not in st.session_state:
@@ -832,12 +838,12 @@ elif st.session_state.eng_mode == "mock":
                 st.markdown(f"**{display_summary}**")
 
                 if display_improvements:
-                    st.markdown("**🔧 우선 개선 포인트:**")
+                    st.markdown("** 우선 개선 포인트:**")
                     for imp in display_improvements[:3]:
                         st.write(f"• {imp}")
 
                 if not st.session_state.eng_voice_analysis:
-                    st.caption("💡 음성 녹음 모드를 사용하면 발음/음성 전달력 분석도 제공됩니다.")
+                    st.caption(" 음성 녹음 모드를 사용하면 발음/음성 전달력 분석도 제공됩니다.")
 
         # PDF 다운로드 버튼
         if REPORT_AVAILABLE:
@@ -855,7 +861,7 @@ elif st.session_state.eng_mode == "mock":
                 )
 
                 st.download_button(
-                    label="📄 PDF 리포트 다운로드",
+                    label= " PDF 리포트 다운로드",
                     data=pdf_bytes,
                     file_name=get_english_report_filename(),
                     mime="application/pdf",
@@ -881,17 +887,17 @@ elif st.session_state.eng_mode == "mock":
 
             if recommendations:
                 st.divider()
-                st.markdown("### 🎯 약점 기반 추천 질문")
+                st.markdown("### 약점 기반 추천 질문")
 
                 for i, rec in enumerate(recommendations, 1):
                     with st.expander(f"{i}. [{rec['weakness']}] 개선 - {rec['category']}"):
                         st.markdown(f"**Q:** {rec['question']}")
                         st.caption(f"힌트: {rec['korean_hint']}")
-                        st.info(f"💡 {rec['tip']}")
+                        st.info(f" {rec['tip']}")
 
         # 결과 상세 표시
         st.divider()
-        st.markdown("### 📋 질문별 상세 결과")
+        st.markdown("### 질문별 상세 결과")
 
         for idx, data in st.session_state.eng_answers.items():
             with st.expander(f"Q{idx+1}: {data['question']}", expanded=False):

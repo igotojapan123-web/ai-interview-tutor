@@ -1,34 +1,87 @@
-# flyready_lab - AI 승무원 면접 준비 플랫폼
-# Requirements
+# FlyReady Lab - AI 승무원 면접 준비 플랫폼
+# Enterprise Edition Requirements
 
-# === 프레임워크 ===
+# ======================
+# Web Framework
+# ======================
+fastapi>=0.109.0,<1.0.0
+uvicorn[standard]>=0.27.0,<1.0.0
+starlette>=0.35.0,<1.0.0
 streamlit>=1.28.0,<2.0.0
 
-# === 네트워크 ===
-requests>=2.28.0,<3.0.0
+# ======================
+# Data Validation
+# ======================
+pydantic>=2.5.0,<3.0.0
+pydantic-settings>=2.1.0,<3.0.0
+email-validator>=2.1.0,<3.0.0
 
-# === 환경 관리 ===
+# ======================
+# Authentication & Security
+# ======================
+python-jose[cryptography]>=3.3.0,<4.0.0
+passlib[bcrypt]>=1.7.4,<2.0.0
+python-multipart>=0.0.6,<1.0.0
+
+# ======================
+# HTTP Client
+# ======================
+requests>=2.28.0,<3.0.0
+httpx>=0.26.0,<1.0.0
+aiohttp>=3.9.0,<4.0.0
+
+# ======================
+# Environment & Config
+# ======================
 python-dotenv>=1.0.0
 
-# === AI/ML ===
+# ======================
+# AI/ML
+# ======================
 openai>=1.0.0
 
-# === 데이터 처리 ===
-pydantic>=2.0.0
-
-# === PDF 처리 ===
+# ======================
+# PDF Processing
+# ======================
 fpdf2>=2.7.0
 PyPDF2>=3.0.0
 
-# === 이미지 처리 ===
+# ======================
+# Image Processing
+# ======================
 Pillow>=10.0.0
 
-# === 오디오 처리 ===
+# ======================
+# Audio Processing
+# ======================
 pydub>=0.25.1
 
-# === 유틸리티 ===
+# ======================
+# Utilities
+# ======================
 python-dateutil>=2.8.0
+tenacity>=8.2.0,<9.0.0
 
-# === 개발/테스트 ===
+# ======================
+# Testing
+# ======================
 pytest>=7.0.0
 pytest-cov>=4.0.0
+pytest-html>=4.0.0
+pytest-xdist>=3.0.0
+pytest-asyncio>=0.23.0,<1.0.0
+
+# ======================
+# Code Quality
+# ======================
+flake8>=6.0.0
+flake8-pyproject>=1.2.0
+mypy>=1.0.0
+pylint>=3.0.0
+black>=23.0.0
+isort>=5.12.0
+
+# ======================
+# Security
+# ======================
+bandit>=1.7.0

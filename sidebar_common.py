@@ -1,177 +1,369 @@
 # sidebar_common.py
-# 공통 사이드바 모듈 - 전문적인 디자인 (이모지 없는 버전)
+# FlyReady Lab - Enterprise Navigation Module (Simplified)
+# Fixed version without complex f-string CSS that causes rendering issues
 
 import streamlit as st
-import base64
-from pathlib import Path
-from env_config import ADMIN_PASSWORD
 
-# 디자인 시스템 import
+# Legacy imports for backward compatibility
 try:
-    from ui_config import NAV_MENU, COLORS, get_sidebar_css
-    UI_CONFIG_AVAILABLE = True
+    from env_config import ADMIN_PASSWORD
 except ImportError:
-    UI_CONFIG_AVAILABLE = False
-
-@st.cache_resource
-def get_logo_base64():
-    """로고 이미지 Base64 인코딩 (영구 캐시)"""
-    logo_path = Path(__file__).parent / "logo.png"
-    if logo_path.exists():
-        with open(logo_path, "rb") as f:
-            return base64.b64encode(f.read()).decode()
-    return None
+    ADMIN_PASSWORD = "admin123"
 
 
-def render_sidebar(current_page=""):
-    """공통 사이드바 렌더링 (전문적인 디자인)
+def get_simple_css():
+    """Simple, reliable CSS without complex f-string issues."""
+    return """
+    <style>
+    /* Hide Streamlit defaults */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    [data-testid="stHeader"] {display: none;}
+    [data-testid="stToolbar"] {display: none;}
+    [data-testid="stSidebarNav"] {display: none !important;}
+    [data-testid="stSidebar"] {display: none !important;}
+
+    /* Material Icon 텍스트 폴백 숨김 (keyboard_arrow_down 등) */
+    [data-testid="stIconMaterial"] {
+        font-size: 0 !important;
+        line-height: 0 !important;
+        overflow: hidden !important;
+    }
+
+    /* Import premium font */
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+    /* Root variables */
+    :root {
+        --primary: #2563EB;
+        --primary-dark: #1D4ED8;
+        --text-primary: #0F172A;
+        --text-secondary: #64748B;
+        --bg-primary: #FFFFFF;
+        --bg-secondary: #F8FAFC;
+        --border: #E2E8F0;
+        --nav-height: 64px;
+    }
+
+    /* Base styles */
+    html, body, [class*="st-"] {
+        font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    }
+
+    .main .block-container {
+        padding-top: calc(var(--nav-height) + 32px) !important;
+        max-width: 1280px;
+        margin: 0 auto;
+    }
+
+    /* Navigation Bar */
+    .nav-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: var(--nav-height);
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid var(--border);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        padding: 0 32px;
+    }
+
+    .nav-inner {
+        max-width: 1400px;
+        width: 100%;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        gap: 32px;
+    }
+
+    .nav-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-left: auto;
+    }
+
+    .nav-btn {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .nav-btn-ghost {
+        color: #475569;
+    }
+
+    .nav-btn-ghost:hover {
+        color: #0F172A;
+        background: #F1F5F9;
+    }
+
+    .nav-btn-primary {
+        background: #2563EB;
+        color: white;
+    }
+
+    .nav-btn-primary:hover {
+        background: #1D4ED8;
+    }
+
+    .nav-logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 20px;
+        color: var(--text-primary);
+    }
+
+    .nav-logo-icon {
+        width: 36px;
+        height: 36px;
+        background: linear-gradient(135deg, #2563EB, #7C3AED);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        color: white;
+    }
+
+    .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .nav-link {
+        padding: 8px 16px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        transition: all 0.2s ease;
+    }
+
+    .nav-link:hover {
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+    }
+
+    .nav-link.active {
+        background: rgba(37, 99, 235, 0.1);
+        color: var(--primary);
+    }
+
+    /* Page Header */
+    .page-header {
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .page-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    /* Cards */
+    .stExpander {
+        border: 1px solid var(--border) !important;
+        border-radius: 12px !important;
+        background: white !important;
+    }
+
+    /* Buttons */
+    .stButton > button {
+        border-radius: 8px !important;
+        font-weight: 500 !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, #2563EB, #1D4ED8) !important;
+        border: none !important;
+    }
+
+    .stButton > button[kind="primary"]:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
+    }
+
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background: var(--bg-secondary);
+        padding: 4px;
+        border-radius: 10px;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 8px;
+        font-weight: 500;
+    }
+
+    /* Inputs */
+    .stTextInput > div > div > input,
+    .stTextArea > div > div > textarea,
+    .stSelectbox > div > div {
+        border-radius: 8px !important;
+        border: 1px solid var(--border) !important;
+    }
+
+    /* Metrics */
+    [data-testid="stMetric"] {
+        background: var(--bg-secondary);
+        padding: 16px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+    }
+
+    /* Progress bar */
+    .stProgress > div > div > div {
+        background: linear-gradient(90deg, #2563EB, #7C3AED) !important;
+    }
+
+    /* Footer */
+    .footer {
+        margin-top: 48px;
+        padding: 24px 0;
+        border-top: 1px solid var(--border);
+        text-align: center;
+        color: var(--text-secondary);
+        font-size: 13px;
+    }
+    </style>
+    """
+
+
+def render_navbar(current_page: str = ""):
+    """Render simple navigation bar with login button."""
+
+    nav_items = [
+        ("홈", "/", "home"),
+        ("면접연습", "/모의면접", "모의면접"),
+        ("자소서", "/자소서첨삭", "자소서첨삭"),
+        ("퀴즈", "/항공사퀴즈", "항공사퀴즈"),
+        ("채용정보", "/채용정보", "채용정보"),
+        ("학습관리", "/진도관리", "진도관리"),
+    ]
+
+    links_html = ""
+    for label, href, page_id in nav_items:
+        active_class = "active" if current_page == page_id else ""
+        links_html += f'<a href="{href}" target="_self" class="nav-link {active_class}">{label}</a>'
+
+    navbar_html = f"""
+    <div class="nav-container">
+        <div class="nav-inner">
+            <a href="/" target="_self" class="nav-logo">
+                <div class="nav-logo-icon">F</div>
+                <span>FlyReady Lab</span>
+            </a>
+            <nav class="nav-links">
+                {links_html}
+            </nav>
+            <div class="nav-right">
+                <a href="/로그인" target="_self" class="nav-btn nav-btn-ghost">로그인</a>
+                <a href="/구독" target="_self" class="nav-btn nav-btn-primary">무료 체험</a>
+            </div>
+        </div>
+    </div>
+    """
+
+    st.markdown(navbar_html, unsafe_allow_html=True)
+
+
+def render_page_header(title: str):
+    """Render page header."""
+    st.markdown(f"""
+    <div class="page-header">
+        <h1 class="page-title">{title}</h1>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def render_footer():
+    """Render page footer."""
+    st.markdown("""
+    <div class="footer">
+        <p>FlyReady Lab - AI Flight Attendant Interview Coaching Platform</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def render_sidebar(current_page: str = ""):
+    """Render enterprise-grade navigation.
 
     Args:
-        current_page: 현재 페이지 이름 (예: "모의면접", "롤플레잉" 등)
+        current_page: Current page identifier for highlighting
     """
-    with st.sidebar:
-        # CSS 스타일 적용
-        if UI_CONFIG_AVAILABLE:
-            st.markdown(get_sidebar_css(), unsafe_allow_html=True)
-        else:
-            # 폴백 CSS
-            st.markdown("""
-            <style>
-            [data-testid="stSidebarNav"] { display: none !important; }
-            [data-testid="stSidebarNavItems"] { display: none !important; }
-            [data-testid="stSidebarNavLink"] { display: none !important; }
-            [data-testid="stSidebarNavSeparator"] { display: none !important; }
-            [data-testid="stSidebar"] nav { display: none !important; }
-            [data-testid="stSidebarUserContent"] > div:first-child > ul { display: none !important; }
-            .st-emotion-cache-16tkqhc { display: none !important; }
-            .st-emotion-cache-eczf16 { display: none !important; }
-            [data-testid="stSidebar"] [data-testid="stPageLink"] { display: none !important; }
-            [data-testid="stSidebar"] button[kind="header"] { display: none !important; }
-            [data-testid="stSidebarCollapseButton"] { display: none !important; }
+    # Apply simple CSS
+    st.markdown(get_simple_css(), unsafe_allow_html=True)
 
-            .stTabs [data-baseweb="tab-list"] {
-                overflow-x: auto;
-                flex-wrap: nowrap !important;
-                gap: 2px;
-                -webkit-overflow-scrolling: touch;
-                scrollbar-width: thin;
-                padding-bottom: 4px;
-            }
-            .stTabs [data-baseweb="tab-list"] button {
-                white-space: nowrap;
-                flex-shrink: 0;
-            }
-            .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar {
-                height: 4px;
-            }
-            .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar-thumb {
-                background: rgba(0,0,0,0.2);
-                border-radius: 2px;
-            }
+    # Render navigation bar
+    render_navbar(current_page)
 
-            [data-testid="stSidebar"] {
-                background: linear-gradient(180deg, #0f2439 0%, #1e3a5f 30%, #2d5a87 100%);
-                min-width: 260px;
-                max-width: 260px;
-            }
-            [data-testid="stSidebar"] * {
-                color: white !important;
-            }
-            [data-testid="stSidebar"] .stMarkdown p {
-                color: white !important;
-            }
-            </style>
-            """, unsafe_allow_html=True)
 
-        # 헤더 (로고)
-        logo_b64 = get_logo_base64()
-        if logo_b64:
-            logo_img = f'<img src="data:image/png;base64,{logo_b64}" class="fr-sidebar-logo">'
-        else:
-            logo_img = '<div class="fr-sidebar-brand">FlyReady Lab</div>'
+def init_page(
+    title: str,
+    page_title: str = None,
+    current_page: str = "",
+    wide_layout: bool = True
+):
+    """Initialize page with enterprise layout.
 
-        st.markdown(f"""
-        <div class="fr-sidebar-header">
-            {logo_img}
-            <div class="fr-sidebar-tagline">AI 승무원 면접 코칭</div>
-        </div>
-        """, unsafe_allow_html=True)
+    Args:
+        title: Page title displayed in header
+        page_title: Browser tab title (defaults to "FlyReady Lab - {title}")
+        current_page: Current page identifier for nav highlighting
+        wide_layout: Use wide layout (True) or centered (False)
+    """
+    st.set_page_config(
+        page_title=page_title or f"FlyReady Lab - {title}",
+        page_icon="✈",
+        layout="wide" if wide_layout else "centered",
+        initial_sidebar_state="collapsed"
+    )
 
-        # 홈 버튼
-        st.markdown('<a href="/" class="fr-sidebar-home">홈 대시보드</a>', unsafe_allow_html=True)
+    # Apply layout and render navbar
+    render_sidebar(current_page)
 
-        # 네비게이션 메뉴 구성
-        if UI_CONFIG_AVAILABLE:
-            nav_menu = NAV_MENU
-        else:
-            # 폴백 메뉴
-            nav_menu = {
-                "면접 연습": [
-                    {"name": "모의면접", "page": "모의면접", "desc": "AI 면접관"},
-                    {"name": "롤플레잉", "page": "롤플레잉", "desc": "기내 상황"},
-                    {"name": "영어면접", "page": "영어면접", "desc": "영어 답변"},
-                    {"name": "토론면접", "page": "토론면접", "desc": "그룹 토론"},
-                ],
-                "준비 도구": [
-                    {"name": "자소서 첨삭", "page": "자소서첨삭", "desc": "AI 피드백"},
-                    {"name": "실전 연습", "page": "실전연습", "desc": "종합 분석"},
-                    {"name": "이미지메이킹", "page": "이미지메이킹", "desc": "복장 체크"},
-                    {"name": "기내방송", "page": "기내방송연습", "desc": "스크립트"},
-                    {"name": "표정 연습", "page": "표정연습", "desc": "표정 분석"},
-                ],
-                "학습 정보": [
-                    {"name": "항공 퀴즈", "page": "항공사퀴즈", "desc": "187문항"},
-                    {"name": "면접 꿀팁", "page": "면접꿀팁", "desc": "핵심 팁"},
-                    {"name": "항공사 가이드", "page": "항공사가이드", "desc": "각 사 정보"},
-                    {"name": "국민체력", "page": "국민체력", "desc": "체력 기준"},
-                    {"name": "기업 분석", "page": "기업분석", "desc": "기업 정보"},
-                ],
-                "학습 관리": [
-                    {"name": "진도 관리", "page": "진도관리", "desc": "학습 현황"},
-                    {"name": "성장 그래프", "page": "성장그래프", "desc": "점수 추이"},
-                    {"name": "채용 알림", "page": "채용알림", "desc": "공고 소식"},
-                    {"name": "합격자 DB", "page": "합격자DB", "desc": "합격 자료"},
-                    {"name": "D-Day 캘린더", "page": "D-Day캘린더", "desc": "일정 관리"},
-                ],
-            }
+    # Page header
+    render_page_header(title)
 
-        # 네비게이션 HTML 생성
-        nav_html = ""
-        for category, items in nav_menu.items():
-            nav_html += f'<div class="fr-sidebar-category">{category}</div>'
-            for item in items:
-                active_class = "active" if item["page"] == current_page else ""
-                desc_html = f'<span class="fr-sidebar-item-desc">{item.get("desc", "")}</span>' if item.get("desc") else ""
-                nav_html += f'''
-                <a href="/{item["page"]}" class="fr-sidebar-item {active_class}">
-                    <span>{item["name"]}</span>
-                    {desc_html}
-                </a>
-                '''
 
-        # 관리자 모드 활성화 시 관리자 링크 추가
-        if st.session_state.get("admin_authenticated", False):
-            nav_html += '<div class="fr-sidebar-category">관리자</div>'
-            active_class = "active" if current_page == "관리자" else ""
-            nav_html += f'<a href="/관리자" class="fr-sidebar-item {active_class}"><span>관리자 모드</span></a>'
+def end_page(show_footer: bool = True):
+    """End page with footer."""
+    if show_footer:
+        render_footer()
 
-        st.markdown(nav_html, unsafe_allow_html=True)
 
-        # 관리자 접근 (URL에 ?admin=1 추가 시에만 표시)
-        show_admin = st.query_params.get("admin") == "1"
-        if show_admin:
-            st.markdown("<div style='margin-top:40px;'></div>", unsafe_allow_html=True)
-            if not st.session_state.get("admin_authenticated", False):
-                admin_pw = st.text_input("관리자 비밀번호", type="password", key="admin_pw_input")
+# Legacy admin functions
+def check_admin_access():
+    """Check for admin access (legacy support)."""
+    show_admin = st.query_params.get("admin") == "1"
+    if show_admin:
+        if not st.session_state.get("admin_authenticated", False):
+            with st.sidebar:
+                admin_pw = st.text_input("관리자 비밀번호", type="password", key="admin_pw")
                 if admin_pw == ADMIN_PASSWORD:
                     st.session_state["admin_authenticated"] = True
                     st.rerun()
                 elif admin_pw:
                     st.error("비밀번호 오류")
-            else:
-                st.success("관리자 모드")
-                confirm = st.checkbox("로그아웃", key="admin_logout_check")
-                if confirm:
-                    st.session_state["admin_authenticated"] = False
-                    st.session_state["admin_logout_check"] = False
-                    st.rerun()
+    return st.session_state.get("admin_authenticated", False)

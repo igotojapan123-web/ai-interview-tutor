@@ -14,14 +14,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import AIRLINES
 
-from sidebar_common import render_sidebar
+from sidebar_common import init_page, end_page
 
-st.set_page_config(
-    page_title="Q&A 게시판",
-    page_icon="💬",
-    layout="wide"
+init_page(
+    title="Q&A 게시판",
+    current_page="QnA게시판",
+    wide_layout=True
 )
-render_sidebar("QnA게시판")
 
 
 
@@ -53,27 +52,27 @@ def save_qna(data):
 
 # 카테고리
 CATEGORIES = {
-    "전체": {"icon": "📋", "color": "#6b7280"},
-    "서류/자소서": {"icon": "📝", "color": "#3b82f6"},
-    "면접 준비": {"icon": "🎤", "color": "#8b5cf6"},
-    "체력/수영": {"icon": "🏊", "color": "#10b981"},
-    "이미지메이킹": {"icon": "👗", "color": "#ec4899"},
-    "항공사 정보": {"icon": "✈️", "color": "#f59e0b"},
-    "합격 후기": {"icon": "🏆", "color": "#eab308"},
-    "기타": {"icon": "💭", "color": "#6b7280"},
+    "전체": {"icon": "", "color": "#6b7280"},
+    "서류/자소서": {"icon": "", "color": "#3b82f6"},
+    "면접 준비": {"icon": "", "color": "#8b5cf6"},
+    "체력/수영": {"icon": "", "color": "#10b981"},
+    "이미지메이킹": {"icon": "", "color": "#ec4899"},
+    "항공사 정보": {"icon": "️", "color": "#f59e0b"},
+    "합격 후기": {"icon": "", "color": "#eab308"},
+    "기타": {"icon": "", "color": "#6b7280"},
 }
 
 
 # ----------------------------
 # UI
 # ----------------------------
-st.title("💬 Q&A 게시판")
+st.title("Q&A 게시판")
 st.caption("승무원 준비생들의 질문과 답변 공간")
 
 qna_data = load_qna()
 
 # 탭 구성
-tab1, tab2 = st.tabs(["📋 질문 보기", "✍️ 질문하기"])
+tab1, tab2 = st.tabs([" 질문 보기", "️ 질문하기"])
 
 # ========== 탭1: 질문 보기 ==========
 with tab1:
@@ -119,29 +118,29 @@ with tab1:
 
             # 카드 스타일
             with st.expander(
-                f"{cat['icon']} [{q.get('category', '')}] {q.get('title', '')} {'✅' if has_answer else '❓'} ({answer_count}개 답변)",
+                f"{cat['icon']} [{q.get('category', '')}] {q.get('title', '')} {'' if has_answer else ''} ({answer_count}개 답변)",
                 expanded=False
             ):
                 # 질문 정보
-                st.caption(f"👤 {q.get('nickname', '익명')} | {q.get('created_at', '')[:10]}")
+                st.caption(f" {q.get('nickname', '익명')} | {q.get('created_at', '')[:10]}")
 
                 st.markdown("---")
                 st.markdown("**질문 내용:**")
                 st.write(q.get("content", ""))
 
                 if q.get("airline"):
-                    st.caption(f"✈️ 관련 항공사: {q.get('airline')}")
+                    st.caption(f"️ 관련 항공사: {q.get('airline')}")
 
                 # 답변들
                 answers = q.get("answers", [])
                 if answers:
                     st.markdown("---")
-                    st.markdown(f"**💬 답변 ({len(answers)}개)**")
+                    st.markdown(f"** 답변 ({len(answers)}개)**")
 
                     for ans in answers:
                         st.markdown(f"""
                         <div style="background: #f8fafc; padding: 12px; border-radius: 8px; margin: 8px 0; border-left: 3px solid #3b82f6;">
-                            <div style="font-size: 12px; color: #666; margin-bottom: 5px;">👤 {ans.get('nickname', '익명')} | {ans.get('created_at', '')[:10]}</div>
+                            <div style="font-size: 12px; color: #666; margin-bottom: 5px;"> {ans.get('nickname', '익명')} | {ans.get('created_at', '')[:10]}</div>
                             <div>{ans.get('content', '')}</div>
                         </div>
                         """, unsafe_allow_html=True)
@@ -179,7 +178,7 @@ with tab1:
 
 # ========== 탭2: 질문하기 ==========
 with tab2:
-    st.subheader("✍️ 새 질문 작성")
+    st.subheader("️ 새 질문 작성")
 
     with st.form("new_question"):
         q_nickname = st.text_input("닉네임", placeholder="익명으로 할 경우 비워두세요")

@@ -300,8 +300,25 @@ else:
     </style>
     """, unsafe_allow_html=True)
 
-# 추가 스타일
+# 추가 스타일 + 링크 동작 수정
 st.markdown("""
+<base target="_self">
+<script>
+document.addEventListener('click', function(e) {
+    var target = e.target;
+    while (target && target.tagName !== 'A') {
+        target = target.parentNode;
+    }
+    if (target && target.tagName === 'A') {
+        var href = target.getAttribute('href');
+        if (href && href.startsWith('/') && !href.startsWith('//')) {
+            e.preventDefault();
+            window.location.href = href;
+        }
+    }
+});
+</script>
+
 <style>
 /* 커스텀 스타일 추가 */
 .fr-header {
@@ -368,9 +385,15 @@ st.markdown("""
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 .fr-btn-secondary {
-    background: rgba(255,255,255,0.1);
-    color: white;
-    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.95);
+    color: #1e3a5f;
+    border: 2px solid white;
+    font-weight: 700;
+}
+.fr-btn-secondary:hover {
+    background: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 .fr-main {
     max-width: 1200px;
@@ -615,6 +638,555 @@ st.markdown("""
     .fr-card-grid { grid-template-columns: 1fr; }
     .fr-mini-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* 헤더 네비게이션 */
+.fr-header-nav {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+.fr-nav-link {
+    color: #475569;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 8px 16px;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+.fr-nav-link:hover {
+    color: #3b82f6;
+    background: #eff6ff;
+}
+.fr-nav-btn {
+    background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+    color: white !important;
+    font-weight: 700;
+    font-size: 0.9rem;
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+    transition: all 0.2s;
+}
+.fr-nav-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(59,130,246,0.4);
+}
+
+/* 요금제 섹션 */
+.fr-pricing-section {
+    background: white;
+    padding: 60px 24px;
+    margin-top: 48px;
+}
+.fr-pricing-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+}
+.fr-pricing-title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #1e3a5f;
+    text-align: center;
+    margin-bottom: 48px;
+}
+.fr-pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+}
+@media (max-width: 800px) {
+    .fr-pricing-grid { grid-template-columns: 1fr; }
+}
+.fr-pricing-card {
+    background: white;
+    border-radius: 16px;
+    padding: 32px 24px;
+    border: 2px solid #e2e8f0;
+    text-align: center;
+    transition: all 0.3s;
+}
+.fr-pricing-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.08);
+}
+.fr-pricing-card.popular {
+    border-color: #3b82f6;
+    position: relative;
+}
+.fr-pricing-card.premium {
+    border-color: #8b5cf6;
+}
+.fr-popular-badge {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #3b82f6;
+    color: white;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 6px 16px;
+    border-radius: 20px;
+}
+.fr-plan-name {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin-bottom: 8px;
+}
+.fr-plan-price {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 4px;
+}
+.fr-plan-price.free { color: #1e3a5f; }
+.fr-plan-price.standard { color: #3b82f6; }
+.fr-plan-price.premium { color: #8b5cf6; }
+.fr-plan-period {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin-bottom: 24px;
+}
+.fr-plan-features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 24px 0;
+    text-align: left;
+}
+.fr-plan-features li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    font-size: 0.9rem;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+}
+.fr-plan-features li:last-child { border-bottom: none; }
+.fr-check { color: #22c55e; font-weight: bold; }
+.fr-cross { color: #cbd5e1; }
+.fr-plan-btn {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 700;
+    text-decoration: none;
+    text-align: center;
+    transition: all 0.2s;
+    box-sizing: border-box;
+}
+.fr-plan-btn-secondary {
+    background: #e2e8f0;
+    color: #475569;
+}
+.fr-plan-btn-secondary:hover {
+    background: #cbd5e1;
+}
+.fr-plan-btn-primary {
+    background: #3b82f6;
+    color: white;
+}
+.fr-plan-btn-primary:hover {
+    background: #2563eb;
+}
+.fr-plan-btn-premium {
+    background: #8b5cf6;
+    color: white;
+}
+.fr-plan-btn-premium:hover {
+    background: #7c3aed;
+}
+
+/* ========================================
+   FlyReady Lab - Enterprise UI/UX Enhancement
+   ======================================== */
+
+/* 페이지 로드 애니메이션 */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+/* 스크롤 기반 애니메이션 */
+.fr-animate-on-scroll {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fr-animate-on-scroll.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* 향상된 버튼 효과 */
+.fr-btn {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fr-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.fr-btn:active::before {
+    width: 300px;
+    height: 300px;
+}
+
+/* 카드 호버 효과 강화 */
+.fr-card {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: fadeInUp 0.6s ease forwards;
+}
+
+.fr-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.12), 0 8px 16px rgba(0,0,0,0.08);
+}
+
+/* 미니 카드 효과 */
+.fr-mini-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fr-mini-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+    border-color: #3b82f6;
+}
+
+/* 로딩 스켈레톤 */
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 8px;
+}
+
+/* 로딩 스피너 */
+.fr-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #e2e8f0;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* 프로그레스 바 애니메이션 */
+.fr-progress-bar-fill {
+    animation: progressGrow 1s ease-out forwards;
+}
+
+@keyframes progressGrow {
+    from { width: 0; }
+}
+
+/* 툴팁 */
+.fr-tooltip {
+    position: relative;
+}
+
+.fr-tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    background: #1e3a5f;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s;
+    z-index: 1000;
+}
+
+.fr-tooltip:hover::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(-4px);
+}
+
+/* 알림 뱃지 */
+.fr-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: #ef4444;
+    color: white;
+    animation: pulse 2s infinite;
+}
+
+/* 성공/에러 토스트 */
+.fr-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 16px 24px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    animation: slideInLeft 0.3s ease;
+    z-index: 9999;
+}
+
+.fr-toast-success {
+    background: #10b981;
+    color: white;
+}
+
+.fr-toast-error {
+    background: #ef4444;
+    color: white;
+}
+
+/* 향상된 입력 필드 */
+.stTextInput > div > div > input,
+.stTextArea > div > div > textarea {
+    transition: all 0.2s ease;
+    border: 2px solid #e2e8f0 !important;
+}
+
+.stTextInput > div > div > input:focus,
+.stTextArea > div > div > textarea:focus {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+/* 그라데이션 텍스트 */
+.fr-gradient-text {
+    background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* 글로우 효과 */
+.fr-glow {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+}
+
+.fr-glow:hover {
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.5);
+}
+
+/* 물결 효과 버튼 */
+.fr-ripple {
+    position: relative;
+    overflow: hidden;
+}
+
+/* 페이드 인 시퀀스 (각 요소마다 딜레이) */
+.fr-card:nth-child(1) { animation-delay: 0.1s; }
+.fr-card:nth-child(2) { animation-delay: 0.2s; }
+.fr-card:nth-child(3) { animation-delay: 0.3s; }
+.fr-card:nth-child(4) { animation-delay: 0.4s; }
+
+/* 히어로 섹션 강화 */
+.fr-hero {
+    position: relative;
+    overflow: hidden;
+}
+
+.fr-hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 100%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    animation: float 6s ease-in-out infinite;
+}
+
+.fr-hero h1 {
+    animation: fadeInUp 0.8s ease;
+}
+
+.fr-hero p {
+    animation: fadeInUp 0.8s ease 0.2s both;
+}
+
+.fr-hero-actions {
+    animation: fadeInUp 0.8s ease 0.4s both;
+}
+
+/* 섹션 타이틀 효과 */
+.fr-section-title {
+    position: relative;
+    display: inline-block;
+}
+
+.fr-section-title::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 40px;
+    height: 3px;
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.fr-section-title:hover::after {
+    width: 100%;
+}
+
+/* 스크롤바 스타일 */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #3b82f6, #1e3a5f);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #2563eb, #1e3a5f);
+}
+
+/* 부드러운 스크롤 */
+html {
+    scroll-behavior: smooth;
+}
+
+/* 선택 텍스트 스타일 */
+::selection {
+    background: rgba(59, 130, 246, 0.3);
+    color: #1e3a5f;
+}
+
+/* 포커스 스타일 개선 (접근성) */
+*:focus {
+    outline: none;
+}
+
+*:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+/* 모바일 반응형 개선 */
+@media (max-width: 768px) {
+    .fr-hero {
+        padding: 32px 20px;
+    }
+    
+    .fr-hero h1 {
+        font-size: 1.5rem;
+    }
+    
+    .fr-hero-actions {
+        flex-direction: column;
+    }
+    
+    .fr-btn {
+        width: 100%;
+        text-align: center;
+    }
+    
+    .fr-card {
+        margin-bottom: 12px;
+    }
+    
+    .fr-header {
+        padding: 12px 16px;
+    }
+}
+
+/* 태블릿 */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .fr-card-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+/* 인쇄 스타일 */
+@media print {
+    .fr-header, .fr-hero-actions, .fr-nav-link, .fr-nav-btn {
+        display: none !important;
+    }
+    
+    .fr-card {
+        break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -628,8 +1200,12 @@ else:
 
 st.markdown(f'''
 <div class="fr-header">
-    <a href="/" class="fr-logo">{logo_html}</a>
-    <div class="fr-header-text">{greeting} | 오늘도 한 걸음 더 가까이</div>
+    <a target="_self" href="/" class="fr-logo">{logo_html}</a>
+    <div class="fr-header-nav">
+        <a target="_self" href="/요금제" class="fr-nav-link">요금제</a>
+        <a target="_self" href="/로그인" class="fr-nav-link">로그인</a>
+        <a target="_self" href="/자소서첨삭" class="fr-nav-btn">무료 시작하기</a>
+    </div>
 </div>
 ''', unsafe_allow_html=True)
 
@@ -641,8 +1217,8 @@ st.markdown('''
     <h1>AI와 함께하는 승무원 면접 준비</h1>
     <p>실전 모의면접 | 자소서 첨삭 | 기내 롤플레잉 | 체력/이미지 관리</p>
     <div class="fr-hero-actions">
-        <a href="/모의면접" class="fr-btn fr-btn-primary">모의면접 시작</a>
-        <a href="/롤플레잉" class="fr-btn fr-btn-secondary">롤플레잉 연습</a>
+        <a target="_self" href="/모의면접" class="fr-btn fr-btn-primary">모의면접 시작</a>
+        <a target="_self" href="/롤플레잉" class="fr-btn fr-btn-secondary">롤플레잉 연습</a>
     </div>
 </div>
 ''', unsafe_allow_html=True)
@@ -734,19 +1310,19 @@ st.markdown('''
 <div class="fr-section">
     <div class="fr-section-title">면접 연습</div>
     <div class="fr-card-grid">
-        <a href="/모의면접" class="fr-card">
+        <a target="_self" href="/모의면접" class="fr-card">
             <div class="fr-card-title">AI 모의면접</div>
             <div class="fr-card-desc">실전처럼 연습하고<br>즉시 피드백 받기</div>
         </a>
-        <a href="/롤플레잉" class="fr-card">
+        <a target="_self" href="/롤플레잉" class="fr-card">
             <div class="fr-card-title">기내 롤플레잉</div>
             <div class="fr-card-desc">실제 기내 상황<br>시뮬레이션</div>
         </a>
-        <a href="/영어면접" class="fr-card">
+        <a target="_self" href="/영어면접" class="fr-card">
             <div class="fr-card-title">영어면접</div>
             <div class="fr-card-desc">영어 질문<br>답변 연습</div>
         </a>
-        <a href="/토론면접" class="fr-card">
+        <a target="_self" href="/토론면접" class="fr-card">
             <div class="fr-card-title">토론면접</div>
             <div class="fr-card-desc">그룹 토론<br>시뮬레이션</div>
         </a>
@@ -761,19 +1337,19 @@ st.markdown('''
 <div class="fr-section">
     <div class="fr-section-title">준비 도구</div>
     <div class="fr-card-grid">
-        <a href="/자소서첨삭" class="fr-card">
+        <a target="_self" href="/자소서첨삭" class="fr-card">
             <div class="fr-card-title">자소서 AI 첨삭</div>
             <div class="fr-card-desc">AI가 자소서<br>피드백 제공</div>
         </a>
-        <a href="/실전연습" class="fr-card">
+        <a target="_self" href="/실전연습" class="fr-card">
             <div class="fr-card-title">실전 연습</div>
             <div class="fr-card-desc">영상/음성 종합<br>분석 연습</div>
         </a>
-        <a href="/이미지메이킹" class="fr-card">
+        <a target="_self" href="/이미지메이킹" class="fr-card">
             <div class="fr-card-title">이미지메이킹</div>
             <div class="fr-card-desc">메이크업/복장<br>가이드</div>
         </a>
-        <a href="/기내방송연습" class="fr-card">
+        <a target="_self" href="/기내방송연습" class="fr-card">
             <div class="fr-card-title">기내방송 연습</div>
             <div class="fr-card-desc">한국어/영어<br>15개 스크립트</div>
         </a>
@@ -788,19 +1364,19 @@ st.markdown('''
 <div class="fr-section">
     <div class="fr-section-title">학습 / 정보</div>
     <div class="fr-mini-grid">
-        <a href="/항공사퀴즈" class="fr-mini-card">
+        <a target="_self" href="/항공사퀴즈" class="fr-mini-card">
             <div class="fr-mini-card-title">항공 상식 퀴즈</div>
         </a>
-        <a href="/면접꿀팁" class="fr-mini-card">
+        <a target="_self" href="/면접꿀팁" class="fr-mini-card">
             <div class="fr-mini-card-title">면접 꿀팁</div>
         </a>
-        <a href="/항공사가이드" class="fr-mini-card">
+        <a target="_self" href="/항공사가이드" class="fr-mini-card">
             <div class="fr-mini-card-title">항공사 가이드</div>
         </a>
-        <a href="/국민체력" class="fr-mini-card">
+        <a target="_self" href="/국민체력" class="fr-mini-card">
             <div class="fr-mini-card-title">국민체력/수영</div>
         </a>
-        <a href="/기업분석" class="fr-mini-card">
+        <a target="_self" href="/기업분석" class="fr-mini-card">
             <div class="fr-mini-card-title">기업 분석</div>
         </a>
     </div>
@@ -814,19 +1390,19 @@ st.markdown('''
 <div class="fr-section">
     <div class="fr-section-title">학습 관리</div>
     <div class="fr-mini-grid">
-        <a href="/진도관리" class="fr-mini-card">
+        <a target="_self" href="/진도관리" class="fr-mini-card">
             <div class="fr-mini-card-title">진도 관리</div>
         </a>
-        <a href="/성장그래프" class="fr-mini-card">
+        <a target="_self" href="/성장그래프" class="fr-mini-card">
             <div class="fr-mini-card-title">성장 그래프</div>
         </a>
-        <a href="/채용알림" class="fr-mini-card">
+        <a target="_self" href="/채용알림" class="fr-mini-card">
             <div class="fr-mini-card-title">채용 알림</div>
         </a>
-        <a href="/합격자DB" class="fr-mini-card">
+        <a target="_self" href="/합격자DB" class="fr-mini-card">
             <div class="fr-mini-card-title">합격자 DB</div>
         </a>
-        <a href="/D-Day캘린더" class="fr-mini-card">
+        <a target="_self" href="/D-Day캘린더" class="fr-mini-card">
             <div class="fr-mini-card-title">D-Day 캘린더</div>
         </a>
     </div>

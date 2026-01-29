@@ -79,3 +79,5 @@ test_result.txt
 htmlcov/
 .coverage
 coverage.xml
+_game_disabled/
+nul

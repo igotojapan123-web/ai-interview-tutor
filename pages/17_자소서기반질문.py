@@ -13,18 +13,31 @@ logger = get_logger(__name__)
 
 import streamlit as st
 
-# 페이지 설정 (반드시 첫 번째 Streamlit 명령)
-st.set_page_config(page_title="자소서 기반 질문", page_icon="📋", layout="wide")
+# 상위 디렉토리 import 경로 추가 (sidebar_common용)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-
-
+# 페이지 초기화 (Stage 2 통합)
+from sidebar_common import init_page, end_page
+init_page(
+    title="자소서 기반 질문",
+    current_page="자소서기반질문",
+    wide_layout=True
+)
 
 # 구글 번역 방지
-st.markdown('<meta name="google" content="notranslate"><style>html{translate:no;}</style>', unsafe_allow_html=True)
-st.markdown('<div translate="no" class="notranslate">', unsafe_allow_html=True)
-
-# 상위 디렉토리 import 경로 추가
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+st.markdown("""
+<meta name="google" content="notranslate">
+<meta http-equiv="Content-Language" content="ko">
+<style>
+html, body, .stApp, .main, [data-testid="stAppViewContainer"] {
+    translate: no !important;
+}
+.notranslate, [translate="no"] {
+    translate: no !important;
+}
+</style>
+""", unsafe_allow_html=True)
+st.markdown('<div translate="no" class="notranslate" lang="ko">', unsafe_allow_html=True)
 
 # 내부 모듈 import
 from config import (
@@ -878,11 +891,11 @@ def _extract_premise_from_point(point: str) -> Tuple[str, str]:
     # (keywords, premise, premise_broken, allowed_topics)
     # allowed_topics가 None이면 모든 주제에 사용 가능
     premise_map = [
-        # ★ 1순위: 꿈/소망/목표 관련 (모든 주제에 허용)
+        #  1순위: 꿈/소망/목표 관련 (모든 주제에 허용)
         (["되고 싶", "싶다는 꿈", "꿈을 품", "꿈을 갖"], "그 꿈을 이룰 기회가 있다는 것", "현실적인 제약으로 그 꿈을 이루기 어려운 상황이라면", None),
         (["꿈", "목표", "비전"], "그 꿈을 향해 나아갈 수 있다는 것", "현실의 벽에 부딪혀 꿈이 흔들리는 상황이라면", None),
 
-        # ★ 2순위: 구체적 상황/행동 (주제별 필터링)
+        #  2순위: 구체적 상황/행동 (주제별 필터링)
         (["함께", "같이", "협력", "협동", "공동체"], "주변 사람들이 협조적이라는 것", "주변 사람들이 비협조적인 상황이라면", ["team", "general"]),
         (["극복", "이겨", "해결", "넘"], "문제가 해결될 수 있다는 것", "아무리 노력해도 해결되지 않는 상황이라면", None),
         (["소통", "대화", "커뮤니케이션", "이야기"], "상대방이 대화에 응한다는 것", "상대방이 대화 자체를 거부하는 상황이라면", None),
@@ -895,7 +908,7 @@ def _extract_premise_from_point(point: str) -> Tuple[str, str]:
         (["외로", "타지", "낯선", "혼자"], "함께할 사람이 있다는 것", "완전히 혼자이고 의지할 사람이 없는 상황이라면", None),
         (["첫", "처음", "시작"], "첫 경험이 긍정적이라는 것", "첫 경험이 매우 부정적인 상황이라면", None),
 
-        # ★ 3순위: 일반적/추상적 키워드 (주제별 필터링)
+        #  3순위: 일반적/추상적 키워드 (주제별 필터링)
         (["웃", "즐거", "긍정", "밝"], "분위기가 좋다는 것", "분위기가 험악하거나 갈등이 심한 상황이라면", None),
         # "미소", "친절" 등은 고객 주제일 때만 "고객이 냉담한" 사용
         (["미소", "친절", "배려", "따뜻", "반겨", "맞이"], "그런 태도가 환영받는다는 것", "상대방이 그런 태도에 냉담하거나 무관심한 상황이라면", ["general", "team", "growth"]),
@@ -2316,9 +2329,9 @@ reset_col, reanalyze_col, info_col = st.columns([1, 1, 2])
 with reset_col:
     reset = st.button("리셋", use_container_width=True)
 with reanalyze_col:
-    reanalyze = st.button("🔄 재분석", use_container_width=True, help="자소서를 다시 분석하여 새로운 질문을 생성합니다")
+    reanalyze = st.button("재분석", use_container_width=True, help="자소서를 다시 분석하여 새로운 질문을 생성합니다")
 with info_col:
-    st.caption("👇 아래 'STEP 4~5) 면접 질문' 옆의 **질문 생성** 버튼을 눌러주세요.")
+    st.caption(" 아래 'STEP 4~5) 면접 질문' 옆의 **질문 생성** 버튼을 눌러주세요.")
 
 if reset:
     st.session_state.question_version = 1
@@ -2368,7 +2381,7 @@ if reanalyze:
             import traceback
             traceback.print_exc()
 
-    st.toast("🔄 자소서 재분석 완료!")
+    st.toast(" 자소서 재분석 완료!")
     st.rerun()
 
 st.subheader("STEP 3) 자기소개서 분석")
@@ -2417,9 +2430,9 @@ if essay.strip():
     # CLOVA 단독 모드: 간단한 상태 안내
     if essay.strip():
         if clova_pipeline_ready:
-            st.success("✅ 자소서 분석 완료! '질문 생성/갱신' 버튼을 눌러 질문을 생성하세요.")
+            st.success("자소서 분석 완료! '질문 생성/갱신' 버튼을 눌러 질문을 생성하세요.")
         else:
-            st.info("👆 '질문 생성/갱신' 버튼을 눌러 CLOVA 분석을 시작하세요.")
+            st.info("'질문 생성/갱신' 버튼을 눌러 CLOVA 분석을 시작하세요.")
 
     # 개발자용 디버그 정보 (접을 수 있게)
     with st.expander("[DEV] CLOVA 파이프라인 상태", expanded=False):

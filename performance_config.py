@@ -140,7 +140,7 @@ def get_session_memory_usage() -> dict:
         try:
             total_size += sys.getsizeof(value)
             item_count += 1
-        except:
+        except Exception:
             pass
 
     return {

@@ -1202,22 +1202,10 @@ html {
 """, unsafe_allow_html=True)
 
 # =====================
-# 헤더
+# 통일된 네비게이션 바 (Beta Test 포함)
 # =====================
-if LOGO_BASE64:
-    logo_html = f'<img src="data:image/png;base64,{LOGO_BASE64}" alt="FlyReady Lab">'
-else:
-    logo_html = '<span style="color: #3b82f6;">FlyReady</span><span style="color: #1e3a5f;">Lab</span>'
-
-st.markdown(f'''
-<div class="fr-header">
-    <a target="_self" href="/" class="fr-logo">{logo_html}</a>
-    <div class="fr-header-nav">
-        <span class="fr-nav-link" style="background: #10b981; color: white; padding: 6px 12px; border-radius: 6px; font-weight: 600;">Beta Test</span>
-        <a target="_self" href="/자소서첨삭" class="fr-nav-btn">무료로 시작하기</a>
-    </div>
-</div>
-''', unsafe_allow_html=True)
+from sidebar_common import render_sidebar
+render_sidebar("home")
 
 # =====================
 # 히어로 섹션

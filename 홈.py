@@ -655,8 +655,8 @@ document.addEventListener('click', function(e) {
     .fr-mini-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
-/* 헤더 네비게이션 */
-.fr-header-nav {
+/* 헤더 오른쪽 영역 */
+.fr-header-right {
     display: flex;
     align-items: center;
     gap: 20px;
@@ -1217,7 +1217,7 @@ else:
 st.markdown(f'''
 <div class="fr-header">
     <a target="_self" href="/" class="fr-logo">{logo_html}</a>
-    <div class="fr-header-nav">
+    <div class="fr-header-right">
         <span style="background: #10b981; color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">Beta Test</span>
     </div>
 </div>

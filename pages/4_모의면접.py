@@ -463,12 +463,26 @@ elif not st.session_state.mock_completed:
 
     # 면접관 아바타/영상
     if did_available:
-        # D-ID 영상 (실제 구현 시)
-        st.markdown(get_fallback_avatar_html(question, "interviewer", is_speaking=True), unsafe_allow_html=True)
-        st.caption("AI 면접관이 질문합니다")
+        # D-ID API로 실제 영상 면접관 생성
+        with st.spinner("면접관 영상 생성 중..."):
+            try:
+                video_result = create_interviewer_video(
+                    question=question,
+                    interviewer_type="female_professional",
+                    airline_type="FSC" if airline in ["대한항공", "아시아나항공"] else "LCC"
+                )
+                if video_result and video_result.get("video_url"):
+                    st.markdown(get_video_html(video_result["video_url"], width=400, autoplay=True), unsafe_allow_html=True)
+                    st.caption("🎥 AI 영상 면접관이 질문합니다")
+                else:
+                    # D-ID 실패 시 향상된 폴백 아바타
+                    st.markdown(get_enhanced_fallback_avatar_html(question, "interviewer", "neutral"), unsafe_allow_html=True)
+            except Exception as e:
+                # 오류 시에도 향상된 폴백 아바타 표시
+                st.markdown(get_enhanced_fallback_avatar_html(question, "interviewer", "neutral"), unsafe_allow_html=True)
     else:
-        # 폴백 아바타
-        st.markdown(get_fallback_avatar_html(question, "interviewer", is_speaking=True), unsafe_allow_html=True)
+        # D-ID 미설정 시 향상된 폴백 아바타 (CSS 애니메이션)
+        st.markdown(get_enhanced_fallback_avatar_html(question, "interviewer", "neutral"), unsafe_allow_html=True)
 
     # TTS로 질문 읽기 (옵션)
     if st.session_state.mock_mode == "voice" and VIDEO_UTILS_AVAILABLE:

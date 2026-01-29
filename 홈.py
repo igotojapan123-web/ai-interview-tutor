@@ -655,8 +655,8 @@ document.addEventListener('click', function(e) {
     .fr-mini-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
-/* 헤더 오른쪽 영역 */
-.fr-header-right {
+/* 헤더 네비게이션 */
+.fr-header-nav {
     display: flex;
     align-items: center;
     gap: 20px;
@@ -1217,8 +1217,10 @@ else:
 st.markdown(f'''
 <div class="fr-header">
     <a target="_self" href="/" class="fr-logo">{logo_html}</a>
-    <div class="fr-header-right">
-        <span style="background: #10b981; color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">Beta Test</span>
+    <div class="fr-header-nav">
+        <a target="_self" href="/요금제" class="fr-nav-link">요금제</a>
+        <a target="_self" href="/로그인" class="fr-nav-link">로그인</a>
+        <a target="_self" href="/자소서첨삭" class="fr-nav-btn">무료 시작하기</a>
     </div>
 </div>
 ''', unsafe_allow_html=True)

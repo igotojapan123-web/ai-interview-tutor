@@ -112,9 +112,9 @@ CLOVA_CLIENT_ID = get_env("CLOVA_CLIENT_ID")
 CLOVA_CLIENT_SECRET = get_env("CLOVA_CLIENT_SECRET")
 GOOGLE_TTS_API_KEY = get_env("GOOGLE_TTS_API_KEY") or get_env("GOOGLE_CLOUD_API_KEY") or get_env("GOOGLE_API_KEY")
 
-# App Passwords - 환경변수 필수 (보안상 기본값 제거)
-TESTER_PASSWORD = get_env("TESTER_PASSWORD")
-ADMIN_PASSWORD = get_env("ADMIN_PASSWORD")
+# App Passwords (기본값 복원 - 베타 테스트용)
+TESTER_PASSWORD = get_env("TESTER_PASSWORD", "2026fly")
+ADMIN_PASSWORD = get_env("ADMIN_PASSWORD", "admin2026")
 
 def check_passwords_configured() -> Tuple[bool, str]:
     """비밀번호 설정 상태 확인"""

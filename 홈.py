@@ -1213,8 +1213,7 @@ st.markdown(f'''
 <div class="fr-header">
     <a target="_self" href="/" class="fr-logo">{logo_html}</a>
     <div class="fr-header-nav">
-        <a target="_self" href="/요금제" class="fr-nav-link">요금제</a>
-        <a target="_self" href="/로그인" class="fr-nav-link">로그인</a>
+        <span class="fr-nav-link" style="background: #10b981; color: white; padding: 6px 12px; border-radius: 6px; font-weight: 600;">Beta Test</span>
         <a target="_self" href="/자소서첨삭" class="fr-nav-btn">무료로 시작하기</a>
     </div>
 </div>

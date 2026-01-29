@@ -15,6 +15,22 @@ from logging_config import get_logger
 # 로거 설정
 logger = get_logger(__name__)
 
+# 공통 유틸리티 import
+try:
+    from safe_utils import safe_divide, safe_percentage, safe_average
+except ImportError:
+    pass
+
+try:
+    from sidebar_common import render_sidebar
+except ImportError:
+    pass
+
+try:
+    from auth_utils import is_authenticated, require_auth
+except ImportError:
+    pass
+
 # 디자인 시스템 import
 try:
     from ui_config import COLORS, get_base_css, MAIN_PAGE_CARDS
@@ -1202,9 +1218,7 @@ st.markdown(f'''
 <div class="fr-header">
     <a target="_self" href="/" class="fr-logo">{logo_html}</a>
     <div class="fr-header-nav">
-        <a target="_self" href="/요금제" class="fr-nav-link">요금제</a>
-        <a target="_self" href="/로그인" class="fr-nav-link">로그인</a>
-        <a target="_self" href="/자소서첨삭" class="fr-nav-btn">무료 시작하기</a>
+        <span style="background: #10b981; color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">Beta Test</span>
     </div>
 </div>
 ''', unsafe_allow_html=True)

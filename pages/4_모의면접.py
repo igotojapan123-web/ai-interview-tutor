@@ -32,7 +32,9 @@ try:
         generate_tts_audio,
         get_audio_player_html,
         get_loud_audio_component,
+        analyze_interview_emotion,  # Phase 1: 감정 분석 추가
     )
+    from video_utils import get_enhanced_fallback_avatar_html  # Phase 1: 향상된 아바타
     VIDEO_UTILS_AVAILABLE = True
 except ImportError:
     VIDEO_UTILS_AVAILABLE = False
@@ -182,6 +184,11 @@ defaults = {
     "mock_combined_voice_analysis": None,  # 종합 음성 분석 결과
     "mock_processed_audio_id": None,  # 오디오 중복 처리 방지
     "mock_response_times": [],  # 각 질문별 응답 시간
+    # Phase 1: 감정 분석용 변수
+    "mock_emotion_analyses": [],  # 각 질문별 감정 분석 결과
+    "mock_combined_emotion": None,  # 종합 감정 분석
+    "mock_confidence_timeline": [],  # 자신감 변화 추이
+    "mock_stress_timeline": [],  # 스트레스 변화 추이
 }
 
 for key, value in defaults.items():
@@ -545,6 +552,23 @@ elif not st.session_state.mock_completed:
                                 else:
                                     content_analysis = {"total_score": 0, "error": "분석 불가"}
 
+                                # Phase 1: 감정 분석 추가
+                                try:
+                                    emotion_analysis = analyze_interview_emotion(
+                                        audio_bytes=audio_bytes,
+                                        transcribed_text=transcribed_text,
+                                        question_context=question
+                                    )
+                                    st.session_state.mock_emotion_analyses.append(emotion_analysis)
+                                    st.session_state.mock_confidence_timeline.append(emotion_analysis.get("confidence_score", 5.0))
+                                    st.session_state.mock_stress_timeline.append(emotion_analysis.get("stress_level", 5.0))
+                                except Exception as e:
+                                    # 감정 분석 실패해도 면접 진행에는 영향 없음
+                                    default_emotion = {"confidence_score": 5.0, "stress_level": 5.0, "engagement_level": 5.0, "emotion_stability": 5.0, "primary_emotion": "neutral", "emotion_description": "분석 대기", "suggestions": []}
+                                    st.session_state.mock_emotion_analyses.append(default_emotion)
+                                    st.session_state.mock_confidence_timeline.append(5.0)
+                                    st.session_state.mock_stress_timeline.append(5.0)
+
                                 # 세션에 저장
                                 st.session_state.mock_answers.append(transcribed_text)
                                 st.session_state.mock_transcriptions.append(result)
@@ -754,8 +778,8 @@ else:
 
     st.divider()
 
-    # 질문별 결과 탭
-    tab1, tab2, tab3 = st.tabs(["질문별 분석", "음성 평가", "종합 평가"])
+    # 질문별 결과 탭 (Phase 1: 감정 분석 탭 추가)
+    tab1, tab2, tab3, tab4 = st.tabs(["📝 질문별 분석", "🎤 음성 평가", "💭 감정 분석", "📊 종합 평가"])
 
     with tab1:
         for i, (q, a, t) in enumerate(zip(
@@ -922,7 +946,162 @@ else:
         else:
             st.info("텍스트 모드에서는 음성 평가가 제공되지 않습니다. 음성 모드로 면접을 진행하면 상세한 음성 분석을 받을 수 있습니다.")
 
+    # Phase 1: 감정 분석 탭
     with tab3:
+        st.subheader("💭 면접 감정 분석")
+        st.caption("AI가 음성에서 감지한 감정 상태와 면접 메트릭을 분석합니다.")
+
+        if st.session_state.mock_mode == "voice" and st.session_state.mock_emotion_analyses:
+            emotions = st.session_state.mock_emotion_analyses
+
+            # 평균 계산
+            avg_confidence = sum(e.get("confidence_score", 5.0) for e in emotions) / len(emotions) if emotions else 5.0
+            avg_stress = sum(e.get("stress_level", 5.0) for e in emotions) / len(emotions) if emotions else 5.0
+            avg_engagement = sum(e.get("engagement_level", 5.0) for e in emotions) / len(emotions) if emotions else 5.0
+            avg_stability = sum(e.get("emotion_stability", 5.0) for e in emotions) / len(emotions) if emotions else 5.0
+
+            # 상단 요약 메트릭
+            col1, col2, col3, col4 = st.columns(4)
+
+            with col1:
+                delta_conf = "좋음" if avg_confidence >= 7 else ("보통" if avg_confidence >= 5 else "개선필요")
+                st.metric("자신감", f"{avg_confidence:.1f}/10", delta=delta_conf)
+
+            with col2:
+                delta_stress = "안정" if avg_stress <= 4 else ("보통" if avg_stress <= 6 else "높음")
+                st.metric("스트레스", f"{avg_stress:.1f}/10", delta=delta_stress, delta_color="inverse")
+
+            with col3:
+                delta_eng = "적극적" if avg_engagement >= 7 else ("보통" if avg_engagement >= 5 else "소극적")
+                st.metric("참여도", f"{avg_engagement:.1f}/10", delta=delta_eng)
+
+            with col4:
+                delta_stab = "안정적" if avg_stability >= 7 else ("보통" if avg_stability >= 5 else "불안정")
+                st.metric("감정 안정성", f"{avg_stability:.1f}/10", delta=delta_stab)
+
+            st.divider()
+
+            # 감정 변화 차트
+            st.subheader("📈 감정 변화 추이")
+
+            try:
+                import plotly.graph_objects as go
+
+                x_labels = [f"Q{i+1}" for i in range(len(emotions))]
+                confidence_vals = [e.get("confidence_score", 5.0) for e in emotions]
+                stress_vals = [e.get("stress_level", 5.0) for e in emotions]
+                engagement_vals = [e.get("engagement_level", 5.0) for e in emotions]
+
+                fig = go.Figure()
+
+                fig.add_trace(go.Scatter(
+                    x=x_labels, y=confidence_vals,
+                    mode='lines+markers', name='자신감',
+                    line=dict(color='#10b981', width=3),
+                    marker=dict(size=10)
+                ))
+                fig.add_trace(go.Scatter(
+                    x=x_labels, y=stress_vals,
+                    mode='lines+markers', name='스트레스',
+                    line=dict(color='#ef4444', width=3),
+                    marker=dict(size=10)
+                ))
+                fig.add_trace(go.Scatter(
+                    x=x_labels, y=engagement_vals,
+                    mode='lines+markers', name='참여도',
+                    line=dict(color='#3b82f6', width=3),
+                    marker=dict(size=10)
+                ))
+
+                fig.update_layout(
+                    title="질문별 감정 변화",
+                    xaxis_title="질문",
+                    yaxis_title="점수 (0-10)",
+                    yaxis=dict(range=[0, 10.5]),
+                    height=350,
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                    template="plotly_white"
+                )
+
+                st.plotly_chart(fig, use_container_width=True)
+
+            except ImportError:
+                # plotly 없으면 간단한 표로 대체
+                st.markdown("**질문별 감정 점수:**")
+                for i, emotion in enumerate(emotions, 1):
+                    st.markdown(f"- Q{i}: 자신감 {emotion.get('confidence_score', 5.0):.1f}, 스트레스 {emotion.get('stress_level', 5.0):.1f}, 참여도 {emotion.get('engagement_level', 5.0):.1f}")
+
+            st.divider()
+
+            # 질문별 상세 감정 분석
+            st.subheader("🔍 질문별 감정 상세")
+
+            for i, emotion in enumerate(emotions, 1):
+                primary = emotion.get("primary_emotion", "neutral")
+                desc = emotion.get("emotion_description", "분석 중")
+
+                # 감정에 따른 아이콘
+                emotion_icons = {
+                    "neutral": "😐", "confident": "💪", "nervous": "😰",
+                    "calm": "😌", "excited": "🤩", "stressed": "😓",
+                    "happy": "😊", "focused": "🎯", "enthusiastic": "🔥"
+                }
+                icon = emotion_icons.get(primary, "❓")
+
+                with st.expander(f"Q{i}: {icon} {primary.upper()} - {desc}", expanded=False):
+                    col1, col2 = st.columns(2)
+
+                    with col1:
+                        st.markdown(f"**자신감**: {emotion.get('confidence_score', 5.0):.1f}/10")
+                        st.progress(min(emotion.get('confidence_score', 5.0) / 10, 1.0))
+                        st.markdown(f"**스트레스**: {emotion.get('stress_level', 5.0):.1f}/10")
+                        st.progress(min(emotion.get('stress_level', 5.0) / 10, 1.0))
+
+                    with col2:
+                        st.markdown(f"**참여도**: {emotion.get('engagement_level', 5.0):.1f}/10")
+                        st.progress(min(emotion.get('engagement_level', 5.0) / 10, 1.0))
+                        st.markdown(f"**감정 안정성**: {emotion.get('emotion_stability', 5.0):.1f}/10")
+                        st.progress(min(emotion.get('emotion_stability', 5.0) / 10, 1.0))
+
+                    # 개선 제안
+                    suggestions = emotion.get("suggestions", [])
+                    if suggestions:
+                        st.markdown("**💡 개선 제안:**")
+                        for suggestion in suggestions[:3]:
+                            st.markdown(f"  • {suggestion}")
+
+            # 종합 피드백
+            st.divider()
+            st.subheader("💬 감정 분석 종합 피드백")
+
+            feedback_items = []
+            if avg_confidence >= 7:
+                feedback_items.append("✅ 전반적으로 자신감 있는 답변을 보여주셨습니다.")
+            elif avg_confidence < 5:
+                feedback_items.append("⚠️ 자신감이 다소 부족해 보입니다. '~것 같습니다' 대신 '~입니다'로 확신 있게 말해보세요.")
+
+            if avg_stress > 6:
+                feedback_items.append("⚠️ 스트레스 수준이 높습니다. 면접 전 심호흡과 이완 연습을 추천드립니다.")
+            elif avg_stress <= 4:
+                feedback_items.append("✅ 전반적으로 안정적인 상태를 유지하셨습니다.")
+
+            if avg_engagement >= 7:
+                feedback_items.append("✅ 질문에 대한 높은 관심과 열정이 느껴집니다.")
+            elif avg_engagement < 5:
+                feedback_items.append("⚠️ 더 적극적으로 답변에 참여해 보세요. 경험담을 활용하면 좋습니다.")
+
+            if avg_stability >= 7:
+                feedback_items.append("✅ 감정적으로 안정적인 상태를 유지하셨습니다.")
+            elif avg_stability < 5:
+                feedback_items.append("⚠️ 목소리 떨림이 감지됩니다. 충분한 연습으로 자신감을 키워보세요.")
+
+            for item in feedback_items:
+                st.markdown(item)
+
+        else:
+            st.info("음성 모드로 면접을 진행하면 감정 분석 결과를 확인할 수 있습니다. 텍스트 모드에서는 감정 분석이 제공되지 않습니다.")
+
+    with tab4:
         if st.session_state.mock_evaluation is None:
             with st.spinner("종합 평가 생성 중... (최대 1분)"):
                 evaluation = evaluate_interview_combined(

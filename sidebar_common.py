@@ -278,8 +278,7 @@ def render_navbar(current_page: str = ""):
                 {links_html}
             </nav>
             <div class="nav-right">
-                <a href="/로그인" target="_self" class="nav-btn nav-btn-ghost">로그인</a>
-                <a href="/구독" target="_self" class="nav-btn nav-btn-primary">무료 체험</a>
+                <span style="background: #10b981; color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">Beta Test</span>
             </div>
         </div>
     </div>

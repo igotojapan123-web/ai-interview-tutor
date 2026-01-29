@@ -2057,6 +2057,327 @@ def generate_tts_for_passenger_v3(
 
 
 # =====================================================
+# 감정 분석 래퍼 함수 (Phase 1 - 감정 분석 통합)
+# =====================================================
+
+# 감정 한국어 설명 매핑
+EMOTION_KOREAN_MAP = {
+    "neutral": ("중립", "차분하고 안정적인 상태입니다."),
+    "happy": ("행복", "긍정적이고 밝은 감정이 느껴집니다."),
+    "sad": ("슬픔", "다소 우울하거나 침체된 느낌입니다."),
+    "angry": ("화남", "불만이나 짜증이 느껴집니다."),
+    "fearful": ("두려움", "불안하거나 걱정되는 상태입니다."),
+    "surprised": ("놀람", "예상치 못한 반응을 보이고 있습니다."),
+    "disgusted": ("혐오", "불쾌하거나 거부감을 느끼고 있습니다."),
+    "confident": ("자신감", "확신에 차 있고 당당합니다."),
+    "nervous": ("긴장", "긴장하거나 불안해 보입니다."),
+    "excited": ("흥분", "들뜨고 열정적인 상태입니다."),
+    "confused": ("혼란", "무엇인가에 대해 확신이 없어 보입니다."),
+    "focused": ("집중", "집중하며 진지하게 임하고 있습니다."),
+    "stressed": ("스트레스", "압박감을 느끼고 있습니다."),
+    "calm": ("차분함", "침착하고 여유로운 상태입니다."),
+    "enthusiastic": ("열정", "열의와 관심이 넘칩니다."),
+}
+
+
+def extract_voice_features_for_emotion(audio_bytes: bytes) -> Dict[str, Any]:
+    """
+    감정 분석을 위한 음성 특성 추출
+
+    Args:
+        audio_bytes: 오디오 바이트 데이터
+
+    Returns:
+        EmotionDetector가 사용하는 형식의 특성 딕셔너리
+    """
+    features = {
+        "pitch_mean": 150,
+        "pitch_std": 30,
+        "pitch_range": 100,
+        "energy_mean": 0.5,
+        "energy_std": 0.1,
+        "speech_rate": 150,
+        "pause_ratio": 0.2,
+        "jitter": 0.02,
+        "shimmer": 0.03,
+        "spectral_centroid": 2000,
+    }
+
+    try:
+        import numpy as np
+        import librosa
+        import tempfile
+
+        # 임시 파일로 저장
+        with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as f:
+            f.write(audio_bytes)
+            temp_path = f.name
+
+        try:
+            # librosa로 로드
+            y, sr = librosa.load(temp_path, sr=None)
+
+            if len(y) == 0:
+                return features
+
+            # 피치 추출
+            pitches, magnitudes = librosa.piptrack(y=y, sr=sr)
+            pitch_values = []
+            for t in range(pitches.shape[1]):
+                index = magnitudes[:, t].argmax()
+                pitch = pitches[index, t]
+                if pitch > 0:
+                    pitch_values.append(pitch)
+
+            if len(pitch_values) > 0:
+                pitch_array = np.array(pitch_values)
+                features["pitch_mean"] = float(np.mean(pitch_array))
+                features["pitch_std"] = float(np.std(pitch_array))
+                features["pitch_range"] = float(np.max(pitch_array) - np.min(pitch_array))
+
+                # Jitter 계산
+                if len(pitch_values) > 1:
+                    pitch_diff = np.abs(np.diff(pitch_array))
+                    features["jitter"] = float(np.mean(pitch_diff) / (np.mean(pitch_array) + 1e-6))
+
+            # RMS 에너지 계산
+            rms = librosa.feature.rms(y=y)[0]
+            if len(rms) > 0:
+                features["energy_mean"] = float(np.mean(rms))
+                features["energy_std"] = float(np.std(rms))
+
+                # Shimmer 계산 (에너지 변동성)
+                if len(rms) > 1:
+                    rms_diff = np.abs(np.diff(rms))
+                    features["shimmer"] = float(np.mean(rms_diff) / (np.mean(rms) + 1e-6))
+
+            # Spectral centroid
+            spec_cent = librosa.feature.spectral_centroid(y=y, sr=sr)[0]
+            if len(spec_cent) > 0:
+                features["spectral_centroid"] = float(np.mean(spec_cent))
+
+            # 음성 구간 감지로 휴지 비율 추정
+            intervals = librosa.effects.split(y, top_db=30)
+            if len(intervals) > 0:
+                voiced_frames = sum(end - start for start, end in intervals)
+                total_frames = len(y)
+                features["pause_ratio"] = 1.0 - (voiced_frames / total_frames) if total_frames > 0 else 0.2
+
+        finally:
+            # 임시 파일 삭제
+            import os
+            try:
+                os.unlink(temp_path)
+            except:
+                pass
+
+    except ImportError:
+        logger.warning("librosa가 설치되지 않아 기본 특성값을 사용합니다.")
+    except Exception as e:
+        logger.warning(f"음성 특성 추출 실패: {e}")
+
+    return features
+
+
+def get_default_emotion_result() -> Dict[str, Any]:
+    """감정 분석 실패 시 기본값 반환"""
+    return {
+        "confidence_score": 5.0,
+        "stress_level": 5.0,
+        "engagement_level": 5.0,
+        "emotion_stability": 5.0,
+        "primary_emotion": "neutral",
+        "emotion_description": "분석 결과를 가져올 수 없습니다.",
+        "suggestions": ["다시 한번 녹음해 보세요."],
+        "valence": 0.0,
+        "arousal": 0.5,
+    }
+
+
+def analyze_interview_emotion(
+    audio_bytes: bytes,
+    transcribed_text: str = "",
+    question_context: str = "",
+) -> Dict[str, Any]:
+    """
+    면접 답변의 감정을 종합 분석
+
+    Args:
+        audio_bytes: 오디오 바이트 데이터
+        transcribed_text: 인식된 텍스트
+        question_context: 질문 맥락
+
+    Returns:
+        {
+            "confidence_score": 0-10,
+            "stress_level": 0-10,
+            "engagement_level": 0-10,
+            "emotion_stability": 0-10,
+            "primary_emotion": str,
+            "emotion_description": str,
+            "suggestions": List[str],
+            "valence": float (-1 to 1),
+            "arousal": float (0 to 1),
+        }
+    """
+    try:
+        # 음성 특성 추출
+        voice_features = extract_voice_features_for_emotion(audio_bytes)
+
+        # 간단한 감정 분석 로직 (EmotionDetector의 핵심 로직 적용)
+        scores = {}
+
+        # 피치 분석
+        pitch_std = voice_features.get("pitch_std", 30)
+        if pitch_std > 50:
+            scores["excited"] = 0.3
+            scores["nervous"] = 0.2
+        elif pitch_std < 20:
+            scores["calm"] = 0.3
+            scores["neutral"] = 0.2
+
+        # 에너지 분석
+        energy_mean = voice_features.get("energy_mean", 0.5)
+        if energy_mean > 0.7:
+            scores["excited"] = scores.get("excited", 0.0) + 0.2
+            scores["confident"] = scores.get("confident", 0.0) + 0.2
+        elif energy_mean < 0.3:
+            scores["sad"] = scores.get("sad", 0.0) + 0.2
+            scores["nervous"] = scores.get("nervous", 0.0) + 0.15
+
+        # Jitter 분석 (목소리 떨림)
+        jitter = voice_features.get("jitter", 0.02)
+        shimmer = voice_features.get("shimmer", 0.03)
+        if jitter > 0.05 or shimmer > 0.1:
+            scores["stressed"] = scores.get("stressed", 0.0) + 0.3
+            scores["nervous"] = scores.get("nervous", 0.0) + 0.2
+
+        # 휴지 비율 분석
+        pause_ratio = voice_features.get("pause_ratio", 0.2)
+        if pause_ratio > 0.4:
+            scores["nervous"] = scores.get("nervous", 0.0) + 0.2
+            scores["confused"] = scores.get("confused", 0.0) + 0.15
+
+        # 텍스트 기반 분석
+        if transcribed_text:
+            text_lower = transcribed_text.lower()
+            word_count = len(transcribed_text.split())
+
+            # 자신감 키워드
+            confident_keywords = ["확실히", "분명히", "반드시", "certainly", "definitely", "absolutely"]
+            nervous_keywords = ["음", "어", "그", "그러니까", "um", "uh", "maybe", "perhaps"]
+
+            conf_count = sum(1 for kw in confident_keywords if kw in text_lower)
+            nerv_count = sum(1 for kw in nervous_keywords if kw in text_lower)
+
+            if conf_count > 0:
+                scores["confident"] = scores.get("confident", 0.0) + conf_count * 0.1
+            if nerv_count > 0:
+                scores["nervous"] = scores.get("nervous", 0.0) + nerv_count * 0.05
+
+            # 응답 길이 분석
+            if word_count > 50:
+                scores["confident"] = scores.get("confident", 0.0) + 0.15
+            elif word_count < 10:
+                scores["nervous"] = scores.get("nervous", 0.0) + 0.1
+
+        # 기본값
+        if not scores:
+            scores["neutral"] = 0.5
+
+        # 정규화
+        total = sum(scores.values())
+        if total > 0:
+            scores = {e: s / total for e, s in scores.items()}
+
+        # 주요 감정 결정
+        primary_emotion = max(scores.items(), key=lambda x: x[1])[0]
+        primary_confidence = scores[primary_emotion]
+
+        # 면접 메트릭 계산
+        stress_level = (
+            scores.get("stressed", 0) * 10 +
+            scores.get("nervous", 0) * 8 +
+            scores.get("fearful", 0) * 7
+        )
+        stress_level = min(10, stress_level * 3)  # 스케일링
+
+        confidence_level = (
+            scores.get("confident", 0) * 10 +
+            scores.get("calm", 0) * 7 +
+            scores.get("enthusiastic", 0) * 6
+        )
+        confidence_level = min(10, confidence_level * 3)
+
+        engagement_level = (
+            scores.get("excited", 0) * 10 +
+            scores.get("enthusiastic", 0) * 10 +
+            scores.get("focused", 0) * 8 +
+            scores.get("happy", 0) * 6
+        )
+        engagement_level = min(10, engagement_level * 3)
+
+        # 안정성 (떨림이 적을수록 높음)
+        emotion_stability = 10.0 - min(10.0, jitter * 100)
+
+        # 감정 설명 가져오기
+        emotion_info = EMOTION_KOREAN_MAP.get(primary_emotion, ("알 수 없음", "분석 중입니다."))
+        emotion_description = emotion_info[1]
+
+        # 제안 생성
+        suggestions = []
+        if stress_level > 6:
+            suggestions.append("심호흡을 하고 천천히 말해보세요.")
+        if confidence_level < 4:
+            suggestions.append("답변 시 '~것 같습니다' 대신 '~입니다'로 확신 있게 말해보세요.")
+        if engagement_level < 4:
+            suggestions.append("질문에 대한 열정과 관심을 표현해 보세요.")
+        if emotion_stability < 5:
+            suggestions.append("목소리 떨림이 감지됩니다. 긴장을 풀고 자연스럽게 말해보세요.")
+
+        if not suggestions:
+            suggestions.append("전반적으로 좋은 감정 상태입니다. 이 상태를 유지하세요!")
+
+        # VAD 값 계산 (Valence, Arousal)
+        valence = (
+            scores.get("happy", 0) * 0.8 +
+            scores.get("confident", 0) * 0.6 +
+            scores.get("enthusiastic", 0) * 0.8 -
+            scores.get("sad", 0) * 0.6 -
+            scores.get("angry", 0) * 0.5 -
+            scores.get("fearful", 0) * 0.7 -
+            scores.get("stressed", 0) * 0.4
+        )
+        valence = max(-1, min(1, valence * 2))
+
+        arousal = (
+            scores.get("excited", 0) * 0.8 +
+            scores.get("angry", 0) * 0.8 +
+            scores.get("nervous", 0) * 0.6 +
+            scores.get("stressed", 0) * 0.7 -
+            scores.get("calm", 0) * 0.2
+        )
+        arousal = max(0, min(1, arousal * 2 + 0.3))
+
+        return {
+            "confidence_score": round(confidence_level, 1),
+            "stress_level": round(stress_level, 1),
+            "engagement_level": round(engagement_level, 1),
+            "emotion_stability": round(emotion_stability, 1),
+            "primary_emotion": primary_emotion,
+            "emotion_description": emotion_description,
+            "suggestions": suggestions[:3],  # 최대 3개
+            "valence": round(valence, 2),
+            "arousal": round(arousal, 2),
+            "emotion_scores": {k: round(v, 3) for k, v in scores.items()},
+        }
+
+    except Exception as e:
+        logger.warning(f"감정 분석 실패: {e}")
+        return get_default_emotion_result()
+
+
+# =====================================================
 # TTS 테스트 함수
 # =====================================================
 def test_edge_tts():

@@ -314,3 +314,146 @@ def get_fallback_avatar_html(
         </div>
     </div>
     """
+
+
+def get_enhanced_fallback_avatar_html(
+    text: str,
+    character_type: str = "interviewer",
+    emotion_state: str = "neutral"
+) -> str:
+    """
+    고급 폴백 아바타 HTML (CSS 애니메이션 강화)
+    Phase 1 - 감정 표현이 가능한 향상된 아바타
+
+    Args:
+        text: 표시할 텍스트 (질문)
+        character_type: 캐릭터 유형 (interviewer, passenger_*)
+        emotion_state: 감정 상태 (neutral, friendly, serious, encouraging, thinking)
+
+    Returns:
+        HTML 문자열
+    """
+    # 감정별 이모지 매핑
+    emotion_emojis = {
+        "neutral": "👩‍💼",
+        "friendly": "😊",
+        "serious": "😐",
+        "encouraging": "👍",
+        "thinking": "🤔",
+        "listening": "👂",
+        "nodding": "🙂",
+    }
+
+    # 캐릭터 타입별 기본 이모지
+    character_emojis = {
+        "interviewer": "👩‍💼",
+        "passenger_angry": "😠",
+        "passenger_worried": "😟",
+        "passenger_elderly": "👴",
+        "passenger_business": "👨‍💼",
+        "passenger_family": "👨‍👩‍👧",
+    }
+
+    # 감정 상태가 있으면 감정 이모지, 없으면 캐릭터 이모지
+    if emotion_state in emotion_emojis:
+        avatar = emotion_emojis[emotion_state]
+    else:
+        avatar = character_emojis.get(character_type, "👤")
+
+    # 감정별 그라데이션 색상
+    emotion_gradients = {
+        "neutral": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        "friendly": "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)",
+        "serious": "linear-gradient(135deg, #434343 0%, #000000 100%)",
+        "encouraging": "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+        "thinking": "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+        "listening": "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
+        "nodding": "linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)",
+    }
+
+    gradient = emotion_gradients.get(emotion_state, emotion_gradients["neutral"])
+
+    return f'''
+    <div class="enhanced-avatar-container" style="
+        text-align: center;
+        padding: 2rem;
+        background: {gradient};
+        border-radius: 20px;
+        margin: 1rem 0;
+        box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+    ">
+        <style>
+            @keyframes avatar-breathe {{
+                0%, 100% {{ transform: scale(1); }}
+                50% {{ transform: scale(1.05); }}
+            }}
+            @keyframes avatar-speak {{
+                0%, 100% {{ transform: scale(1) rotate(0deg); }}
+                25% {{ transform: scale(1.02) rotate(-1deg); }}
+                50% {{ transform: scale(1.05) rotate(0deg); }}
+                75% {{ transform: scale(1.02) rotate(1deg); }}
+            }}
+            @keyframes bubble-fade-in {{
+                from {{ opacity: 0; transform: translateY(10px); }}
+                to {{ opacity: 1; transform: translateY(0); }}
+            }}
+            @keyframes glow {{
+                0%, 100% {{ box-shadow: 0 4px 20px rgba(255,255,255,0.2); }}
+                50% {{ box-shadow: 0 4px 30px rgba(255,255,255,0.4); }}
+            }}
+            .avatar-wrapper {{
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 120px;
+                height: 120px;
+                background: white;
+                border-radius: 50%;
+                font-size: 60px;
+                margin-bottom: 1rem;
+                animation: avatar-speak 2s ease-in-out infinite;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            }}
+            .speech-bubble {{
+                background: white;
+                padding: 1.5rem 2rem;
+                border-radius: 15px;
+                margin-top: 1rem;
+                position: relative;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                animation: bubble-fade-in 0.5s ease-out, glow 3s ease-in-out infinite;
+                max-width: 90%;
+                margin-left: auto;
+                margin-right: auto;
+            }}
+            .speech-bubble::before {{
+                content: '';
+                position: absolute;
+                top: -10px;
+                left: 50%;
+                transform: translateX(-50%);
+                border-left: 10px solid transparent;
+                border-right: 10px solid transparent;
+                border-bottom: 10px solid white;
+            }}
+            .question-text {{
+                color: #333;
+                font-size: 1.1rem;
+                line-height: 1.6;
+                margin: 0;
+                word-break: keep-all;
+            }}
+            .interviewer-label {{
+                color: white;
+                font-size: 0.85rem;
+                margin-bottom: 0.5rem;
+                opacity: 0.9;
+            }}
+        </style>
+        <div class="interviewer-label">면접관</div>
+        <div class="avatar-wrapper">{avatar}</div>
+        <div class="speech-bubble">
+            <p class="question-text">{text}</p>
+        </div>
+    </div>
+    '''

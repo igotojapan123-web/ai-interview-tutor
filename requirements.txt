@@ -57,6 +57,15 @@ Pillow>=10.0.0
 pydub>=0.25.1
 
 # ======================
+# Video/Webcam Analysis (Phase 2)
+# ======================
+opencv-python>=4.8.0
+mediapipe>=0.10.0
+streamlit-webrtc>=0.47.0
+av>=10.0.0
+numpy>=1.24.0
+
+# ======================
 # Utilities
 # ======================
 python-dateutil>=2.8.0

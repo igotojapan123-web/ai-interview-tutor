@@ -69,6 +69,19 @@ try:
 except ImportError:
     REPORT_AVAILABLE = False
 
+# Phase 2: 웹캠 분석 import
+try:
+    from webcam_component import (
+        create_webcam_streamer,
+        get_realtime_feedback_html,
+        get_score_gauge_html,
+        get_webcam_placeholder_html,
+        is_webcam_available,
+    )
+    WEBCAM_AVAILABLE = is_webcam_available()
+except ImportError:
+    WEBCAM_AVAILABLE = False
+
 
 # Use new layout system
 from sidebar_common import init_page, end_page
@@ -189,6 +202,10 @@ defaults = {
     "mock_combined_emotion": None,  # 종합 감정 분석
     "mock_confidence_timeline": [],  # 자신감 변화 추이
     "mock_stress_timeline": [],  # 스트레스 변화 추이
+    # Phase 2: 웹캠 분석용 변수
+    "mock_webcam_enabled": False,  # 웹캠 활성화 여부
+    "mock_webcam_scores": [],  # 웹캠 분석 점수 히스토리
+    "mock_posture_feedback": [],  # 자세 피드백 히스토리
 }
 
 for key, value in defaults.items():
@@ -383,6 +400,17 @@ if not st.session_state.mock_started:
             help="음성 녹음 시 마이크 권한이 필요합니다"
         )
 
+    # Phase 2: 웹캠 분석 옵션
+    if WEBCAM_AVAILABLE and answer_mode == "음성 녹음":
+        webcam_enabled = st.checkbox(
+            "📹 웹캠 분석 활성화",
+            value=False,
+            help="자세, 시선, 표정을 실시간으로 분석합니다"
+        )
+        st.session_state.mock_webcam_enabled = webcam_enabled
+    else:
+        st.session_state.mock_webcam_enabled = False
+
     # 항공사 핵심가치 표시
     if airline in AIRLINE_VALUE_SUMMARY:
         st.info(f"**{airline} 핵심가치**\n\n{AIRLINE_VALUE_SUMMARY[airline]}")
@@ -517,6 +545,43 @@ elif not st.session_state.mock_completed:
             <div style="font-size: 12px; color: #666;">적정 답변 시간: 60~90초</div>
         </div>
         """, unsafe_allow_html=True)
+
+        # Phase 2: 웹캠 분석 영역
+        if st.session_state.mock_webcam_enabled and WEBCAM_AVAILABLE:
+            webcam_col, feedback_col = st.columns([2, 1])
+
+            with webcam_col:
+                st.markdown("##### 📹 실시간 자세 분석")
+                webcam_ctx = create_webcam_streamer(
+                    key=f"mock_webcam_{current_idx}",
+                    analysis_enabled=True
+                )
+
+                if webcam_ctx and webcam_ctx.get("is_playing"):
+                    # 웹캠 점수 수집
+                    processor = webcam_ctx.get("processor")
+                    if processor:
+                        avg_score = processor.get_average_score()
+                        if avg_score > 0:
+                            st.session_state.mock_webcam_scores.append(avg_score)
+
+            with feedback_col:
+                st.markdown("##### 실시간 피드백")
+                feedback_placeholder = st.empty()
+
+                if webcam_ctx and webcam_ctx.get("is_playing"):
+                    processor = webcam_ctx.get("processor")
+                    if processor:
+                        feedback = processor.get_latest_feedback()
+                        feedback_placeholder.markdown(
+                            get_realtime_feedback_html(feedback),
+                            unsafe_allow_html=True
+                        )
+                else:
+                    feedback_placeholder.markdown(
+                        get_webcam_placeholder_html(),
+                        unsafe_allow_html=True
+                    )
 
         # 음성 녹음 (st.audio_input 사용 - 롤플레잉과 동일)
         col_rec1, col_rec2 = st.columns([2, 1])
@@ -792,8 +857,12 @@ else:
 
     st.divider()
 
-    # 질문별 결과 탭 (Phase 1: 감정 분석 탭 추가)
-    tab1, tab2, tab3, tab4 = st.tabs(["📝 질문별 분석", "🎤 음성 평가", "💭 감정 분석", "📊 종합 평가"])
+    # 질문별 결과 탭 (Phase 1: 감정 분석 탭, Phase 2: 웹캠 분석 탭 추가)
+    if st.session_state.mock_webcam_enabled and st.session_state.mock_webcam_scores:
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["📝 질문별 분석", "🎤 음성 평가", "💭 감정 분석", "📹 자세 분석", "📊 종합 평가"])
+    else:
+        tab1, tab2, tab3, tab4 = st.tabs(["📝 질문별 분석", "🎤 음성 평가", "💭 감정 분석", "📊 종합 평가"])
+        tab5 = None
 
     with tab1:
         for i, (q, a, t) in enumerate(zip(
@@ -1114,6 +1183,86 @@ else:
 
         else:
             st.info("음성 모드로 면접을 진행하면 감정 분석 결과를 확인할 수 있습니다. 텍스트 모드에서는 감정 분석이 제공되지 않습니다.")
+
+    # Phase 2: 웹캠 자세 분석 탭
+    if tab5 is not None:
+        with tab5:
+            st.subheader("📹 자세 분석 결과")
+
+            webcam_scores = st.session_state.mock_webcam_scores
+            if webcam_scores:
+                avg_webcam_score = sum(webcam_scores) / len(webcam_scores)
+
+                # 상단 요약 메트릭
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric(
+                        "자세 평균 점수",
+                        f"{avg_webcam_score:.1f}/100",
+                        delta="좋음" if avg_webcam_score >= 70 else "개선필요"
+                    )
+                with col2:
+                    st.metric(
+                        "분석 샘플 수",
+                        f"{len(webcam_scores)}개"
+                    )
+                with col3:
+                    # 최고/최저 점수
+                    max_score = max(webcam_scores)
+                    min_score = min(webcam_scores)
+                    st.metric(
+                        "점수 범위",
+                        f"{min_score:.0f} ~ {max_score:.0f}"
+                    )
+
+                # 점수 추이 차트
+                st.subheader("📈 자세 점수 추이")
+                import plotly.graph_objects as go
+
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(
+                    y=webcam_scores,
+                    mode='lines+markers',
+                    name='자세 점수',
+                    line=dict(color='#8b5cf6', width=2),
+                    fill='tozeroy',
+                    fillcolor='rgba(139, 92, 246, 0.1)'
+                ))
+                fig.add_hline(
+                    y=70,
+                    line_dash="dash",
+                    line_color="#10b981",
+                    annotation_text="기준선 (70점)"
+                )
+                fig.update_layout(
+                    title="면접 중 자세 점수 변화",
+                    xaxis_title="분석 샘플",
+                    yaxis_title="점수",
+                    yaxis=dict(range=[0, 100]),
+                    height=350
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+                # 자세 피드백 요약
+                st.subheader("💡 자세 개선 제안")
+                if avg_webcam_score >= 80:
+                    st.success("훌륭합니다! 전반적으로 안정적이고 자신감 있는 자세를 유지했습니다.")
+                elif avg_webcam_score >= 60:
+                    st.warning("""
+                    **개선 포인트:**
+                    - 카메라를 더 자주 바라보세요 (아이컨택)
+                    - 어깨를 펴고 바른 자세를 유지하세요
+                    - 불필요한 움직임을 줄이세요
+                    """)
+                else:
+                    st.error("""
+                    **주요 개선 필요:**
+                    - 카메라(면접관)와 눈을 맞추는 연습이 필요합니다
+                    - 자세가 불안정합니다. 의자에 바르게 앉아주세요
+                    - 손으로 얼굴을 만지는 습관을 고쳐주세요
+                    """)
+            else:
+                st.info("웹캠 분석 데이터가 없습니다.")
 
     with tab4:
         if st.session_state.mock_evaluation is None:

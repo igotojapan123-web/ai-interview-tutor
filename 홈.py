@@ -11,6 +11,10 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 
 from logging_config import get_logger
+from safe_utils import (
+    safe_load_json, safe_divide, safe_percentage, safe_average,
+    safe_parse_date, safe_get, to_int
+)
 
 # 로거 설정
 logger = get_logger(__name__)
@@ -79,7 +83,7 @@ def load_json(filepath, default=None):
             logger.error(f"파일 읽기 실패 ({filepath}): {e}")
     return default
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=300)
 def get_dashboard_data():
     """대시보드에 필요한 모든 데이터 수집 (60초 캐시)"""
     data = {}
@@ -170,9 +174,7 @@ def get_overall_progress(progress_data, roleplay_data):
                 total_items += 1
             elif isinstance(val, dict):
                 total_items += 1
-    if total_items == 0:
-        return 0
-    return int((completed_items / total_items) * 100)
+    return safe_percentage(completed_items, total_items, 0)
 
 def get_recent_avg_score(scores_data):
     """최근 5회 평균 점수"""
@@ -187,7 +189,7 @@ def get_recent_avg_score(scores_data):
     if not all_scores:
         return 0
     recent = all_scores[-5:]
-    return int(sum(recent) / len(recent))
+    return to_int(safe_average(recent, 0))
 
 def get_recommendations(data):
     """맞춤 학습 추천 생성"""
@@ -273,7 +275,7 @@ today_str = datetime.now().strftime("%Y-%m-%d")
 today_todos = dashboard_data["daily_todos"].get(today_str, [])
 today_done = sum(1 for t in today_todos if t.get("done", False)) if today_todos else 0
 today_total = len(today_todos) if today_todos else 0
-today_pct = int((today_done / today_total) * 100) if today_total > 0 else 0
+today_pct = safe_percentage(today_done, today_total, 0)
 
 hour = datetime.now().hour
 if hour < 6:
@@ -373,31 +375,36 @@ document.addEventListener('click', function(e) {
 }
 .fr-btn {
     display: inline-block;
-    padding: 12px 28px;
-    border-radius: 8px;
-    font-weight: 600;
+    padding: 14px 32px;
+    border-radius: 10px;
+    font-weight: 700;
     text-decoration: none;
-    transition: all 0.2s;
-    font-size: 0.9rem;
+    transition: all 0.25s ease;
+    font-size: 1rem;
+    text-align: center;
+    min-width: 140px;
 }
 .fr-btn-primary {
-    background: white;
-    color: #1e3a5f;
+    background: #ffffff;
+    color: #1e3a5f !important;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.15);
 }
 .fr-btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    background: #f8fafc;
 }
 .fr-btn-secondary {
-    background: rgba(255,255,255,0.95);
-    color: #1e3a5f;
-    border: 2px solid white;
-    font-weight: 700;
+    background: rgba(255,255,255,0.15);
+    color: #ffffff !important;
+    border: 2px solid rgba(255,255,255,0.8);
+    backdrop-filter: blur(4px);
 }
 .fr-btn-secondary:hover {
-    background: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    background: rgba(255,255,255,0.25);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    border-color: #ffffff;
 }
 .fr-main {
     max-width: 1200px;
@@ -1208,7 +1215,7 @@ st.markdown(f'''
     <div class="fr-header-nav">
         <a target="_self" href="/요금제" class="fr-nav-link">요금제</a>
         <a target="_self" href="/로그인" class="fr-nav-link">로그인</a>
-        <a target="_self" href="/자소서첨삭" class="fr-nav-btn">무료 시작하기</a>
+        <a target="_self" href="/자소서첨삭" class="fr-nav-btn">무료로 시작하기</a>
     </div>
 </div>
 ''', unsafe_allow_html=True)

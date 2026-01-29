@@ -373,11 +373,23 @@ class ForeignAirlineCrawler(AirlineCrawler):
 class JobCrawlerManager:
     """채용 크롤러 통합 관리자"""
 
-    def __init__(self, data_dir: str = "data/jobs"):
+    def __init__(self, data_dir: str = None):
+        # 절대 경로로 data 디렉토리 설정 (권한 문제 방지)
+        if data_dir is None:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            data_dir = os.path.join(base_dir, "data", "jobs")
         self.data_dir = data_dir
         self.jobs_file = os.path.join(data_dir, "job_postings.json")
         self.history_file = os.path.join(data_dir, "crawl_history.json")
-        os.makedirs(data_dir, exist_ok=True)
+        try:
+            os.makedirs(data_dir, exist_ok=True)
+        except PermissionError:
+            # 권한 문제시 사용자 홈 디렉토리 사용
+            fallback_dir = os.path.join(os.path.expanduser("~"), ".flyready", "jobs")
+            os.makedirs(fallback_dir, exist_ok=True)
+            self.data_dir = fallback_dir
+            self.jobs_file = os.path.join(fallback_dir, "job_postings.json")
+            self.history_file = os.path.join(fallback_dir, "crawl_history.json")
 
         self.crawlers = {
             "KE": KoreanAirCrawler(),

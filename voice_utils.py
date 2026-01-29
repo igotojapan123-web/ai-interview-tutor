@@ -540,7 +540,7 @@ def analyze_voice_quality(
             "count": 0,
             "long_pauses": 0,
             "score": 5,
-            "feedback": "휴지 분석 데이터 없음",
+            "feedback": "멈춤 분석 데이터 없음",
         }
 
     # 4. 답변 시간 분석

@@ -7,10 +7,14 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-st.set_page_config(
+# Use sidebar_common for consistent navigation
+from sidebar_common import init_page, end_page
+
+init_page(
+    title="스킬 분석",
     page_title="스킬 분석 - FlyReady Lab",
-    page_icon="✈️",
-    layout="wide"
+    current_page="스킬분석",
+    wide_layout=True
 )
 
 # 시스템 import
@@ -23,13 +27,10 @@ except ImportError:
     REC_AVAILABLE = False
     rec_engine = None
 
-# CSS
+# CSS (additional page-specific styles)
 st.markdown("""
 <style>
-@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-* { font-family: 'Pretendard', -apple-system, sans-serif; }
-[data-testid="stSidebar"] { display: none; }
-.block-container { max-width: 1100px; padding-top: 32px; }
+.block-container { max-width: 1100px; }
 
 .page-header h1 {
     font-size: 1.75rem;

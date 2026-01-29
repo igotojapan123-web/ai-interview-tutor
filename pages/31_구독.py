@@ -7,10 +7,14 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-st.set_page_config(
+# Use sidebar_common for consistent navigation
+from sidebar_common import init_page, end_page
+
+init_page(
+    title="구독 플랜",
     page_title="구독 플랜 - FlyReady Lab",
-    page_icon="✈️",
-    layout="wide"
+    current_page="구독",
+    wide_layout=True
 )
 
 # 시스템 import
@@ -25,13 +29,10 @@ except ImportError as e:
     AUTH_AVAILABLE = False
     PAYMENT_AVAILABLE = False
 
-# CSS
+# CSS (additional page-specific styles)
 st.markdown("""
 <style>
-@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-* { font-family: 'Pretendard', -apple-system, sans-serif; }
-[data-testid="stSidebar"] { display: none; }
-.block-container { max-width: 1000px; padding-top: 40px; }
+.block-container { max-width: 1000px; }
 
 .pricing-header {
     text-align: center;

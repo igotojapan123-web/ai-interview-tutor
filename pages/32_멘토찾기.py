@@ -8,10 +8,14 @@ from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-st.set_page_config(
+# Use sidebar_common for consistent navigation
+from sidebar_common import init_page, end_page
+
+init_page(
+    title="멘토 찾기",
     page_title="멘토 찾기 - FlyReady Lab",
-    page_icon="✈️",
-    layout="wide"
+    current_page="멘토찾기",
+    wide_layout=True
 )
 
 # 시스템 import
@@ -24,13 +28,10 @@ except ImportError:
     MENTOR_AVAILABLE = False
     mentor_engine = None
 
-# CSS
+# CSS (additional page-specific styles)
 st.markdown("""
 <style>
-@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-* { font-family: 'Pretendard', -apple-system, sans-serif; }
-[data-testid="stSidebar"] { display: none; }
-.block-container { max-width: 1200px; padding-top: 32px; }
+.block-container { max-width: 1200px; }
 
 .page-header {
     margin-bottom: 32px;

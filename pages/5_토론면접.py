@@ -469,7 +469,7 @@ def evaluate_debate(topic: dict, user_position: str, history: list, voice_analys
         voice_summary = f"""
 ## 음성 분석 데이터
 - 평균 말 속도: {avg_wpm:.0f} WPM (적정: 120-150)
-- 총 필러 단어 사용: {total_fillers}회
+- 총 추임새 사용: {total_fillers}회
 - 음성 전달력 평균 점수: {avg_score:.0f}/100
 """
 
@@ -919,7 +919,7 @@ elif not st.session_state.debate_completed:
                                         st.metric("말 속도", f"{wpm} WPM")
                                     with v_cols[1]:
                                         fillers = text_analysis.get("filler_count", 0)
-                                        st.metric("필러 단어", f"{fillers}회")
+                                        st.metric("추임새", f"{fillers}회")
                                     with v_cols[2]:
                                         clarity = voice_analysis.get("voice_quality", {}).get("pronunciation_clarity", 0)
                                         st.metric("발음 명확도", f"{clarity}%")
@@ -1081,7 +1081,7 @@ else:
 
                     with col2:
                         fillers = text_analysis.get("filler_count", 0)
-                        st.metric("필러 단어", f"{fillers}회", delta="좋음" if fillers < 5 else "줄이기 필요")
+                        st.metric("추임새", f"{fillers}회", delta="좋음" if fillers < 5 else "줄이기 필요")
 
                     with col3:
                         clarity = voice_quality.get("pronunciation_clarity", 0)
@@ -1110,7 +1110,7 @@ else:
                             with cols[0]:
                                 st.metric("말 속도", f"{ta.get('words_per_minute', 0):.0f} WPM")
                             with cols[1]:
-                                st.metric("필러", f"{ta.get('filler_count', 0)}회")
+                                st.metric("추임새", f"{ta.get('filler_count', 0)}회")
                             with cols[2]:
                                 st.metric("발음", f"{vq.get('pronunciation_clarity', 0)}%")
                             with cols[3]:

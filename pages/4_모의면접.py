@@ -293,7 +293,7 @@ def evaluate_interview_combined(
 #### 종합 점수: X/100
 
 #### 음성 전달력 총평
-(말 속도, 필러 단어, 발음 등)
+(말 속도, 추임새, 발음 등)
 
 #### 답변 내용 총평
 (구체성, STAR 구조, 논리성 등)
@@ -388,7 +388,7 @@ if not st.session_state.mock_started:
         **음성 모의면접 안내**
         1. AI 면접관이 질문을 읽어줍니다
         2. 마이크로 답변을 녹음합니다
-        3. 음성 분석: 말 속도, 필러 단어, 발음 등 평가
+        3. 음성 분석: 말 속도, 추임새, 발음 등 평가
         4. 내용 분석: STAR 구조, 구체성, 논리성 평가
         5. 종합 피드백: 음성 + 내용 통합 평가
         """)
@@ -813,7 +813,7 @@ else:
                 </div>
                 """, unsafe_allow_html=True)
 
-                # 텍스트 분석 (말 속도, 필러, 휴지, 발음)
+                # 텍스트 분석 (말 속도, 추임새, 멈춤, 발음)
                 st.subheader("텍스트 분석")
                 text_analysis = voice_analysis.get("text_analysis", {})
 
@@ -827,13 +827,13 @@ else:
 
                 with col2:
                     filler = text_analysis.get("filler_words", {})
-                    st.metric("필러 단어", f"{filler.get('count', 0)}개", help="음, 어, 그 등")
+                    st.metric("추임새", f"{filler.get('count', 0)}개", help="'음', '어', '그냥' 같은 군더더기 말")
                     st.progress(min(filler.get("score", 0) / 10, 1.0))
                     st.caption(filler.get("feedback", ""))
 
                 with col3:
                     pauses = text_analysis.get("pauses", {})
-                    st.metric("긴 휴지", f"{pauses.get('long_pauses', 0)}회", help="2초 이상 멈춤")
+                    st.metric("긴 멈춤", f"{pauses.get('long_pauses', 0)}회", help="말하다가 2초 이상 침묵한 횟수")
                     st.progress(min(pauses.get("score", 0) / 10, 1.0))
                     st.caption(pauses.get("feedback", ""))
 
@@ -913,7 +913,7 @@ else:
                             st.caption(voice.get('speech_rate', {}).get('feedback', ''))
 
                         with col2:
-                            st.metric("필러 단어", f"{voice.get('filler_words', {}).get('count', 0)}개")
+                            st.metric("추임새", f"{voice.get('filler_words', {}).get('count', 0)}개")
                             st.caption(voice.get('filler_words', {}).get('feedback', ''))
 
                         with col3:
@@ -938,11 +938,12 @@ else:
                 # 자동 점수 저장
                 if SCORE_UTILS_AVAILABLE and "error" not in evaluation:
                     # 평가 결과에서 점수 파싱 시도
+                    parsed = None
+                    total_score = 0
+
                     if "result" in evaluation:
                         parsed = parse_evaluation_score(evaluation["result"], "모의면접")
-                        total_score = parsed.get("total", 0)
-                    else:
-                        total_score = 0
+                        total_score = parsed.get("total", 0) if parsed else 0
 
                     # 평균 점수로 대체 (파싱 실패 시)
                     if total_score == 0 and "avg_voice" in evaluation and "avg_content" in evaluation:
@@ -952,7 +953,7 @@ else:
                         save_practice_score(
                             practice_type="모의면접",
                             total_score=total_score,
-                            detailed_scores=parsed.get("detailed") if "parsed" in dir() else None,
+                            detailed_scores=parsed.get("detailed") if parsed else None,
                             scenario=f"{st.session_state.mock_airline} 모의면접 ({len(st.session_state.mock_questions)}문항)"
                         )
             st.rerun()

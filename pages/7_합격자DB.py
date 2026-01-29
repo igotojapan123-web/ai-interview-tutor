@@ -489,10 +489,24 @@ st.markdown("""
 st.title("합격자 DB")
 st.caption("합격자들의 실제 경험, 면접 질문, 통계를 한눈에 확인하세요!")
 
-# 데이터 로드
-stories = load_stories()
-likes_data = load_likes()
-comments_data = load_comments()
+# 데이터 로드 (안전하게)
+try:
+    stories = load_stories()
+except Exception as e:
+    logger.error(f"스토리 로드 오류: {e}")
+    stories = []
+
+try:
+    likes_data = load_likes()
+except Exception as e:
+    logger.error(f"좋아요 데이터 로드 오류: {e}")
+    likes_data = {}
+
+try:
+    comments_data = load_comments()
+except Exception as e:
+    logger.error(f"댓글 데이터 로드 오류: {e}")
+    comments_data = {}
 
 # 탭 구성 (5개 탭)
 tab1, tab2, tab3, tab4, tab5 = st.tabs([" 통계 대시보드", " 면접 질문 DB", " 후기 보기", "️ 후기 작성", " 보상 안내"])

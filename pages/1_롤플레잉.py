@@ -1422,7 +1422,7 @@ else:
                             st.progress(rate_score / 10)
                             st.caption(rate.get("feedback", ""))
 
-                            # 필러 단어
+                            # 추임새 (음, 어, 그냥 같은 군더더기 말)
                             filler = text_detail.get("filler_words", {})
                             filler_score = filler.get("score", 0)
                             filler_count = filler.get("count", 0)
@@ -1430,10 +1430,10 @@ else:
                             st.progress(filler_score / 10)
                             st.caption(filler.get("feedback", ""))
 
-                            # 휴지
+                            # 멈춤/끊김 (말하다가 침묵한 구간)
                             pauses = text_detail.get("pauses", {})
                             pause_score = pauses.get("score", 0)
-                            st.markdown(f"**휴지/끊김**: ({pause_score}/10)")
+                            st.markdown(f"**멈춤/끊김**: ({pause_score}/10)")
                             st.progress(pause_score / 10)
                             st.caption(pauses.get("feedback", ""))
 

@@ -8,10 +8,14 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-st.set_page_config(
+# Use sidebar_common for consistent navigation
+from sidebar_common import init_page, end_page
+
+init_page(
+    title="채용 정보",
     page_title="채용 정보 - FlyReady Lab",
-    page_icon="✈️",
-    layout="wide"
+    current_page="채용정보",
+    wide_layout=True
 )
 
 # 시스템 import
@@ -23,13 +27,10 @@ except ImportError:
     JOB_AVAILABLE = False
     job_manager = None
 
-# CSS
+# CSS (additional page-specific styles)
 st.markdown("""
 <style>
-@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-* { font-family: 'Pretendard', -apple-system, sans-serif; }
-[data-testid="stSidebar"] { display: none; }
-.block-container { max-width: 1200px; padding-top: 32px; }
+.block-container { max-width: 1200px; }
 
 .page-header {
     margin-bottom: 32px;
@@ -192,9 +193,15 @@ with col3:
         st.rerun()
 
 # 통계
-all_jobs = job_manager.load_jobs()
-open_jobs = [j for j in all_jobs if j.get('status') in ['open', 'upcoming']]
-upcoming_deadlines = job_manager.get_upcoming_deadlines(7)
+try:
+    all_jobs = job_manager.load_jobs()
+    open_jobs = [j for j in all_jobs if j.status in ['open', 'upcoming']]
+    upcoming_deadlines = job_manager.get_upcoming_deadlines(7)
+except Exception as e:
+    st.error(f"채용 정보 로드 실패: {e}")
+    all_jobs = []
+    open_jobs = []
+    upcoming_deadlines = []
 
 st.markdown(f"""
 <div class="stats-grid">
@@ -211,7 +218,7 @@ st.markdown(f"""
         <div class="stat-label">7일 내 마감</div>
     </div>
     <div class="stat-card">
-        <div class="stat-value">{len(set(j.get('airline_code') for j in all_jobs))}</div>
+        <div class="stat-value">{len(set(j.airline_code for j in all_jobs))}</div>
         <div class="stat-label">항공사</div>
     </div>
 </div>

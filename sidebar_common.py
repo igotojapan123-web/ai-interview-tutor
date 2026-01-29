@@ -1,6 +1,6 @@
 # sidebar_common.py
-# FlyReady Lab - Enterprise Navigation Module (Simplified)
-# Fixed version without complex f-string CSS that causes rendering issues
+# FlyReady Lab - Enterprise Navigation Module
+# Beautiful dropdown navigation with all features
 
 import streamlit as st
 
@@ -12,7 +12,7 @@ except ImportError:
 
 
 def get_simple_css():
-    """Simple, reliable CSS without complex f-string issues."""
+    """Premium CSS with dropdown navigation."""
     return """
     <style>
     /* Hide Streamlit defaults */
@@ -24,7 +24,7 @@ def get_simple_css():
     [data-testid="stSidebarNav"] {display: none !important;}
     [data-testid="stSidebar"] {display: none !important;}
 
-    /* Material Icon 텍스트 폴백 숨김 (keyboard_arrow_down 등) */
+    /* Material Icon 텍스트 폴백 숨김 */
     [data-testid="stIconMaterial"] {
         font-size: 0 !important;
         line-height: 0 !important;
@@ -38,6 +38,7 @@ def get_simple_css():
     :root {
         --primary: #2563EB;
         --primary-dark: #1D4ED8;
+        --primary-light: #3B82F6;
         --text-primary: #0F172A;
         --text-secondary: #64748B;
         --bg-primary: #FFFFFF;
@@ -52,19 +53,19 @@ def get_simple_css():
     }
 
     .main .block-container {
-        padding-top: calc(var(--nav-height) + 32px) !important;
+        padding-top: 120px !important;
         max-width: 1280px;
         margin: 0 auto;
     }
 
-    /* Navigation Bar */
-    .nav-container {
+    /* ========== Main Navigation Bar ========== */
+    .flyready-nav {
         position: fixed;
         top: 0;
         left: 0;
         right: 0;
-        height: var(--nav-height);
-        background: rgba(255, 255, 255, 0.95);
+        height: 60px;
+        background: rgba(255, 255, 255, 0.98);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
         border-bottom: 1px solid var(--border);
@@ -72,80 +73,41 @@ def get_simple_css():
         display: flex;
         align-items: center;
         padding: 0 32px;
-    }
-
-    .nav-inner {
-        max-width: 1400px;
-        width: 100%;
-        margin: 0 auto;
-        display: flex;
-        align-items: center;
         gap: 32px;
     }
 
-    .nav-right {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-left: auto;
-    }
-
-    .nav-btn {
-        padding: 8px 16px;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 500;
-        text-decoration: none;
-        transition: all 0.2s;
-    }
-
-    .nav-btn-ghost {
-        color: #475569;
-    }
-
-    .nav-btn-ghost:hover {
-        color: #0F172A;
-        background: #F1F5F9;
-    }
-
-    .nav-btn-primary {
-        background: #2563EB;
-        color: white;
-    }
-
-    .nav-btn-primary:hover {
-        background: #1D4ED8;
-    }
-
-    .nav-logo {
+    .flyready-nav .nav-logo {
         display: flex;
         align-items: center;
         gap: 10px;
         text-decoration: none;
         font-weight: 700;
-        font-size: 20px;
+        font-size: 18px;
         color: var(--text-primary);
+        flex-shrink: 0;
     }
 
-    .nav-logo-icon {
-        width: 36px;
-        height: 36px;
+    .flyready-nav .logo-icon {
+        width: 34px;
+        height: 34px;
         background: linear-gradient(135deg, #2563EB, #7C3AED);
-        border-radius: 10px;
+        border-radius: 9px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 20px;
+        font-size: 18px;
+        font-weight: 800;
         color: white;
     }
 
-    .nav-links {
+    .flyready-nav .nav-links {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 4px;
+        flex: 1;
     }
 
-    .nav-link {
+    .flyready-nav .nav-link {
         padding: 8px 16px;
         border-radius: 8px;
         text-decoration: none;
@@ -155,17 +117,112 @@ def get_simple_css():
         transition: all 0.2s ease;
     }
 
-    .nav-link:hover {
+    .flyready-nav .nav-link:hover {
         background: var(--bg-secondary);
         color: var(--text-primary);
     }
 
-    .nav-link.active {
+    .flyready-nav .nav-link.active {
         background: rgba(37, 99, 235, 0.1);
         color: var(--primary);
+        font-weight: 600;
     }
 
-    /* Page Header */
+    .flyready-nav .nav-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-left: auto;
+        flex-shrink: 0;
+    }
+
+    .flyready-nav .nav-btn {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .flyready-nav .nav-btn.ghost {
+        color: #475569;
+    }
+
+    .flyready-nav .nav-btn.ghost:hover {
+        color: #0F172A;
+        background: #F1F5F9;
+    }
+
+    .flyready-nav .nav-btn.primary {
+        background: linear-gradient(135deg, #2563EB, #1D4ED8);
+        color: #ffffff !important;
+        font-weight: 600;
+        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+    }
+
+    .flyready-nav .nav-btn.primary:hover {
+        background: linear-gradient(135deg, #1D4ED8, #1e40af);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+        transform: translateY(-1px);
+    }
+
+    /* ========== Sub Navigation Bar ========== */
+    .sub-nav {
+        position: fixed;
+        top: 60px;
+        left: 0;
+        right: 0;
+        height: 44px;
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border);
+        z-index: 9998;
+        display: flex;
+        align-items: center;
+        padding: 0 32px;
+        gap: 16px;
+        animation: slideDown 0.2s ease;
+    }
+
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .sub-nav .sub-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--primary);
+        padding: 4px 10px;
+        background: rgba(37, 99, 235, 0.1);
+        border-radius: 6px;
+        margin-right: 8px;
+    }
+
+    .sub-nav .sub-link {
+        padding: 6px 12px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        transition: all 0.15s ease;
+    }
+
+    .sub-nav .sub-link:hover {
+        background: white;
+        color: var(--text-primary);
+    }
+
+    .sub-nav .sub-link.active {
+        background: white;
+        color: var(--primary);
+        font-weight: 600;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    /* ========== Page Styles ========== */
     .page-header {
         margin-bottom: 24px;
         padding-bottom: 16px;
@@ -184,23 +241,65 @@ def get_simple_css():
         border: 1px solid var(--border) !important;
         border-radius: 12px !important;
         background: white !important;
+        transition: all 0.3s ease !important;
+    }
+
+    .stExpander:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.08) !important;
     }
 
     /* Buttons */
     .stButton > button {
-        border-radius: 8px !important;
-        font-weight: 500 !important;
-        transition: all 0.2s ease !important;
+        border-radius: 10px !important;
+        font-weight: 600 !important;
+        transition: all 0.25s ease !important;
+        padding: 0.6rem 1.2rem !important;
     }
 
     .stButton > button[kind="primary"] {
         background: linear-gradient(135deg, #2563EB, #1D4ED8) !important;
         border: none !important;
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+    }
+
+    .stButton > button[kind="primary"] p,
+    .stButton > button[kind="primary"] span,
+    .stButton > button[kind="primary"] div {
+        color: #ffffff !important;
     }
 
     .stButton > button[kind="primary"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.45) !important;
+        background: linear-gradient(135deg, #1D4ED8, #1e40af) !important;
+    }
+
+    .stButton > button[kind="secondary"] {
+        background: #f1f5f9 !important;
+        border: 1px solid #e2e8f0 !important;
+        color: #1e293b !important;
+        font-weight: 600 !important;
+    }
+
+    .stButton > button[kind="secondary"]:hover {
+        background: #e2e8f0 !important;
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+    }
+
+    .stButton > button:not([kind]) {
+        background: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        color: #334155 !important;
+    }
+
+    .stButton > button:not([kind]):hover {
+        background: #f8fafc !important;
+        border-color: #cbd5e1 !important;
     }
 
     /* Tabs */
@@ -224,18 +323,151 @@ def get_simple_css():
         border: 1px solid var(--border) !important;
     }
 
-    /* Metrics */
+    .stTextInput > div > div > input:focus,
+    .stTextArea > div > div > textarea:focus {
+        border-color: var(--primary) !important;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+    }
+
+    /* ========== Animations ========== */
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @keyframes slideInRight {
+        from { opacity: 0; transform: translateX(20px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.02); }
+    }
+
+    @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+    }
+
+    .main .block-container {
+        animation: fadeIn 0.4s ease;
+    }
+
+    /* Metric Cards */
     [data-testid="stMetric"] {
+        animation: fadeInUp 0.5s ease;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         background: var(--bg-secondary);
         padding: 16px;
         border-radius: 12px;
         border: 1px solid var(--border);
     }
 
-    /* Progress bar */
+    [data-testid="stMetric"]:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        border-color: var(--primary);
+    }
+
+    /* Expander Cards */
+    .stExpander {
+        animation: fadeInUp 0.4s ease;
+    }
+
+    /* Success/Error/Warning Messages */
+    .stSuccess, .stError, .stWarning, .stInfo {
+        animation: slideInRight 0.3s ease;
+        border-radius: 10px !important;
+    }
+
+    /* Form Inputs Focus Animation */
+    .stTextInput > div > div > input,
+    .stTextArea > div > div > textarea,
+    .stSelectbox > div > div {
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .stTextInput > div > div > input:focus,
+    .stTextArea > div > div > textarea:focus {
+        transform: scale(1.01);
+    }
+
+    /* Tab Animation */
+    .stTabs [data-baseweb="tab-panel"] {
+        animation: fadeIn 0.3s ease;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        transition: all 0.2s ease;
+    }
+
+    .stTabs [data-baseweb="tab"]:hover {
+        transform: translateY(-1px);
+    }
+
+    /* Progress Bar */
     .stProgress > div > div > div {
         background: linear-gradient(90deg, #2563EB, #7C3AED) !important;
+        animation: shimmer 2s infinite linear;
+        background-size: 200% 100%;
     }
+
+    /* Spinner/Loading */
+    .stSpinner > div {
+        border-color: var(--primary) transparent transparent transparent !important;
+    }
+
+    /* Data Frames and Tables */
+    .stDataFrame {
+        animation: fadeIn 0.4s ease;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    /* Image hover effect */
+    .stImage {
+        transition: all 0.3s ease;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .stImage:hover {
+        transform: scale(1.02);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+
+    /* Download Button */
+    .stDownloadButton > button {
+        background: linear-gradient(135deg, #059669, #10b981) !important;
+        color: white !important;
+        border: none !important;
+    }
+
+    .stDownloadButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4) !important;
+    }
+
+    /* Checkbox and Radio */
+    .stCheckbox, .stRadio {
+        transition: all 0.2s ease;
+    }
+
+    .stCheckbox:hover, .stRadio:hover {
+        transform: translateX(2px);
+    }
+
+    /* Columns Animation - staggered */
+    [data-testid="column"]:nth-child(1) { animation: fadeInUp 0.4s ease 0s both; }
+    [data-testid="column"]:nth-child(2) { animation: fadeInUp 0.4s ease 0.1s both; }
+    [data-testid="column"]:nth-child(3) { animation: fadeInUp 0.4s ease 0.2s both; }
+    [data-testid="column"]:nth-child(4) { animation: fadeInUp 0.4s ease 0.3s both; }
 
     /* Footer */
     .footer {
@@ -245,46 +477,74 @@ def get_simple_css():
         text-align: center;
         color: var(--text-secondary);
         font-size: 13px;
+        animation: fadeIn 0.5s ease 0.3s both;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 1024px) {
+        .nav-container {
+            padding: 0 16px;
+        }
+        .nav-dropdown-menu {
+            min-width: 200px;
+        }
+        .nav-btn-primary {
+            padding: 8px 12px;
+            font-size: 12px;
+        }
     }
     </style>
     """
 
 
 def render_navbar(current_page: str = ""):
-    """Render simple navigation bar with login button."""
+    """Render navigation using Streamlit native components for reliable dropdown."""
 
-    nav_items = [
-        ("홈", "/", "home"),
-        ("면접연습", "/모의면접", "모의면접"),
-        ("자소서", "/자소서첨삭", "자소서첨삭"),
-        ("퀴즈", "/항공사퀴즈", "항공사퀴즈"),
-        ("채용정보", "/채용정보", "채용정보"),
-        ("학습관리", "/진도관리", "진도관리"),
-    ]
+    # Navigation structure
+    nav_cats = {
+        "면접연습": [("AI 모의면접", "모의면접"), ("롤플레잉", "롤플레잉"), ("영어면접", "영어면접"), ("토론면접", "토론면접"), ("실전연습", "실전연습")],
+        "준비도구": [("자소서 첨삭", "자소서첨삭"), ("자소서 질문", "자소서기반질문"), ("이미지메이킹", "이미지메이킹"), ("기내방송", "기내방송연습"), ("표정연습", "표정연습")],
+        "학습정보": [("항공상식 퀴즈", "항공사퀴즈"), ("면접 꿀팁", "면접꿀팁"), ("항공사 가이드", "항공사가이드"), ("기업분석", "기업분석"), ("합격자 DB", "합격자DB")],
+        "학습관리": [("진도관리", "진도관리"), ("성장그래프", "성장그래프"), ("채용정보", "채용정보"), ("D-Day", "D-Day캘린더")],
+    }
 
-    links_html = ""
-    for label, href, page_id in nav_items:
-        active_class = "active" if current_page == page_id else ""
-        links_html += f'<a href="{href}" target="_self" class="nav-link {active_class}">{label}</a>'
+    # Find active category
+    active_cat = ""
+    for cat, items in nav_cats.items():
+        for _, page_id in items:
+            if current_page == page_id:
+                active_cat = cat
+                break
 
-    navbar_html = f"""
-    <div class="nav-container">
-        <div class="nav-inner">
-            <a href="/" target="_self" class="nav-logo">
-                <div class="nav-logo-icon">F</div>
-                <span>FlyReady Lab</span>
-            </a>
-            <nav class="nav-links">
-                {links_html}
-            </nav>
-            <div class="nav-right">
-                <span class="nav-btn" style="background: #10b981; color: white; font-weight: 600;">Beta Test</span>
-            </div>
-        </div>
-    </div>
-    """
+    # Build links HTML
+    home_active = "active" if current_page == "home" else ""
+    links_html = f'<a href="/" target="_self" class="nav-link {home_active}">홈</a>'
+
+    for cat, items in nav_cats.items():
+        cat_active = "active" if cat == active_cat else ""
+        first_title, first_page = items[0]
+        links_html += f'<a href="/{first_page}" target="_self" class="nav-link {cat_active}">{cat}</a>'
+
+    navbar_html = f'''<div class="flyready-nav">
+<a href="/" target="_self" class="nav-logo"><div class="logo-icon">F</div><span>FlyReady Lab</span></a>
+<div class="nav-links">{links_html}</div>
+<div class="nav-right">
+<span class="nav-btn" style="background: #10b981; color: white; font-weight: 600;">Beta Test</span>
+</div>
+</div>'''
 
     st.markdown(navbar_html, unsafe_allow_html=True)
+
+    # Show sub-navigation for active category
+    if active_cat and active_cat in nav_cats:
+        items = nav_cats[active_cat]
+        sub_links = ""
+        for title, page_id in items:
+            item_active = "active" if current_page == page_id else ""
+            sub_links += f'<a href="/{page_id}" target="_self" class="sub-link {item_active}">{title}</a>'
+
+        sub_nav_html = f'<div class="sub-nav"><span class="sub-label">{active_cat}</span>{sub_links}</div>'
+        st.markdown(sub_nav_html, unsafe_allow_html=True)
 
 
 def render_page_header(title: str):
@@ -306,15 +566,8 @@ def render_footer():
 
 
 def render_sidebar(current_page: str = ""):
-    """Render enterprise-grade navigation.
-
-    Args:
-        current_page: Current page identifier for highlighting
-    """
-    # Apply simple CSS
+    """Render enterprise-grade navigation."""
     st.markdown(get_simple_css(), unsafe_allow_html=True)
-
-    # Render navigation bar
     render_navbar(current_page)
 
 
@@ -324,25 +577,14 @@ def init_page(
     current_page: str = "",
     wide_layout: bool = True
 ):
-    """Initialize page with enterprise layout.
-
-    Args:
-        title: Page title displayed in header
-        page_title: Browser tab title (defaults to "FlyReady Lab - {title}")
-        current_page: Current page identifier for nav highlighting
-        wide_layout: Use wide layout (True) or centered (False)
-    """
+    """Initialize page with enterprise layout."""
     st.set_page_config(
         page_title=page_title or f"FlyReady Lab - {title}",
         page_icon="✈",
         layout="wide" if wide_layout else "centered",
         initial_sidebar_state="collapsed"
     )
-
-    # Apply layout and render navbar
     render_sidebar(current_page)
-
-    # Page header
     render_page_header(title)
 
 

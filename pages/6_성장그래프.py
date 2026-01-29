@@ -10,6 +10,9 @@ import streamlit as st
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from logging_config import get_logger
+logger = get_logger(__name__)
+
 # 롤플레잉 시나리오
 try:
     from roleplay_scenarios import SCENARIOS as RP_SCENARIOS
@@ -25,14 +28,20 @@ try:
 except ImportError:
     GROWTH_REPORT_AVAILABLE = False
 
-from sidebar_common import render_sidebar
+from sidebar_common import init_page, end_page
 
-st.set_page_config(
-    page_title="성장 그래프",
-    page_icon="📈",
-    layout="wide"
+# 공용 유틸리티 (Stage 2)
+try:
+    from shared_utils import get_api_key, load_json, save_json
+except ImportError:
+    pass
+
+# Initialize page with new layout
+init_page(
+    title="성장 그래프",
+    current_page="성장그래프",
+    wide_layout=True
 )
-render_sidebar("성장그래프")
 
 
 
@@ -52,8 +61,8 @@ def load_json(filepath, default):
         try:
             with open(filepath, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"JSON 로드 실패 ({filepath}): {e}")
     return default
 
 
@@ -62,7 +71,8 @@ def save_json(filepath, data):
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
         return True
-    except:
+    except Exception as e:
+        logger.warning(f"JSON 저장 실패 ({filepath}): {e}")
         return False
 
 
@@ -212,8 +222,9 @@ def get_weekly_comparison():
                 last_week["count"] += 1
                 if s["score"] > 0:
                     last_week["scores"].append(s["score"])
-        except:
-            pass
+        except (ValueError, KeyError, TypeError) as e:
+            logger.warning(f"주간 통계 처리 중 데이터 오류: {e}")
+            continue
 
     this_avg = sum(this_week["scores"]) / len(this_week["scores"]) if this_week["scores"] else 0
     last_avg = sum(last_week["scores"]) / len(last_week["scores"]) if last_week["scores"] else 0
@@ -510,7 +521,7 @@ st.markdown("""
 # UI
 # =====================
 
-st.title("📈 성장 그래프")
+st.title("성장 그래프")
 st.caption("나의 면접 준비 현황을 한눈에 확인하세요")
 
 # 데이터 로드
@@ -523,7 +534,7 @@ heatmap_data = get_heatmap_data()
 goals_data = load_json(GOALS_FILE, {"weekly_goal": 10, "score_goal": 80})
 
 # ========== 핵심 지표 카드 ==========
-st.markdown("### 📊 나의 학습 현황")
+st.markdown("### 나의 학습 현황")
 
 col1, col2, col3, col4 = st.columns(4)
 
@@ -550,7 +561,7 @@ with col2:
     """, unsafe_allow_html=True)
 
 with col3:
-    fire = "🔥" if streak >= 3 else ""
+    fire = "" if streak >= 3 else ""
     st.markdown(f"""
     <div class="stat-card orange">
         <div class="stat-value">{streak}{fire}</div>
@@ -575,7 +586,7 @@ left_col, right_col = st.columns([2, 1])
 
 with left_col:
     # 점수 추이 그래프
-    st.markdown("### 📈 점수 추이")
+    st.markdown("### 점수 추이")
 
     # 필터
     filter_col1, filter_col2 = st.columns(2)
@@ -684,7 +695,7 @@ with left_col:
     st.markdown("---")
 
     # 학습 캘린더 히트맵
-    st.markdown("### 📅 학습 캘린더")
+    st.markdown("### 학습 캘린더")
 
     # 히트맵 그리기
     heatmap_html = '<div class="heatmap-container">'
@@ -730,7 +741,7 @@ with left_col:
 
 with right_col:
     # AI 인사이트
-    st.markdown("### 💡 오늘의 조언")
+    st.markdown("### 오늘의 조언")
 
     insights = generate_ai_insights(all_scores, skill_scores, weekly_comp)
 
@@ -746,7 +757,7 @@ with right_col:
     st.markdown("---")
 
     # 주간 목표
-    st.markdown("### 🎯 주간 목표")
+    st.markdown("### 주간 목표")
 
     weekly_goal = goals_data.get("weekly_goal", 10)
     current_week = weekly_comp["this_week"]["count"]
@@ -760,11 +771,11 @@ with right_col:
     """, unsafe_allow_html=True)
 
     if progress_pct >= 100:
-        st.success("🎉 목표 달성!")
+        st.success("목표 달성!")
     elif progress_pct >= 70:
-        st.info(f"💪 {weekly_goal - current_week}회 더!")
+        st.info(f" {weekly_goal - current_week}회 더!")
     else:
-        st.warning(f"📚 {weekly_goal - current_week}회 남음")
+        st.warning(f" {weekly_goal - current_week}회 남음")
 
     # 목표 설정
     with st.expander("목표 수정"):
@@ -778,7 +789,7 @@ with right_col:
 st.markdown("---")
 
 # ========== 스킬 분석 ==========
-st.markdown("### 🎯 내가 잘하는 것 / 더 연습할 것")
+st.markdown("### 내가 잘하는 것 / 더 연습할 것")
 
 if skill_scores:
     skill_col1, skill_col2 = st.columns([1, 1])
@@ -829,13 +840,13 @@ if skill_scores:
 
         for skill, score in sorted_skills:
             if score >= 85:
-                icon = "🟢"
+                icon = ""
                 status = "아주 잘하고 있어요!"
             elif score >= 70:
-                icon = "🟡"
+                icon = ""
                 status = "괜찮아요, 조금만 더!"
             else:
-                icon = "🔴"
+                icon = ""
                 status = "집중 연습 필요"
 
             st.markdown(f"{icon} **{skill}**: {score:.0f}점 _{status}_")
@@ -845,16 +856,16 @@ if skill_scores:
             st.markdown("---")
             strongest = sorted_skills[0]
             weakest = sorted_skills[-1]
-            st.success(f"💪 가장 잘하는 것: **{strongest[0]}** ({strongest[1]:.0f}점)")
+            st.success(f" 가장 잘하는 것: **{strongest[0]}** ({strongest[1]:.0f}점)")
             if weakest[1] < 70:
-                st.warning(f"📚 더 연습하면 좋을 것: **{weakest[0]}** ({weakest[1]:.0f}점)")
+                st.warning(f" 더 연습하면 좋을 것: **{weakest[0]}** ({weakest[1]:.0f}점)")
 else:
     st.info("연습을 더 하면 내가 뭘 잘하고, 뭘 더 연습해야 하는지 분석해드려요!")
 
 st.markdown("---")
 
 # ========== 유형별 현황 ==========
-st.markdown("### 📋 유형별 현황")
+st.markdown("### 유형별 현황")
 
 type_stats = defaultdict(lambda: {"count": 0, "scores": [], "recent": None})
 for s in all_scores:
@@ -868,11 +879,11 @@ if type_stats:
     type_cols = st.columns(min(len(type_stats), 4))
 
     type_icons = {
-        "롤플레잉": "🎭",
-        "영어면접": "🌍",
-        "모의면접": "🎤",
-        "토론면접": "💬",
-        "기타": "📝"
+        "롤플레잉": "",
+        "영어면접": "",
+        "모의면접": "",
+        "토론면접": "",
+        "기타": ""
     }
 
     for idx, (type_name, data) in enumerate(type_stats.items()):
@@ -880,7 +891,7 @@ if type_stats:
             count = data["count"]
             scores = data["scores"]
             avg = sum(scores) / len(scores) if scores else 0
-            icon = type_icons.get(type_name, "📝")
+            icon = type_icons.get(type_name, "")
 
             # 상태 색상
             if avg >= 80:
@@ -913,7 +924,7 @@ else:
 st.markdown("---")
 
 # ========== 최근 기록 ==========
-st.markdown("### 📜 최근 기록")
+st.markdown("### 최근 기록")
 
 if all_scores:
     recent_records = list(reversed(all_scores[-15:]))
@@ -939,7 +950,7 @@ if all_scores:
             score_color = "#6b7280"
             score_bg = "#f9fafb"
 
-        type_icon = {"롤플레잉": "🎭", "영어면접": "🌍", "모의면접": "🎤", "토론면접": "💬"}.get(type_name, "📝")
+        type_icon = {"롤플레잉": "", "영어면접": "", "모의면접": "", "토론면접": ""}.get(type_name, "")
 
         st.markdown(f"""
         <div class="record-row">
@@ -981,7 +992,7 @@ with report_col1:
             filename = get_growth_report_filename()
 
             st.download_button(
-                label="📥 성장 리포트 (PDF)",
+                label= " 성장 리포트 (PDF)",
                 data=pdf_bytes,
                 file_name=filename,
                 mime="application/pdf",
@@ -991,7 +1002,7 @@ with report_col1:
         except Exception as e:
             st.error(f"PDF 생성 오류: {e}")
     else:
-        st.button("📥 성장 리포트 (PDF)", disabled=True, use_container_width=True)
+        st.button("성장 리포트 (PDF)", disabled=True, use_container_width=True)
         st.caption("연습 기록이 있어야 다운로드 가능합니다")
 
 with report_col2:
@@ -1009,27 +1020,27 @@ with report_col2:
         csv_data = output.getvalue()
 
         st.download_button(
-            label="📊 데이터 내보내기 (CSV)",
+            label= " 데이터 내보내기 (CSV)",
             data=csv_data,
             file_name=f"학습기록_{datetime.now().strftime('%Y%m%d')}.csv",
             mime="text/csv",
             use_container_width=True
         )
     else:
-        st.button("📊 데이터 내보내기 (CSV)", disabled=True, use_container_width=True)
+        st.button("데이터 내보내기 (CSV)", disabled=True, use_container_width=True)
 
 st.markdown("---")
 
 # ========== 빠른 시작 ==========
-st.markdown("### ⚡ 바로 연습하기")
+st.markdown("### 바로 연습하기")
 
 quick_cols = st.columns(4)
 
 with quick_cols[0]:
-    st.page_link("pages/1_롤플레잉.py", label="🎭 롤플레잉", use_container_width=True)
+    st.page_link("pages/1_롤플레잉.py", label= " 롤플레잉", use_container_width=True)
 with quick_cols[1]:
-    st.page_link("pages/2_영어면접.py", label="🌍 영어면접", use_container_width=True)
+    st.page_link("pages/2_영어면접.py", label= " 영어면접", use_container_width=True)
 with quick_cols[2]:
-    st.page_link("pages/4_모의면접.py", label="🎤 모의면접", use_container_width=True)
+    st.page_link("pages/4_모의면접.py", label= " 모의면접", use_container_width=True)
 with quick_cols[3]:
-    st.page_link("pages/5_토론면접.py", label="💬 토론면접", use_container_width=True)
+    st.page_link("pages/5_토론면접.py", label= " 토론면접", use_container_width=True)

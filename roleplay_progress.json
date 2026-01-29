@@ -3,15 +3,51 @@
     "mask_refuse",
     "foreign_object_food",
     "seat_change_full",
-    "snoring_complaint"
+    "snoring_complaint",
+    "smoking_lavatory"
   ],
   "scores": {
     "mask_refuse": 100,
     "foreign_object_food": 100,
     "seat_change_full": 100,
-    "snoring_complaint": 100
+    "snoring_complaint": 100,
+    "smoking_lavatory": 100
   },
   "history": [
+    {
+      "scenario_id": "smoking_lavatory",
+      "score": 100,
+      "timestamp": "2026-01-23T15:01:00.210674",
+      "conversation": [
+        {
+          "role": "crew",
+          "content": "네 손님 화장실에서 등등색을 좀 확인해 보겠습니다"
+        },
+        {
+          "role": "passenger",
+          "content": "이 정도 요청은 들어줘야 하는 거 아닙니까? 빨리 처리해 주세요.",
+          "level": 0
+        },
+        {
+          "role": "crew",
+          "content": "네 현재 빨리 들어가서 보고 있습니다 알려주셔서 감사합니다"
+        },
+        {
+          "role": "passenger",
+          "content": "고객 서비스가 이게 뭡니까? 이렇게 중요한 문제를 방치하면 안 됩니다!",
+          "level": 0
+        },
+        {
+          "role": "crew",
+          "content": "네 손님 조;ㅅㅇㅎ"
+        },
+        {
+          "role": "passenger",
+          "content": "아니 근데요, 이렇게 답답한 상황에서 뭐가 조치되고 있는지 좀 제대로 말씀해 주세요.",
+          "level": 1
+        }
+      ]
+    },
     {
       "scenario_id": "seat_change_full",
       "score": 100,

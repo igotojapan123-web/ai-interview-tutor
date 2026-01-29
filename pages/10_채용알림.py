@@ -7,10 +7,15 @@ import json
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from sidebar_common import render_sidebar
+from sidebar_common import init_page, end_page
+from logging_config import get_logger
+logger = get_logger(__name__)
 
-st.set_page_config(page_title="채용 일정 알림", page_icon="📅", layout="wide")
-render_sidebar("채용알림")
+init_page(
+    title="채용 일정 알림",
+    current_page="채용알림",
+    wide_layout=True
+)
 
 
 
@@ -383,8 +388,8 @@ def load_hiring_data():
 
                     result.append(hire)
                 return result
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to load hiring data: {e}")
     return []
 
 
@@ -403,7 +408,8 @@ def calculate_dday(date_str):
         today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         diff = (target - today).days
         return diff
-    except:
+    except Exception as e:
+        logger.debug(f"Failed to parse date: {date_str}, error: {e}")
         return None
 
 
@@ -417,7 +423,8 @@ def get_hiring_status(hire):
     try:
         start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date() if start_date_str else None
         end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date() if end_date_str else None
-    except:
+    except Exception as e:
+        logger.debug(f"Failed to parse hiring status date: {e}")
         return "마감"  # 날짜 파싱 실패시 마감 처리
 
     if not end_date:
@@ -449,7 +456,7 @@ if "selected_filter" not in st.session_state:
 # ----------------------------
 # 페이지 제목
 # ----------------------------
-st.title("📅 항공사 채용 일정 알림")
+st.title("항공사 채용 일정 알림")
 st.caption("2026년 항공사 객실승무원 채용 정보 | 사실 기반 정보")
 
 # ----------------------------
@@ -467,53 +474,53 @@ upcoming_count = len(upcoming_list)
 closed_count = len(closed_list)
 total_count = len(ALL_HIRING)
 
-st.markdown("### 📊 채용 현황 (클릭하여 필터링)")
+st.markdown("### 채용 현황 (클릭하여 필터링)")
 
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    if st.button(f"🟢 진행중\n**{ongoing_count}건**",
+    if st.button(f" 진행중\n**{ongoing_count}건**",
                  use_container_width=True,
                  type="primary" if st.session_state.selected_filter == "진행중" else "secondary"):
         st.session_state.selected_filter = "진행중"
         st.rerun()
 
 with col2:
-    if st.button(f"🟡 예정\n**{upcoming_count}건**",
+    if st.button(f" 예정\n**{upcoming_count}건**",
                  use_container_width=True,
                  type="primary" if st.session_state.selected_filter == "예정" else "secondary"):
         st.session_state.selected_filter = "예정"
         st.rerun()
 
 with col3:
-    if st.button(f"⚫ 마감\n**{closed_count}건**",
+    if st.button(f" 마감\n**{closed_count}건**",
                  use_container_width=True,
                  type="primary" if st.session_state.selected_filter == "마감" else "secondary"):
         st.session_state.selected_filter = "마감"
         st.rerun()
 
 with col4:
-    if st.button(f"📋 전체\n**{total_count}건**",
+    if st.button(f" 전체\n**{total_count}건**",
                  use_container_width=True,
                  type="primary" if st.session_state.selected_filter == "전체" else "secondary"):
         st.session_state.selected_filter = "전체"
         st.rerun()
 
-st.caption(f"🔍 현재 필터: **{st.session_state.selected_filter}** | 상태는 마감일 기준 자동 계산됩니다")
+st.caption(f" 현재 필터: **{st.session_state.selected_filter}** | 상태는 마감일 기준 자동 계산됩니다")
 
 # ----------------------------
 # 긴급 알림 배너 (진행중인 채용)
 # ----------------------------
 if ongoing_list:
     st.markdown("---")
-    st.markdown("### 🚨 현재 진행중인 채용")
+    st.markdown("### 현재 진행중인 채용")
 
     for hire in ongoing_list:
         dday = calculate_dday(hire.get("end_date"))
 
         if dday is not None and dday <= 3:
             banner_class = "alert-banner-urgent"
-            urgent_text = "⚠️ 마감 임박!"
+            urgent_text = "️ 마감 임박!"
         else:
             banner_class = ""
             urgent_text = ""
@@ -522,7 +529,7 @@ if ongoing_list:
 
         st.markdown(f"""
         <div class="alert-banner {banner_class}">
-            <span style="font-size: 24px; margin-right: 12px;">✈️</span>
+            <span style="font-size: 24px; margin-right: 12px;">️</span>
             <div style="flex: 1;">
                 <strong>{hire['airline']}</strong> {hire['position']}
                 <br><span style="font-size: 14px; opacity: 0.9;">{hire['period']} | {hire['expected_count']} 모집</span>
@@ -537,7 +544,7 @@ if ongoing_list:
         # 바로 지원 버튼
         url = AIRLINE_CAREER_URLS.get(hire['airline'], "")
         if url:
-            st.link_button(f"🔗 {hire['airline']} 채용 페이지 바로가기", url, use_container_width=True)
+            st.link_button(f" {hire['airline']} 채용 페이지 바로가기", url, use_container_width=True)
 
         st.markdown("")
 
@@ -554,8 +561,8 @@ def load_subscribers():
         try:
             with open(SUBSCRIBERS_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to load subscribers: {e}")
     return {"subscribers": [], "total_count": 0}
 
 def save_subscribers(data):
@@ -613,8 +620,8 @@ def load_applications():
         try:
             with open(APPLICATION_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to load applications: {e}")
     return {"applications": []}
 
 def save_applications(data):
@@ -742,19 +749,19 @@ APPLICATION_STAGES = ["서류 지원", "서류 합격", "1차 면접", "2차 면
 # 탭 구성 (6개 탭)
 # ----------------------------
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "📋 채용 일정",
-    "📊 채용 프로세스",
-    "📈 채용 패턴",
-    "✈️ 내 지원현황",
-    "🔔 알림 구독",
-    "🔗 채용 페이지"
+ " 채용 일정",
+ " 채용 프로세스",
+ " 채용 패턴",
+ "️ 내 지원현황",
+ " 알림 구독",
+ " 채용 페이지"
 ])
 
 # ----------------------------
 # 탭 1: 채용 일정
 # ----------------------------
 with tab1:
-    st.subheader("📋 2026년 채용 일정")
+    st.subheader(" 2026년 채용 일정")
 
     # 필터 적용 (자동 계산된 상태 기반)
     if st.session_state.selected_filter == "전체":
@@ -778,13 +785,13 @@ with tab1:
 
         # 상태별 스타일
         if hire["status"] == "진행중":
-            status_emoji = "🟢"
+            status_emoji = ""
             card_style = "ongoing"
         elif hire["status"] == "예정":
-            status_emoji = "🟡"
+            status_emoji = ""
             card_style = "upcoming"
         else:
-            status_emoji = "⚫"
+            status_emoji = ""
             card_style = "closed"
 
         with st.container():
@@ -803,10 +810,10 @@ with tab1:
             col1, col2 = st.columns([2, 1])
 
             with col1:
-                st.markdown(f"📆 **{hire['period']}**")
-                st.markdown(f"👥 **모집인원:** {hire['expected_count']}")
-                st.info(f"💡 {hire['note']}")
-                st.caption(f"📌 출처: {hire.get('source', '공식 채용사이트')}")
+                st.markdown(f" **{hire['period']}**")
+                st.markdown(f" **모집인원:** {hire['expected_count']}")
+                st.info(f" {hire['note']}")
+                st.caption(f" 출처: {hire.get('source', '공식 채용사이트')}")
 
             with col2:
                 # D-Day 표시
@@ -815,14 +822,14 @@ with tab1:
                         if dday > 0:
                             st.metric("마감까지", f"D-{dday}")
                         elif dday == 0:
-                            st.error("🚨 오늘 마감!")
+                            st.error("오늘 마감!")
                         else:
                             st.warning("마감됨")
 
                     # 지원 버튼
                     url = AIRLINE_CAREER_URLS.get(airline, "")
                     if url:
-                        st.link_button("🔗 지원하기", url, use_container_width=True)
+                        st.link_button(" 지원하기", url, use_container_width=True)
                 elif hire["status"] == "예정":
                     start_dday = calculate_dday(hire.get("start_date"))
                     if start_dday is not None and start_dday > 0:
@@ -830,15 +837,15 @@ with tab1:
                     st.info("곧 시작됩니다!")
                     url = AIRLINE_CAREER_URLS.get(airline, "")
                     if url:
-                        st.link_button("📋 채용 페이지 확인", url, use_container_width=True)
+                        st.link_button(" 채용 페이지 확인", url, use_container_width=True)
                 else:
                     st.caption("다음 채용 공고를 기다려주세요")
                     url = AIRLINE_CAREER_URLS.get(airline, "")
                     if url:
-                        st.link_button("📋 채용 페이지 확인", url, use_container_width=True)
+                        st.link_button(" 채용 페이지 확인", url, use_container_width=True)
 
             # 자격요건 (확장)
-            with st.expander("📋 자격요건 & 전형절차"):
+            with st.expander("자격요건 & 전형절차"):
                 req_col1, req_col2 = st.columns(2)
 
                 with req_col1:
@@ -846,11 +853,11 @@ with tab1:
                     reqs = hire.get("requirements", {})
                     for key, val in reqs.items():
                         label = {
-                            "education": "📚 학력",
-                            "vision": "👁️ 시력",
-                            "english": "🌏 영어",
-                            "swimming": "🏊 수영",
-                            "etc": "📌 기타"
+                            "education": " 학력",
+                            "vision": "️ 시력",
+                            "english": " 영어",
+                            "swimming": " 수영",
+                            "etc": " 기타"
                         }.get(key, key)
                         st.caption(f"{label}: {val}")
 
@@ -858,7 +865,7 @@ with tab1:
                     st.markdown("**우대사항**")
                     preferred = hire.get("preferred", [])
                     for p in preferred:
-                        st.caption(f"✓ {p}")
+                        st.caption(f" {p}")
 
                     st.markdown("")
                     st.markdown("**전형절차**")
@@ -870,7 +877,7 @@ with tab1:
 # 탭 2: 채용 프로세스 (11개 전체 항공사)
 # ----------------------------
 with tab2:
-    st.subheader("📊 항공사별 채용 프로세스")
+    st.subheader(" 항공사별 채용 프로세스")
     st.caption("국내 11개 항공사 전체 정보")
 
     # 현재 진행중인 항공사 표시
@@ -883,7 +890,7 @@ with tab2:
     selected_airline = st.selectbox(
         "항공사 선택",
         airline_order,
-        format_func=lambda x: f"🟢 {x} (채용 진행중)" if x in ongoing_airlines else x
+        format_func=lambda x: f" {x} (채용 진행중)" if x in ongoing_airlines else x
     )
 
     # 선택한 항공사 정보 (AIRLINE_INFO에서 가져오기)
@@ -894,7 +901,7 @@ with tab2:
 
         col1, col2 = st.columns([3, 1])
         with col1:
-            st.markdown(f"### ✈️ {selected_airline}")
+            st.markdown(f"### ️ {selected_airline}")
             st.caption(f"{airline_type} | {airline_info.get('slogan', '')} | 거점: {airline_info.get('base', '')}")
         with col2:
             url = AIRLINE_CAREER_URLS.get(selected_airline, "")
@@ -903,12 +910,12 @@ with tab2:
 
         # 진행중인 채용 알림
         if selected_airline in ongoing_airlines:
-            st.success(f"🟢 **{selected_airline}** 현재 채용 진행중!")
+            st.success(f" **{selected_airline}** 현재 채용 진행중!")
 
         st.markdown("---")
 
         # 전형 절차 시각화
-        st.markdown("### 📈 전형 단계")
+        st.markdown("### 전형 단계")
 
         process_str = airline_info.get("process", "")
         if process_str:
@@ -927,7 +934,7 @@ with tab2:
         st.markdown("---")
 
         # 자격요건
-        st.markdown("### 📋 자격요건")
+        st.markdown("### 자격요건")
 
         col1, col2 = st.columns(2)
 
@@ -936,11 +943,11 @@ with tab2:
             reqs = airline_info.get("requirements", {})
             for key, val in reqs.items():
                 label = {
-                    "education": "📚 학력",
-                    "vision": "👁️ 시력",
-                    "english": "🌏 영어",
-                    "swimming": "🏊 수영",
-                    "etc": "📌 기타"
+                    "education": " 학력",
+                    "vision": "️ 시력",
+                    "english": " 영어",
+                    "swimming": " 수영",
+                    "etc": " 기타"
                 }.get(key, key)
                 st.info(f"{label}: {val}")
 
@@ -948,23 +955,23 @@ with tab2:
             st.markdown("**우대사항**")
             preferred = airline_info.get("preferred", [])
             for p in preferred:
-                st.success(f"✓ {p}")
+                st.success(f" {p}")
 
 # ----------------------------
 # 탭 3: 채용 패턴 분석
 # ----------------------------
 with tab3:
-    st.subheader("📈 항공사별 채용 패턴 분석")
+    st.subheader(" 항공사별 채용 패턴 분석")
     st.caption("과거 채용 실적 기반 예상 시기 | 참고용 정보")
 
     st.markdown("""
     <div style="background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
-        <strong>💡 참고사항:</strong> 채용 시기는 과거 패턴 기반 예상이며, 실제 일정은 항공사 공식 발표를 확인하세요.
+        <strong> 참고사항:</strong> 채용 시기는 과거 패턴 기반 예상이며, 실제 일정은 항공사 공식 발표를 확인하세요.
     </div>
     """, unsafe_allow_html=True)
 
     # 월별 채용 히트맵
-    st.markdown("### 📅 월별 채용 시즌 히트맵")
+    st.markdown("### 월별 채용 시즌 히트맵")
     st.markdown("각 항공사의 과거 채용 시기를 시각화합니다.")
 
     months = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"]
@@ -1012,7 +1019,7 @@ with tab3:
 
     # 상세 정보
     st.markdown("---")
-    st.markdown("### 📊 항공사별 상세 채용 정보")
+    st.markdown("### 항공사별 상세 채용 정보")
 
     pattern_airline = st.selectbox("항공사 선택", list(HIRING_PATTERNS.keys()), key="pattern_airline")
     p_data = HIRING_PATTERNS[pattern_airline]
@@ -1028,26 +1035,26 @@ with tab3:
         st.metric("다음 채용 예상", p_data["next_expected"].split(" (")[0])
         st.caption(f"최근 채용: {p_data['last_hiring']}")
 
-    st.info(f"💡 **핵심 팁:** {p_data['tips']}")
+    st.info(f" **핵심 팁:** {p_data['tips']}")
 
     # 경쟁률 추정
     st.markdown("---")
-    st.markdown("### 🎯 지원 전략 팁")
+    st.markdown("### 지원 전략 팁")
 
     st.markdown("""
     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
         <div style="background: #f0fdf4; border-radius: 12px; padding: 15px; text-align: center;">
-            <div style="font-size: 1.5rem;">🎯</div>
+            <div style="font-size: 1.5rem;"></div>
             <div style="font-weight: 700; font-size: 0.85rem; margin: 5px 0;">동시 지원</div>
             <div style="font-size: 0.75rem; color: #64748b;">2~3개 항공사에<br>동시 지원 추천</div>
         </div>
         <div style="background: #eff6ff; border-radius: 12px; padding: 15px; text-align: center;">
-            <div style="font-size: 1.5rem;">📅</div>
+            <div style="font-size: 1.5rem;"></div>
             <div style="font-weight: 700; font-size: 0.85rem; margin: 5px 0;">시즌 준비</div>
             <div style="font-size: 0.75rem; color: #64748b;">채용 시작 2개월 전부터<br>본격 준비 시작</div>
         </div>
         <div style="background: #fef2f2; border-radius: 12px; padding: 15px; text-align: center;">
-            <div style="font-size: 1.5rem;">🔄</div>
+            <div style="font-size: 1.5rem;"></div>
             <div style="font-weight: 700; font-size: 0.85rem; margin: 5px 0;">재지원</div>
             <div style="font-size: 0.75rem; color: #64748b;">불합격 후 다음 공채에<br>재지원 가능 (대부분)</div>
         </div>
@@ -1058,13 +1065,13 @@ with tab3:
 # 탭 4: 내 지원 현황
 # ----------------------------
 with tab4:
-    st.subheader("✈️ 내 지원 현황 관리")
+    st.subheader("️ 내 지원 현황 관리")
     st.caption("지원한 항공사와 진행 상태를 관리하세요")
 
     app_data = load_applications()
 
     # 지원 추가
-    with st.expander("➕ 새 지원 기록 추가", expanded=False):
+    with st.expander("새 지원 기록 추가", expanded=False):
         with st.form("add_application"):
             app_col1, app_col2 = st.columns(2)
             with app_col1:
@@ -1074,7 +1081,7 @@ with tab4:
                 app_stage = st.selectbox("현재 단계", APPLICATION_STAGES, key="app_stage")
                 app_note = st.text_input("메모 (선택)", placeholder="예: 자소서 제출 완료", key="app_note")
 
-            if st.form_submit_button("✅ 지원 기록 추가", use_container_width=True):
+            if st.form_submit_button(" 지원 기록 추가", use_container_width=True):
                 new_app = {
                     "id": f"app_{datetime.now().strftime('%Y%m%d%H%M%S')}",
                     "airline": app_airline,
@@ -1086,7 +1093,7 @@ with tab4:
                 }
                 app_data["applications"].append(new_app)
                 save_applications(app_data)
-                st.success(f"✅ {app_airline} 지원 기록이 추가되었습니다!")
+                st.success(f" {app_airline} 지원 기록이 추가되었습니다!")
                 st.rerun()
 
     # 현재 지원 현황
@@ -1095,7 +1102,7 @@ with tab4:
     finished_apps = [a for a in app_data["applications"] if a.get("stage") == "불합격" or a.get("stage") == "최종 합격"]
 
     if active_apps:
-        st.markdown("### 📋 진행 중인 지원")
+        st.markdown("### 진행 중인 지원")
 
         for app in active_apps:
             airline = app.get("airline", "")
@@ -1123,7 +1130,7 @@ with tab4:
             <div style="background: {stage_bg}; border-left: 4px solid {stage_color}; border-radius: 12px; padding: 15px 20px; margin-bottom: 10px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
-                        <div style="font-weight: 700; font-size: 1rem;">✈️ {airline}</div>
+                        <div style="font-weight: 700; font-size: 1rem;">️ {airline}</div>
                         <div style="font-size: 0.8rem; color: #64748b; margin-top: 3px;">지원일: {date} {("| " + note) if note else ""}</div>
                     </div>
                     <div style="background: {stage_color}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">{stage}</div>
@@ -1153,7 +1160,7 @@ with tab4:
                         save_applications(app_data)
                         st.rerun()
             with col_delete:
-                if st.button("🗑️ 삭제", key=f"del_{app['id']}"):
+                if st.button("️ 삭제", key=f"del_{app['id']}"):
                     app_data["applications"] = [a for a in app_data["applications"] if a["id"] != app["id"]]
                     save_applications(app_data)
                     st.rerun()
@@ -1164,15 +1171,15 @@ with tab4:
 
     # 완료/불합격 기록
     if finished_apps:
-        with st.expander(f"📂 완료된 지원 ({len(finished_apps)}건)"):
+        with st.expander(f" 완료된 지원 ({len(finished_apps)}건)"):
             for app in finished_apps:
-                result_icon = "🎉" if app.get("stage") == "최종 합격" else "😢"
+                result_icon = "" if app.get("stage") == "최종 합격" else ""
                 st.markdown(f"{result_icon} **{app.get('airline', '')}** - {app.get('stage', '')} ({app.get('date', '')})")
 
     # 요약 통계
     if app_data["applications"]:
         st.markdown("---")
-        st.markdown("### 📊 지원 요약")
+        st.markdown("### 지원 요약")
         total_apps = len(app_data["applications"])
         passed = len([a for a in app_data["applications"] if a.get("stage") == "최종 합격"])
         in_progress = len(active_apps)
@@ -1189,51 +1196,51 @@ with tab4:
 # 탭 6: 채용 페이지 바로가기 (11개 전체)
 # ----------------------------
 with tab6:
-    st.subheader("🔗 항공사 채용 페이지 바로가기")
+    st.subheader(" 항공사 채용 페이지 바로가기")
     st.caption("국내 11개 항공사 공식 채용 페이지")
 
-    st.info("📢 모든 링크는 실제 항공사 공식 채용 페이지로 연결됩니다.")
+    st.info("모든 링크는 실제 항공사 공식 채용 페이지로 연결됩니다.")
 
     # 현재 진행중인 항공사 확인
     ongoing_airlines = [h["airline"] for h in ALL_HIRING if h["status"] == "진행중"]
 
     # FSC (대형항공사)
-    st.markdown("### 🏛️ FSC (대형항공사)")
+    st.markdown("### ️ FSC (대형항공사)")
 
     fsc_col1, fsc_col2 = st.columns(2)
 
     with fsc_col1:
-        badge = "🟢 채용 진행중" if "대한항공" in ongoing_airlines else ""
+        badge = " 채용 진행중" if "대한항공" in ongoing_airlines else ""
         st.markdown(f"**대한항공** {badge}")
         st.caption("Excellence in Flight | 인천 거점")
-        st.link_button("🔗 koreanair.recruiter.co.kr",
+        st.link_button(" koreanair.recruiter.co.kr",
                       AIRLINE_CAREER_URLS["대한항공"],
                       use_container_width=True)
 
     with fsc_col2:
-        badge = "🟢 채용 진행중" if "아시아나항공" in ongoing_airlines else ""
+        badge = " 채용 진행중" if "아시아나항공" in ongoing_airlines else ""
         st.markdown(f"**아시아나항공** {badge}")
         st.caption("아름다운 사람들 | 인천 거점")
-        st.link_button("🔗 flyasiana.recruiter.co.kr",
+        st.link_button(" flyasiana.recruiter.co.kr",
                       AIRLINE_CAREER_URLS["아시아나항공"],
                       use_container_width=True)
 
     st.markdown("---")
 
     # HSC (하이브리드)
-    st.markdown("### 🌟 HSC (하이브리드)")
+    st.markdown("### HSC (하이브리드)")
 
-    badge = "🟢 채용 진행중" if "에어프레미아" in ongoing_airlines else ""
+    badge = " 채용 진행중" if "에어프레미아" in ongoing_airlines else ""
     st.markdown(f"**에어프레미아** {badge}")
     st.caption("New Way to Fly | 중장거리 노선 특화 | 인천 거점")
-    st.link_button("🔗 airpremia.career.greetinghr.com",
+    st.link_button(" airpremia.career.greetinghr.com",
                   AIRLINE_CAREER_URLS["에어프레미아"],
                   use_container_width=True)
 
     st.markdown("---")
 
     # LCC (저비용항공사) - 8개
-    st.markdown("### ✈️ LCC (저비용항공사)")
+    st.markdown("### ️ LCC (저비용항공사)")
 
     lcc_airlines = [
         ("진에어", "Fun, Young, Dynamic", "인천/부산"),
@@ -1253,36 +1260,36 @@ with tab6:
             if i + j < len(lcc_airlines):
                 airline, slogan, base = lcc_airlines[i + j]
                 with col:
-                    badge = "🟢" if airline in ongoing_airlines else ""
+                    badge = "" if airline in ongoing_airlines else ""
                     st.markdown(f"**{airline}** {badge}")
                     st.caption(f"{slogan} | {base}")
                     url = AIRLINE_CAREER_URLS.get(airline, "")
                     if url:
-                        st.link_button(f"🔗 채용 페이지", url, use_container_width=True)
+                        st.link_button(f" 채용 페이지", url, use_container_width=True)
 
 # ----------------------------
 # 탭 5: 알림 구독
 # ----------------------------
 with tab5:
-    st.subheader("🔔 채용 알림 구독")
+    st.subheader(" 채용 알림 구독")
 
     # 구독자 수 표시
     subscriber_count = get_subscriber_count()
 
     st.markdown(f"""
     <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 24px; border-radius: 16px; color: white; text-align: center; margin-bottom: 20px;">
-        <h2 style="margin: 0;">📬 {subscriber_count}명</h2>
+        <h2 style="margin: 0;"> {subscriber_count}명</h2>
         <p style="margin: 8px 0 0 0; opacity: 0.9;">이 채용 알림을 구독하고 있습니다</p>
     </div>
     """, unsafe_allow_html=True)
 
-    st.info("💡 **새로운 채용 공고가 등록되면 이메일로 알려드립니다!**")
+    st.info("**새로운 채용 공고가 등록되면 이메일로 알려드립니다!**")
 
     # 구독/구독해지 탭
-    sub_tab1, sub_tab2 = st.tabs(["✅ 구독 신청", "❌ 구독 해지"])
+    sub_tab1, sub_tab2 = st.tabs([" 구독 신청", " 구독 해지"])
 
     with sub_tab1:
-        st.markdown("### ✅ 채용 알림 구독 신청")
+        st.markdown("### 채용 알림 구독 신청")
 
         with st.form("subscribe_form"):
             col1, col2 = st.columns(2)
@@ -1313,7 +1320,7 @@ with tab5:
 
             agree = st.checkbox("개인정보 수집 및 이용에 동의합니다 (채용 알림 발송 목적)")
 
-            submitted = st.form_submit_button("🔔 구독 신청", type="primary", use_container_width=True)
+            submitted = st.form_submit_button(" 구독 신청", type="primary", use_container_width=True)
 
             if submitted:
                 if not sub_name or not sub_email:
@@ -1325,14 +1332,14 @@ with tab5:
                 else:
                     success, message = add_subscriber(sub_name, sub_email, sub_phone, selected_airlines)
                     if success:
-                        st.success(f"🎉 {message}")
+                        st.success(f" {message}")
                         st.balloons()
                         st.rerun()
                     else:
                         st.warning(message)
 
     with sub_tab2:
-        st.markdown("### ❌ 구독 해지")
+        st.markdown("### 구독 해지")
         st.caption("더 이상 알림을 받고 싶지 않으시면 이메일을 입력해주세요.")
 
         with st.form("unsubscribe_form"):
@@ -1354,14 +1361,14 @@ with tab5:
     st.markdown("---")
 
     # 알림 안내
-    st.markdown("### 📋 알림 안내")
+    st.markdown("### 알림 안내")
 
     col1, col2 = st.columns(2)
 
     with col1:
         st.markdown("""
         <div style="background: #f0fdf4; padding: 16px; border-radius: 12px; border-left: 4px solid #10b981;">
-            <h4 style="margin: 0 0 8px 0;">📧 이메일 알림</h4>
+            <h4 style="margin: 0 0 8px 0;"> 이메일 알림</h4>
             <p style="font-size: 14px; margin: 0; color: #666;">
             새로운 채용 공고가 등록되면<br/>
             이메일로 알려드립니다.
@@ -1372,7 +1379,7 @@ with tab5:
     with col2:
         st.markdown("""
         <div style="background: #fef3c7; padding: 16px; border-radius: 12px; border-left: 4px solid #f59e0b;">
-            <h4 style="margin: 0 0 8px 0;">💬 카카오톡 알림 (예정)</h4>
+            <h4 style="margin: 0 0 8px 0;"> 카카오톡 알림 (예정)</h4>
             <p style="font-size: 14px; margin: 0; color: #666;">
             연락처를 등록하시면<br/>
             카카오톡 알림도 받으실 수 있습니다.
@@ -1381,8 +1388,8 @@ with tab5:
         """, unsafe_allow_html=True)
 
     st.markdown("")
-    st.caption("💡 알림은 관리자가 새 채용 공고를 등록할 때 발송됩니다.")
-    st.caption("📌 스팸 메일함도 확인해주세요!")
+    st.caption(" 알림은 관리자가 새 채용 공고를 등록할 때 발송됩니다.")
+    st.caption(" 스팸 메일함도 확인해주세요!")
 
 # ----------------------------
 # 하단 정보
@@ -1391,8 +1398,8 @@ st.markdown("---")
 
 col1, col2 = st.columns(2)
 with col1:
-    st.caption("💡 채용 정보는 각 항공사 공식 채용 페이지에서 최종 확인하세요.")
-    st.caption("📅 본 페이지의 정보는 공식 발표 기준으로 작성되었습니다.")
+    st.caption(" 채용 정보는 각 항공사 공식 채용 페이지에서 최종 확인하세요.")
+    st.caption(" 본 페이지의 정보는 공식 발표 기준으로 작성되었습니다.")
 with col2:
     # JSON 파일에서 마지막 업데이트 날짜 가져오기
     last_updated = ""
@@ -1401,13 +1408,13 @@ with col2:
             with open(HIRING_DATA_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 last_updated = data.get("last_updated", "")
-        except:
-            pass
-    st.caption(f"🔄 최종 업데이트: {last_updated if last_updated else '알 수 없음'}")
-    st.caption("📌 출처: 각 항공사 공식 채용사이트")
+        except Exception as e:
+            logger.debug(f"Failed to read last_updated from hiring data: {e}")
+    st.caption(f" 최종 업데이트: {last_updated if last_updated else '알 수 없음'}")
+    st.caption(" 출처: 각 항공사 공식 채용사이트")
 
 # 소스 링크
-with st.expander("📚 정보 출처"):
+with st.expander("정보 출처"):
     st.markdown("""
     - [진에어 채용](https://jinair.recruiter.co.kr/) - 2026년 상반기 객실승무원 채용 공고
     - [파라타항공 채용](https://parataair.recruiter.co.kr/) - 2026년 상반기 4기 객실승무원 채용

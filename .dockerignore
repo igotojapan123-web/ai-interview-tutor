@@ -1,0 +1,109 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info
+.eggs
+dist
+build
+*.whl
+
+# Environment
+.env
+.env.*
+!.env.example
+.venv
+venv
+ENV
+.python-version
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*.sublime-*
+
+# Testing
+.pytest_cache
+.coverage
+htmlcov
+.tox
+.nox
+coverage.xml
+*.cover
+
+# Logs and temp files
+*.log
+logs/
+*.tmp
+*.temp
+*.cache
+
+# User data (sensitive)
+user_*.json
+data/user_*
+data/sessions/*
+data/uploads/*
+
+# Backup files
+*_backup.py
+*.bak
+*.backup
+
+# Documentation (except README)
+*.md
+!README.md
+docs/
+
+# Debug logs
+clova_debug_logs/
+debug/
+
+# Docker
+.docker
+docker-compose.override.yml
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.circleci/
+
+# Local development
+Makefile
+*.local
+.editorconfig
+
+# SSL certificates (never include real certs)
+nginx/ssl/*.pem
+nginx/ssl/*.key
+nginx/ssl/*.crt
+!nginx/ssl/.gitkeep
+
+# Database files
+*.sql
+!scripts/init-db.sql
+*.db
+*.sqlite
+
+# Monitoring data
+monitoring/data/
+prometheus-data/
+grafana-data/
+
+# Node modules (if any frontend)
+node_modules/
+package-lock.json
+yarn.lock
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp

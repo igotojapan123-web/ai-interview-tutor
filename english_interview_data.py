@@ -418,3 +418,40 @@ def get_questions_count() -> int:
         total += len(cat_data.get("questions", []))
     total += len(ADVANCED_QUESTIONS)
     return total
+
+
+def get_questions_fresh(category: str = None, count: int = 3) -> list:
+    """
+    영어면접 질문 선택 (중복 방지 적용)
+    - 이전에 나온 질문을 제외하고 새 질문만 선택
+    - 모든 질문이 소진되면 자동으로 리셋
+
+    Args:
+        category: 카테고리 키 (None이면 전체에서 랜덤)
+        count: 선택할 질문 수
+
+    Returns:
+        질문 리스트 (이전에 안 나온 것 우선)
+    """
+    import random
+    
+    # 카테고리별 또는 전체 질문 가져오기
+    if category and category in ENGLISH_QUESTIONS:
+        all_questions = ENGLISH_QUESTIONS[category]["questions"]
+        sub_key = category
+    else:
+        all_questions = []
+        for cat_data in ENGLISH_QUESTIONS.values():
+            for q in cat_data["questions"]:
+                all_questions.append({**q, "category": cat_data["category"]})
+        sub_key = "all"
+    
+    if not all_questions:
+        return []
+    
+    try:
+        from question_history import get_fresh_english_questions
+        return get_fresh_english_questions(all_questions, sub_key, count)
+    except ImportError:
+        # question_history 모듈 없으면 기존 방식 사용
+        return random.sample(all_questions, min(count, len(all_questions)))

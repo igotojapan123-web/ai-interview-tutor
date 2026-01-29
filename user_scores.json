@@ -183,6 +183,38 @@
       "score": 30,
       "memo": "",
       "scenario": "만석인데 좌석 변경 요청"
+    },
+    {
+      "date": "2026-01-23",
+      "time": "14:54",
+      "type": "모의면접",
+      "score": 29,
+      "memo": "",
+      "scenario": "대한항공 모의면접 (6문항)"
+    },
+    {
+      "date": "2026-01-23",
+      "time": "15:01",
+      "type": "롤플레잉",
+      "score": 35,
+      "memo": "",
+      "scenario": "화장실에서 흡연 적발"
+    },
+    {
+      "date": "2026-01-23",
+      "time": "16:47",
+      "type": "모의면접",
+      "score": 47,
+      "memo": "",
+      "scenario": "대한항공 모의면접 (8문항)"
+    },
+    {
+      "date": "2026-01-23",
+      "time": "16:52",
+      "type": "모의면접",
+      "score": 15,
+      "memo": "",
+      "scenario": "제주항공 모의면접 (6문항)"
     }
   ],
   "detailed_scores": [
@@ -461,6 +493,18 @@
         "attitude": 40
       },
       "total": 30
+    },
+    {
+      "date": "2026-01-23",
+      "time": "15:01",
+      "type": "롤플레잉",
+      "scores": {
+        "empathy": 20,
+        "solution": 40,
+        "professionalism": 40,
+        "attitude": 40
+      },
+      "total": 35
     }
   ]
 }

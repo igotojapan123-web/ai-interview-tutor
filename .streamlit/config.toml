@@ -1,2 +1,36 @@
+# Streamlit 설정 파일
+
 [client]
+# 기본 사이드바 네비게이션 숨김
 showSidebarNavigation = false
+# 툴바 최소화
+toolbarMode = "minimal"
+
+[server]
+# 최대 업로드 크기 (MB)
+maxUploadSize = 50
+# XSRF 보호 활성화
+enableXsrfProtection = true
+# CORS 비활성화 (보안)
+enableCORS = false
+# 헤드리스 모드
+headless = true
+# 포트 설정
+port = 8501
+
+[browser]
+# 자동 브라우저 열기 비활성화
+serverAddress = "localhost"
+gatherUsageStats = false
+
+[theme]
+# 기본 테마 설정
+primaryColor = "#3b82f6"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f8fafc"
+textColor = "#1e3a5f"
+font = "sans serif"
+
+[logger]
+# 로그 레벨
+level = "info"

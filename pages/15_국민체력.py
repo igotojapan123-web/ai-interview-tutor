@@ -10,14 +10,34 @@ from typing import List, Dict
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sidebar_common import render_sidebar
+from sidebar_common import init_page, end_page
 
-st.set_page_config(page_title="국민체력 가이드", page_icon="💪", layout="wide")
-render_sidebar("국민체력")
+# 공용 유틸리티 (Stage 2)
+try:
+    from shared_utils import get_api_key, load_json, save_json
+except ImportError:
+    pass
+
+init_page(
+    title="국민체력 가이드",
+    current_page="국민체력",
+    wide_layout=True
+)
 
 
-st.markdown('<meta name="google" content="notranslate"><style>html{translate:no;}</style>', unsafe_allow_html=True)
-st.markdown('<div translate="no" class="notranslate">', unsafe_allow_html=True)
+st.markdown("""
+<meta name="google" content="notranslate">
+<meta http-equiv="Content-Language" content="ko">
+<style>
+html, body, .stApp, .main, [data-testid="stAppViewContainer"] {
+    translate: no !important;
+}
+.notranslate, [translate="no"] {
+    translate: no !important;
+}
+</style>
+""", unsafe_allow_html=True)
+st.markdown('<div translate="no" class="notranslate" lang="ko">', unsafe_allow_html=True)
 
 # ========================================
 # 데이터 저장 경로
@@ -434,20 +454,20 @@ st.markdown("""
 # ========================================
 # 메인
 # ========================================
-st.title("💪 국민체력100 가이드")
+st.title("국민체력100 가이드")
 st.markdown("체력 등급 계산부터 맞춤 훈련, 합격자 후기까지 한 곳에서!")
 
-st.info("💡 **국민체력100**은 국민체육진흥공단에서 운영하는 체력인증 시스템입니다. 전국 인증센터에서 무료 측정 가능!")
+st.info("**국민체력100**은 국민체육진흥공단에서 운영하는 체력인증 시스템입니다. 전국 인증센터에서 무료 측정 가능!")
 
 # 탭 구성
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-    "📊 등급 계산기",
-    "🏋️ 맞춤 훈련",
-    "📈 훈련 기록",
-    "⏰ D-Day 플랜",
-    "💬 합격자 후기",
-    "✈️ 항공사 요구사항",
-    "🏊 수영 준비",
+ " 등급 계산기",
+ "️ 맞춤 훈련",
+ " 훈련 기록",
+ "⏰ D-Day 플랜",
+ " 합격자 후기",
+ "️ 항공사 요구사항",
+ " 수영 준비",
 ])
 
 
@@ -455,7 +475,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
 # 탭1: 등급 계산기
 # ========================================
 with tab1:
-    st.markdown("### 📊 내 체력 등급 계산기")
+    st.markdown("### 내 체력 등급 계산기")
     st.markdown("현재 수치를 입력하면 항목별 등급과 종합 등급을 바로 확인할 수 있어요!")
 
     st.markdown("---")
@@ -463,21 +483,21 @@ with tab1:
     col_left, col_right = st.columns([2, 1])
 
     with col_left:
-        st.markdown("#### 📝 내 수치 입력 (20대 여성 기준)")
+        st.markdown("#### 내 수치 입력 (20대 여성 기준)")
 
         cols = st.columns(2)
         with cols[0]:
-            v_grip = st.number_input("💪 악력 (kg)", min_value=0.0, max_value=80.0, value=25.0, step=0.5, key="calc_grip")
-            v_situp = st.number_input("🔥 윗몸일으키기 (회/60초)", min_value=0, max_value=100, value=30, step=1, key="calc_situp")
-            v_flex = st.number_input("🧘 유연성 (cm)", min_value=-20.0, max_value=50.0, value=12.0, step=0.5, key="calc_flex")
-            v_bmi = st.number_input("⚖️ BMI (kg/m²)", min_value=10.0, max_value=50.0, value=21.0, step=0.1, key="calc_bmi")
+            v_grip = st.number_input(" 악력 (kg)", min_value=0.0, max_value=80.0, value=25.0, step=0.5, key="calc_grip")
+            v_situp = st.number_input(" 윗몸일으키기 (회/60초)", min_value=0, max_value=100, value=30, step=1, key="calc_situp")
+            v_flex = st.number_input(" 유연성 (cm)", min_value=-20.0, max_value=50.0, value=12.0, step=0.5, key="calc_flex")
+            v_bmi = st.number_input("️ BMI (kg/m²)", min_value=10.0, max_value=50.0, value=21.0, step=0.1, key="calc_bmi")
 
         with cols[1]:
-            v_shuttle = st.number_input("🏃 왕복오래달리기 (회)", min_value=0, max_value=150, value=35, step=1, key="calc_shuttle")
-            v_jump = st.number_input("🦘 제자리멀리뛰기 (cm)", min_value=0, max_value=350, value=160, step=1, key="calc_jump")
-            v_agility = st.number_input("⚡ 10m왕복달리기 (초)", min_value=5.0, max_value=20.0, value=8.5, step=0.1, key="calc_agility")
+            v_shuttle = st.number_input(" 왕복오래달리기 (회)", min_value=0, max_value=150, value=35, step=1, key="calc_shuttle")
+            v_jump = st.number_input(" 제자리멀리뛰기 (cm)", min_value=0, max_value=350, value=160, step=1, key="calc_jump")
+            v_agility = st.number_input(" 10m왕복달리기 (초)", min_value=5.0, max_value=20.0, value=8.5, step=0.1, key="calc_agility")
 
-        if st.button("📊 등급 계산하기", type="primary", use_container_width=True):
+        if st.button("등급 계산하기", type="primary", use_container_width=True):
             values = {
                 "악력": v_grip,
                 "윗몸일으키기": v_situp,
@@ -496,7 +516,7 @@ with tab1:
             st.session_state.calc_result = {"values": values, "grades": grades, "overall": overall}
 
     with col_right:
-        st.markdown("#### 📋 등급 기준")
+        st.markdown("#### 등급 기준")
         st.caption("20~24세 여성 기준")
         st.markdown("""
         | 항목 | 1등급 | 2등급 |
@@ -517,12 +537,12 @@ with tab1:
         overall = result["overall"]
 
         st.markdown("---")
-        st.markdown("### 📋 측정 결과")
+        st.markdown("### 측정 결과")
 
         # 종합 등급
         grade_colors = {1: "#f093fb", 2: "#4facfe", 3: "#43e97b", 4: "#dc3545"}
         grade_names = {1: "1등급 (매우 우수)", 2: "2등급 (우수)", 3: "3등급 (보통)", 4: "등급 외"}
-        grade_emoji = {1: "🏆", 2: "🌟", 3: "👍", 4: "📚"}
+        grade_emoji = {1: "", 2: "", 3: "", 4: ""}
 
         st.markdown(f"""
         <div style="background: linear-gradient(135deg, {grade_colors[overall]}40, {grade_colors[overall]}20);
@@ -554,7 +574,7 @@ with tab1:
         weak_items = [item for item, grade in grades.items() if grade >= 3]
         if weak_items:
             st.markdown("---")
-            st.warning(f"⚠️ **집중 필요 항목:** {', '.join(weak_items)}")
+            st.warning(f"️ **집중 필요 항목:** {', '.join(weak_items)}")
             for item in weak_items:
                 criteria = GRADE_CRITERIA[item]
                 current = result["values"][item]
@@ -567,10 +587,10 @@ with tab1:
                     diff = current - target
                     st.caption(f"  → {item}: 현재 {current}초 → 2등급까지 **{diff:.1f}초** 줄여야 함")
         else:
-            st.success("🎉 모든 항목이 양호합니다! 1등급을 목표로 더 노력해보세요!")
+            st.success("모든 항목이 양호합니다! 1등급을 목표로 더 노력해보세요!")
 
         # 기록 저장 버튼
-        if st.button("💾 이 결과를 훈련 기록에 저장", use_container_width=True):
+        if st.button("이 결과를 훈련 기록에 저장", use_container_width=True):
             history = load_json(FITNESS_HISTORY_FILE)
             record = {
                 "type": "measurement",
@@ -581,14 +601,14 @@ with tab1:
             }
             history.append(record)
             save_json(FITNESS_HISTORY_FILE, history)
-            st.success("✅ 기록이 저장되었습니다! '훈련 기록' 탭에서 확인하세요.")
+            st.success("기록이 저장되었습니다! '훈련 기록' 탭에서 확인하세요.")
 
 
 # ========================================
 # 탭2: 맞춤 훈련 계획
 # ========================================
 with tab2:
-    st.markdown("### 🏋️ 맞춤 훈련 계획")
+    st.markdown("### ️ 맞춤 훈련 계획")
 
     # 약한 항목 기반 추천
     if "calc_result" in st.session_state:
@@ -597,20 +617,20 @@ with tab2:
         weak.sort(key=lambda x: x[1], reverse=True)
 
         if weak:
-            st.success("📊 등급 계산 결과를 바탕으로 약한 항목 순서대로 훈련을 추천합니다!")
+            st.success("등급 계산 결과를 바탕으로 약한 항목 순서대로 훈련을 추천합니다!")
             priority_items = [item for item, _ in weak]
         else:
-            st.info("🏆 모든 항목이 1등급입니다! 유지 훈련을 추천합니다.")
+            st.info("모든 항목이 1등급입니다! 유지 훈련을 추천합니다.")
             priority_items = list(EXERCISE_GUIDES.keys())
     else:
-        st.info("💡 '등급 계산기' 탭에서 먼저 수치를 입력하면 맞춤 추천을 받을 수 있어요!")
+        st.info("'등급 계산기' 탭에서 먼저 수치를 입력하면 맞춤 추천을 받을 수 있어요!")
         priority_items = list(EXERCISE_GUIDES.keys())
 
     st.markdown("---")
 
     # 집중 훈련 항목 선택
     selected_items = st.multiselect(
-        "🎯 집중 훈련할 항목 선택",
+        " 집중 훈련할 항목 선택",
         options=list(EXERCISE_GUIDES.keys()),
         default=priority_items[:3] if len(priority_items) >= 3 else priority_items,
     )
@@ -620,19 +640,19 @@ with tab2:
 
         for item in selected_items:
             guide = EXERCISE_GUIDES[item]
-            emoji_map = {"악력": "💪", "윗몸일으키기": "🔥", "유연성": "🧘",
-                         "왕복오래달리기": "🏃‍♀️", "제자리멀리뛰기": "🦘", "10m왕복달리기": "⚡"}
-            emoji = emoji_map.get(item, "🏋️")
+            emoji_map = {"악력": "", "윗몸일으키기": "", "유연성": "",
+                         "왕복오래달리기": "‍️", "제자리멀리뛰기": "", "10m왕복달리기": ""}
+            emoji = emoji_map.get(item, "️")
 
             with st.expander(f"{emoji} {item} (목표: {guide['target']}, 주 {guide['weekly']}회)", expanded=True):
                 st.markdown(f"**추천 운동:**")
                 for ex in guide["exercises"]:
                     st.markdown(f"- {ex}")
-                st.info(f"💡 **팁:** {guide['tips']}")
+                st.info(f" **팁:** {guide['tips']}")
 
         # 주간 스케줄 생성
         st.markdown("---")
-        st.markdown("#### 📅 맞춤 주간 스케줄")
+        st.markdown("#### 맞춤 주간 스케줄")
 
         days = ["월", "화", "수", "목", "금", "토", "일"]
         schedule = {d: [] for d in days}
@@ -672,7 +692,7 @@ with tab2:
 
     # 전체 운동 가이드 (기존 내용)
     st.markdown("---")
-    st.markdown("#### 📖 전체 운동 가이드")
+    st.markdown("#### 전체 운동 가이드")
 
     with st.expander("에어프레미아 체력측정 대비 (버피테스트)"):
         st.markdown("""
@@ -705,11 +725,11 @@ with tab2:
 # 탭3: 훈련 기록 트래커
 # ========================================
 with tab3:
-    st.markdown("### 📈 훈련 기록 트래커")
+    st.markdown("### 훈련 기록 트래커")
     st.markdown("운동 기록을 남기고 성장 과정을 확인하세요!")
 
     # 운동 기록 입력
-    st.markdown("#### ✍️ 오늘의 운동 기록")
+    st.markdown("#### ️ 오늘의 운동 기록")
 
     record_type = st.radio("기록 유형", ["운동 기록", "체력 측정 결과"], horizontal=True, key="record_type")
 
@@ -722,7 +742,7 @@ with tab3:
             ex_intensity = st.select_slider("운동 강도", options=["가볍게", "보통", "열심히", "최대"], value="보통", key="ex_int")
             ex_memo = st.text_input("메모 (선택)", key="ex_memo", placeholder="오늘 느낀 점이나 특이사항...")
 
-        if st.button("📝 운동 기록 저장", use_container_width=True, key="save_exercise"):
+        if st.button("운동 기록 저장", use_container_width=True, key="save_exercise"):
             if ex_items:
                 history = load_json(FITNESS_HISTORY_FILE)
                 record = {
@@ -735,7 +755,7 @@ with tab3:
                 }
                 history.append(record)
                 save_json(FITNESS_HISTORY_FILE, history)
-                st.success("✅ 운동 기록이 저장되었습니다!")
+                st.success("운동 기록이 저장되었습니다!")
             else:
                 st.warning("운동한 항목을 선택해주세요.")
 
@@ -752,7 +772,7 @@ with tab3:
             m_jump = st.number_input("멀리뛰기 (cm)", min_value=0, max_value=350, value=160, step=1, key="m_jump")
             m_agility = st.number_input("10m달리기 (초)", min_value=5.0, max_value=20.0, value=8.5, step=0.1, key="m_agility")
 
-        if st.button("📝 측정 결과 저장", use_container_width=True, key="save_measurement"):
+        if st.button("측정 결과 저장", use_container_width=True, key="save_measurement"):
             values = {
                 "악력": m_grip, "윗몸일으키기": m_situp, "유연성": m_flex,
                 "왕복오래달리기": m_shuttle, "제자리멀리뛰기": m_jump, "10m왕복달리기": m_agility,
@@ -770,11 +790,11 @@ with tab3:
             }
             history.append(record)
             save_json(FITNESS_HISTORY_FILE, history)
-            st.success(f"✅ 측정 결과가 저장되었습니다! (종합 {overall}등급)")
+            st.success(f" 측정 결과가 저장되었습니다! (종합 {overall}등급)")
 
     # 기록 대시보드
     st.markdown("---")
-    st.markdown("#### 📊 나의 훈련 현황")
+    st.markdown("#### 나의 훈련 현황")
 
     history = load_json(FITNESS_HISTORY_FILE)
 
@@ -797,7 +817,7 @@ with tab3:
 
         # 측정 추이 그래프
         if len(measurements) >= 2:
-            st.markdown("##### 📈 체력 측정 추이")
+            st.markdown("#####  체력 측정 추이")
             import pandas as pd
 
             chart_data = []
@@ -817,7 +837,7 @@ with tab3:
                 st.line_chart(df[show_cols])
 
         # 최근 기록
-        with st.expander("📋 최근 기록 (최근 20건)"):
+        with st.expander("최근 기록 (최근 20건)"):
             for h in reversed(history[-20:]):
                 ts = h.get("timestamp", "")[:10]
                 if h["type"] == "exercise":
@@ -826,10 +846,10 @@ with tab3:
                     intensity = h.get("intensity", "")
                     memo = h.get("memo", "")
                     memo_str = f" | {memo}" if memo else ""
-                    st.caption(f"🏃 {ts} | {items} | {dur}분 | {intensity}{memo_str}")
+                    st.caption(f" {ts} | {items} | {dur}분 | {intensity}{memo_str}")
                 else:
                     overall = h.get("overall", "?")
-                    st.caption(f"📊 {ts} | 체력 측정 | 종합 {overall}등급")
+                    st.caption(f" {ts} | 체력 측정 | 종합 {overall}등급")
     else:
         st.info("아직 기록이 없습니다. 위에서 운동 기록이나 측정 결과를 입력해보세요!")
 
@@ -847,21 +867,21 @@ with tab4:
     col1, col2 = st.columns([2, 1])
     with col1:
         target_date = st.date_input(
-            "🎯 체력 시험 예정일",
+            " 체력 시험 예정일",
             value=datetime.now().date() + timedelta(days=60),
             min_value=datetime.now().date(),
             key="dday_date"
         )
         target_airline = st.selectbox(
-            "✈️ 목표 항공사",
+            "️ 목표 항공사",
             ["파라타항공 (국민체력100 필수)", "에어프레미아 (자체 측정)", "이스타항공 (자체 체력시험)",
              "대한항공 (수영)", "아시아나항공 (수영)", "기타 (일반 체력 준비)"],
             key="dday_airline"
         )
-        target_grade = st.selectbox("🏆 목표 등급", ["1등급", "2등급"], key="dday_grade")
+        target_grade = st.selectbox(" 목표 등급", ["1등급", "2등급"], key="dday_grade")
 
     with col2:
-        if st.button("💾 D-Day 저장", use_container_width=True, type="primary"):
+        if st.button("D-Day 저장", use_container_width=True, type="primary"):
             dday_info = {
                 "target_date": str(target_date),
                 "airline": target_airline,
@@ -870,7 +890,7 @@ with tab4:
             }
             save_dday(dday_info)
             dday_data = dday_info
-            st.success("✅ D-Day가 설정되었습니다!")
+            st.success("D-Day가 설정되었습니다!")
 
     # D-Day 표시
     if dday_data:
@@ -881,7 +901,7 @@ with tab4:
             st.markdown(f"""
             <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;
                         border-radius: 20px; padding: 30px; text-align: center; margin: 20px 0;">
-                <div style="font-size: 18px;">🎯 {dday_data.get('airline', '')}</div>
+                <div style="font-size: 18px;"> {dday_data.get('airline', '')}</div>
                 <div style="font-size: 60px; font-weight: bold;">D-{remaining}</div>
                 <div style="font-size: 16px;">{dday_data['target_date']} | 목표: {dday_data.get('grade', '2등급')}</div>
             </div>
@@ -889,7 +909,7 @@ with tab4:
 
             # 단계별 플랜 생성
             st.markdown("---")
-            st.markdown("#### 📋 단계별 훈련 플랜")
+            st.markdown("#### 단계별 훈련 플랜")
 
             if remaining >= 90:
                 phases = [
@@ -917,18 +937,18 @@ with tab4:
                 ]
 
             for i, phase in enumerate(phases):
-                col_icon = "🟢" if i == 0 else "🔵" if i < len(phases) - 1 else "🏁"
+                col_icon = "" if i == 0 else "" if i < len(phases) - 1 else ""
                 st.markdown(f"""
                 <div style="background: #f8f9fa; border-radius: 12px; padding: 16px; margin: 8px 0; border-left: 4px solid #667eea;">
                     <div style="font-weight: bold;">{col_icon} {phase['name']}</div>
                     <div style="margin: 5px 0; color: #555;">{phase['desc']}</div>
-                    <div style="font-size: 13px; color: #667eea;">🎯 핵심: {phase['focus']}</div>
+                    <div style="font-size: 13px; color: #667eea;"> 핵심: {phase['focus']}</div>
                 </div>
                 """, unsafe_allow_html=True)
 
             # 이번 주 할 일
             st.markdown("---")
-            st.markdown("#### ✅ 이번 주 할 일")
+            st.markdown("#### 이번 주 할 일")
 
             current_phase = 0
             if remaining >= 90:
@@ -954,37 +974,37 @@ with tab4:
                 st.checkbox(task, key=f"weekly_{task}")
 
         elif remaining == 0:
-            st.success("🎉 오늘이 시험일입니다! 파이팅! 💪")
+            st.success("오늘이 시험일입니다! 파이팅!")
         else:
-            st.info("📅 시험일이 지났습니다. 새로운 D-Day를 설정해보세요.")
+            st.info("시험일이 지났습니다. 새로운 D-Day를 설정해보세요.")
     else:
-        st.info("👆 위에서 체력 시험 예정일을 설정하고 'D-Day 저장' 버튼을 눌러주세요!")
+        st.info("위에서 체력 시험 예정일을 설정하고 'D-Day 저장' 버튼을 눌러주세요!")
 
 
 # ========================================
 # 탭5: 합격자 체력 후기
 # ========================================
 with tab5:
-    st.markdown("### 💬 합격자 체력 준비 후기")
+    st.markdown("### 합격자 체력 준비 후기")
     st.markdown("실제 합격자들의 체력 준비 경험을 참고하세요!")
 
     # 필터
     airlines = list(set(s["airline"] for s in SUCCESS_STORIES))
-    filter_airline = st.selectbox("✈️ 항공사 필터", ["전체"] + airlines, key="story_filter")
+    filter_airline = st.selectbox("️ 항공사 필터", ["전체"] + airlines, key="story_filter")
 
     st.markdown("---")
 
     filtered = SUCCESS_STORIES if filter_airline == "전체" else [s for s in SUCCESS_STORIES if s["airline"] == filter_airline]
 
     for story in filtered:
-        with st.expander(f"✈️ {story['airline']} | {story['author']} | {story['grade']} ({story['period']})"):
+        with st.expander(f"️ {story['airline']} | {story['author']} | {story['grade']} ({story['period']})"):
             st.markdown(f"""
             <div class="story-card">
                 <div style="white-space: pre-wrap; line-height: 1.8;">{story['content']}</div>
             </div>
             """, unsafe_allow_html=True)
 
-            st.markdown("**💡 핵심 팁:**")
+            st.markdown("** 핵심 팁:**")
             for tip in story["tips"]:
                 st.markdown(f"- {tip}")
 
@@ -996,36 +1016,36 @@ with tab5:
 # 탭6: 항공사별 요구사항 + 인증센터
 # ========================================
 with tab6:
-    st.markdown("### ✈️ 항공사별 체력 요구사항")
+    st.markdown("### ️ 항공사별 체력 요구사항")
 
-    st.warning("⚠️ 체력 기준은 채용 시기마다 변경될 수 있습니다. 반드시 공식 채용공고를 확인하세요.")
+    st.warning("️ 체력 기준은 채용 시기마다 변경될 수 있습니다. 반드시 공식 채용공고를 확인하세요.")
 
     # 체력 필수 항공사
-    st.markdown("#### 🏋️ 체력측정 필수 항공사")
+    st.markdown("#### ️ 체력측정 필수 항공사")
 
     col1, col2 = st.columns(2)
 
     with col1:
         st.markdown("""
         <div class="airline-req">
-            <h4>🛫 파라타항공</h4>
+            <h4> 파라타항공</h4>
             <p><strong>요구사항:</strong> 국민체력100 체력평가 결과서 제출 <span style="color: #dc3545; font-weight: bold;">필수</span></p>
             <p><strong>제출 시기:</strong> 서류전형 시</p>
             <p><strong>권장 등급:</strong> 2등급 이상</p>
             <hr>
-            <small>💡 신생 항공사로 체력 기준을 엄격하게 적용</small>
+            <small> 신생 항공사로 체력 기준을 엄격하게 적용</small>
         </div>
         """, unsafe_allow_html=True)
 
     with col2:
         st.markdown("""
         <div class="airline-req">
-            <h4>🛫 에어프레미아</h4>
+            <h4> 에어프레미아</h4>
             <p><strong>요구사항:</strong> 자체 체력측정 실시</p>
             <p><strong>측정 항목:</strong> 악력, 윗몸일으키기, 버피테스트, 유연성, 암리치</p>
             <p><strong>측정 시기:</strong> 컬처핏 면접 시</p>
             <hr>
-            <small>💡 장거리 노선 특화로 체력 중시</small>
+            <small> 장거리 노선 특화로 체력 중시</small>
         </div>
         """, unsafe_allow_html=True)
 
@@ -1034,31 +1054,31 @@ with tab6:
     with col1:
         st.markdown("""
         <div class="airline-req">
-            <h4>🛫 이스타항공</h4>
+            <h4> 이스타항공</h4>
             <p><strong>요구사항:</strong> 자체 체력시험 실시</p>
             <p><strong>측정 항목:</strong> 오래달리기, 높이뛰기, 목소리 데시벨</p>
             <p><strong>측정 시기:</strong> 체력TEST 단계</p>
             <hr>
-            <small>💡 2025년부터 채용 절차에 체력시험 도입</small>
+            <small> 2025년부터 채용 절차에 체력시험 도입</small>
         </div>
         """, unsafe_allow_html=True)
 
     with col2:
         st.markdown("""
         <div class="airline-req">
-            <h4>🛫 대한항공</h4>
+            <h4> 대한항공</h4>
             <p><strong>요구사항:</strong> 수영 25m 완영 <span style="color: #dc3545; font-weight: bold;">필수</span></p>
             <p><strong>측정 시기:</strong> 건강검진 단계</p>
             <p><strong>기타:</strong> 별도 체력인증 불필요</p>
             <hr>
-            <small>💡 수영 능력만 별도 검증</small>
+            <small> 수영 능력만 별도 검증</small>
         </div>
         """, unsafe_allow_html=True)
 
     st.markdown("---")
 
     # 체력 권장 항공사
-    st.markdown("#### 💪 체력 우수자 우대 항공사")
+    st.markdown("#### 체력 우수자 우대 항공사")
 
     st.markdown("""
     | 항공사 | 체력 관련 사항 | 비고 |
@@ -1072,27 +1092,27 @@ with tab6:
     | 에어로케이 | 안전분야 자격 우대 | 체력 관련 자격 우대 |
     """)
 
-    st.success("💡 **팁:** 체력측정이 필수가 아니더라도, 국민체력100 인증을 받아두면 자기소개서와 면접에서 어필할 수 있습니다!")
+    st.success("**팁:** 체력측정이 필수가 아니더라도, 국민체력100 인증을 받아두면 자기소개서와 면접에서 어필할 수 있습니다!")
 
     # 인증센터 정보
     st.markdown("---")
-    st.markdown("#### 📍 국민체력100 인증센터")
+    st.markdown("#### 국민체력100 인증센터")
 
-    st.info("💡 전국 300여개 인증센터에서 **무료**로 체력측정이 가능합니다!")
+    st.info("전국 300여개 인증센터에서 **무료**로 체력측정이 가능합니다!")
 
-    with st.expander("📋 측정 절차 및 센터 정보"):
+    with st.expander("측정 절차 및 센터 정보"):
         st.markdown("""
-        #### 📋 측정 절차
+        ####  측정 절차
         1. **예약**: 국민체력100 홈페이지/앱에서 가까운 센터 예약
         2. **방문**: 예약 시간에 센터 방문 (운동복, 실내화 지참)
         3. **측정**: 7개 항목 체력측정 (약 1시간)
         4. **결과**: 측정 후 즉시 결과 확인 + 인증서 발급
 
-        #### 💰 비용
+        ####  비용
         - **무료** (1회/연)
         - 추가 측정 시 소정의 비용 발생할 수 있음
 
-        #### 🗺️ 주요 지역 인증센터
+        #### ️ 주요 지역 인증센터
         - **서울**: 서울올림픽기념국민체육진흥공단, 각 구민체육센터
         - **경기**: 수원시체육회관, 성남시민체육관, 고양시체육관
         - **인천**: 인천시체육회, 계양체육관
@@ -1100,18 +1120,18 @@ with tab6:
         - **대구**: 대구시체육회, 수성구체육관
         """)
 
-    st.link_button("🔗 국민체력100 공식 사이트 바로가기", "https://nfa.kspo.or.kr/", use_container_width=True)
+    st.link_button(" 국민체력100 공식 사이트 바로가기", "https://nfa.kspo.or.kr/", use_container_width=True)
 
 
 # ========================================
 # 탭7: 수영 준비 가이드
 # ========================================
 with tab7:
-    st.markdown("### 🏊 수영 준비 가이드")
+    st.markdown("### 수영 준비 가이드")
     st.markdown("대한항공, 아시아나항공 지원자 필수! 25m 완영 준비를 도와드립니다.")
 
     # 수영 필수 항공사 안내
-    st.markdown("#### ✈️ 수영 테스트 실시 항공사")
+    st.markdown("#### ️ 수영 테스트 실시 항공사")
 
     col1, col2 = st.columns(2)
     for idx, (airline, info) in enumerate(SWIMMING_AIRLINES.items()):
@@ -1119,21 +1139,21 @@ with tab7:
             st.markdown(f"""
             <div style="background: linear-gradient(135deg, #4facfe20, #00f2fe10);
                         border: 2px solid #4facfe; border-radius: 14px; padding: 20px; margin: 5px 0;">
-                <div style="font-size: 18px; font-weight: bold;">✈️ {airline}</div>
+                <div style="font-size: 18px; font-weight: bold;">️ {airline}</div>
                 <div style="margin: 10px 0;">
                     <span style="background: #dc354520; color: #dc3545; padding: 3px 8px; border-radius: 8px; font-weight: bold;">필수</span>
                     <span style="margin-left: 10px;">{info['distance']} {info['style']}</span>
                 </div>
                 <div style="font-size: 13px; color: #555;">⏱️ 시간: {info['time_limit']}</div>
-                <div style="font-size: 13px; color: #555;">📋 단계: {info['stage']}</div>
-                <div style="font-size: 12px; color: #888; margin-top: 8px;">💡 {info['note']}</div>
+                <div style="font-size: 13px; color: #555;"> 단계: {info['stage']}</div>
+                <div style="font-size: 12px; color: #888; margin-top: 8px;"> {info['note']}</div>
             </div>
             """, unsafe_allow_html=True)
 
     st.markdown("---")
 
     # 준비물 + 4주 계획
-    st.markdown("#### 📦 준비물 & 연습 계획")
+    st.markdown("#### 준비물 & 연습 계획")
 
     col1, col2 = st.columns(2)
 
@@ -1156,7 +1176,7 @@ with tab7:
     st.markdown("---")
 
     # 자유형 기본 동작
-    st.markdown("#### 🏊 자유형 기본 동작")
+    st.markdown("#### 자유형 기본 동작")
 
     for i, step in enumerate(SWIMMING_GUIDE["자유형 기본"]):
         step_num = i + 1
@@ -1177,10 +1197,10 @@ with tab7:
     st.markdown("---")
 
     # 초보자 팁
-    st.markdown("#### 💡 초보자를 위한 팁")
+    st.markdown("#### 초보자를 위한 팁")
 
     for tip in SWIMMING_GUIDE["초보자 팁"]:
-        st.success(f"✅ {tip}")
+        st.success(f" {tip}")
 
     st.markdown("---")
 
@@ -1188,7 +1208,7 @@ with tab7:
     st.markdown("""
     <div style="background: linear-gradient(135deg, #667eea20, #764ba220);
                 border: 2px solid #667eea; border-radius: 16px; padding: 24px; text-align: center; margin: 20px 0;">
-        <div style="font-size: 24px; margin-bottom: 10px;">🏊‍♀️</div>
+        <div style="font-size: 24px; margin-bottom: 10px;">‍️</div>
         <div style="font-size: 18px; font-weight: bold; color: #667eea;">수영 못해도 괜찮아요!</div>
         <div style="margin-top: 10px; color: #555; line-height: 1.8;">
             25m 완영은 <strong>1-2개월</strong>이면 충분합니다.<br>
@@ -1200,7 +1220,7 @@ with tab7:
 
     # 수영장 찾기
     st.markdown("---")
-    st.markdown("#### 📍 수영 연습하기")
+    st.markdown("#### 수영 연습하기")
 
     st.info("""
     **수영장 찾는 방법:**
@@ -1210,6 +1230,6 @@ with tab7:
     4. 새벽/점심 자유수영으로 추가 연습
     """)
 
-    st.caption("💡 대부분의 합격자가 1~2개월 수영 배우고 통과했습니다. 지금 시작하면 충분합니다!")
+    st.caption(" 대부분의 합격자가 1~2개월 수영 배우고 통과했습니다. 지금 시작하면 충분합니다!")
 
 st.markdown('</div>', unsafe_allow_html=True)

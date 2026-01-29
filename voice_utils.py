@@ -2,6 +2,8 @@
 # 음성 인식 (STT) 및 음성 평가 유틸리티
 # 네이버 클로바 더빙 + OpenAI TTS 지원
 
+from logging_config import get_logger
+
 import os
 import re
 import json
@@ -9,6 +11,8 @@ import tempfile
 import requests
 from typing import Optional, Dict, Any, List, Tuple
 from io import BytesIO
+
+logger = get_logger(__name__)
 
 # OpenAI API 설정
 OPENAI_API_URL = "https://api.openai.com/v1"
@@ -392,8 +396,8 @@ def transcribe_audio(audio_bytes: bytes, language: str = "ko") -> Optional[Dict[
         # 임시 파일 삭제
         try:
             os.unlink(temp_path)
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"임시 파일 삭제 실패: {e}")
 
 
 def analyze_voice_quality(
@@ -1179,8 +1183,8 @@ def analyze_voice_advanced(audio_bytes: bytes, transcription: Dict[str, Any] = N
         if temp_path:
             try:
                 os.unlink(temp_path)
-            except:
-                pass
+            except Exception as e:
+                logger.debug(f"임시 파일 삭제 실패: {e}")
 
     return result
 
@@ -1343,14 +1347,14 @@ def generate_tts_audio(
     text: str,
     voice: str = "nova",  # alloy, echo, fable, onyx, nova, shimmer
     speed: float = 1.0,
-    use_clova: bool = True,  # 클로바 우선 사용
+    use_clova: bool = False,  # 비용 절감을 위해 OpenAI TTS 기본 사용 (나중에 업그레이드 예정)
     persona: str = "",  # 페르소나 (클로바용)
     escalation_level: int = 0,  # 감정 레벨 (클로바용)
 ) -> Optional[bytes]:
     """
     TTS로 텍스트를 음성으로 변환
-    - 클로바가 설정되어 있으면 클로바 사용 (더 자연스러운 한국어)
-    - 그렇지 않으면 OpenAI TTS 사용
+    - 기본: OpenAI TTS 사용 (비용 효율적)
+    - use_clova=True 시 클로바 사용 (더 자연스러운 한국어, 추가 비용)
 
     Args:
         text: 변환할 텍스트
@@ -1431,25 +1435,13 @@ def generate_tts_for_passenger(
     Returns:
         MP3 오디오 바이트 데이터
     """
-    # 클로바 사용 가능하면 클로바 우선
-    if is_clova_available():
-        speaker, speed, emotion = get_clova_speaker_for_persona(persona, escalation_level)
-        audio = generate_clova_tts(
-            text=text,
-            speaker=speaker,
-            speed=speed,
-            emotion=emotion,
-        )
-        if audio:
-            return audio
-
-    # OpenAI 폴백
+    # OpenAI TTS 기본 사용 (비용 효율적)
     voice, speed = get_voice_for_persona(persona, escalation_level)
     return generate_tts_audio(
         text=text,
         voice=voice,
         speed=speed,
-        use_clova=False,  # 이미 클로바 시도했으므로 스킵
+        use_clova=False,
     )
 
 
@@ -1821,10 +1813,10 @@ def generate_tts_for_passenger_v2(
     text: str,
     persona: str,
     escalation_level: int = 0,
-    tts_provider: str = "auto",  # "auto", "google", "clova", "openai"
+    tts_provider: str = "openai",  # "openai" 기본 (비용 효율적), "auto", "google", "clova" 선택 가능
 ) -> Optional[bytes]:
     """
-    승객 대사용 TTS 생성 (v2 - Google TTS 지원)
+    승객 대사용 TTS 생성 (v2 - 다중 TTS 지원, 기본: OpenAI)
 
     Args:
         text: 승객 대사
@@ -2010,10 +2002,10 @@ def generate_tts_for_passenger_v3(
     text: str,
     persona: str,
     escalation_level: int = 0,
-    tts_provider: str = "edge",  # "edge", "clova", "openai", "auto"
+    tts_provider: str = "openai",  # "openai" 기본 (비용 효율적), "edge"(무료), "clova", "auto" 선택 가능
 ) -> Optional[bytes]:
     """
-    승객 대사용 TTS 생성 (v3 - Edge TTS 우선)
+    승객 대사용 TTS 생성 (v3 - 다중 TTS 지원, 기본: OpenAI)
 
     Args:
         text: 승객 대사

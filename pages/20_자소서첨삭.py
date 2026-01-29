@@ -11,15 +11,31 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import AIRLINES
+from sidebar_common import init_page, end_page
+from logging_config import get_logger
 
-from sidebar_common import render_sidebar
+# 로거 설정
+logger = get_logger(__name__)
 
-st.set_page_config(page_title="자소서 첨삭", page_icon="📝", layout="wide")
-render_sidebar("자소서첨삭")
+# Initialize page with new layout
+init_page(
+    title="AI 자소서 첨삭",
+    current_page="자소서첨삭",
+    wide_layout=True
+)
 
 
-st.markdown('<meta name="google" content="notranslate"><style>html{translate:no;}</style>', unsafe_allow_html=True)
-st.markdown('<div translate="no" class="notranslate">', unsafe_allow_html=True)
+# Streamlit Material Icon 텍스트 숨김
+st.markdown("""
+<style>
+/* Material Icon 텍스트 폴백 숨김 - 정확한 타겟 */
+[data-testid="stIconMaterial"] {
+    font-size: 0 !important;
+    line-height: 0 !important;
+    overflow: hidden !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # ----------------------------
 # OpenAI API
@@ -28,7 +44,11 @@ try:
     from openai import OpenAI
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     API_AVAILABLE = True
-except Exception:
+except ImportError as e:
+    logger.error(f"OpenAI 모듈 import 실패: {e}")
+    API_AVAILABLE = False
+except Exception as e:
+    logger.error(f"OpenAI 클라이언트 초기화 실패: {e}")
     API_AVAILABLE = False
 
 # ----------------------------
@@ -40,12 +60,15 @@ os.makedirs(DATA_DIR, exist_ok=True)
 
 
 def load_my_resumes():
+    """저장된 자소서 목록 로드"""
     try:
         if os.path.exists(RESUME_FILE):
             with open(RESUME_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-    except Exception:
-        pass
+    except json.JSONDecodeError as e:
+        logger.error(f"자소서 JSON 파싱 실패: {e}")
+    except Exception as e:
+        logger.error(f"자소서 로드 실패: {e}")
     return []
 
 
@@ -341,15 +364,23 @@ def analyze_text(content):
 # ----------------------------
 st.markdown("""
 <style>
+/* 폰트 및 기본 스타일 */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+* {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    -webkit-font-smoothing: antialiased;
+}
+
 .keyword-tag {
     display: inline-block;
     background: #667eea20;
     border: 1px solid #667eea;
     color: #667eea;
-    padding: 3px 10px;
+    padding: 4px 12px;
     border-radius: 15px;
-    font-size: 12px;
-    margin: 3px;
+    font-size: 13px;
+    margin: 4px;
+    line-height: 1.4;
 }
 .keyword-found {
     background: #28a74530;
@@ -374,10 +405,16 @@ st.markdown("""
 .analysis-box {
     background: white;
     border-radius: 10px;
-    padding: 12px;
+    padding: 12px 10px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     text-align: center;
-    margin: 5px;
+    margin: 3px;
+    min-width: 75px;
+    word-break: keep-all;
+}
+.analysis-box div {
+    line-height: 1.6;
+    letter-spacing: -0.3px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -386,21 +423,21 @@ st.markdown("""
 # ----------------------------
 # UI 메인
 # ----------------------------
-st.title("📝 자소서 AI 첨삭")
-st.caption("항공사 객실승무원 자기소개서를 AI가 첨삭해드립니다")
+
+# Page title handled by init_page
 
 if not API_AVAILABLE:
     st.error("OpenAI API를 사용할 수 없습니다. .env 파일에 OPENAI_API_KEY를 설정해주세요.")
 
 # 탭 구성
-tab1, tab2, tab3, tab4 = st.tabs(["✍️ 첨삭받기", "📖 합격 예시", "📚 작성 가이드", "💾 내 자소서"])
+tab1, tab2, tab3, tab4 = st.tabs(["️ 첨삭받기", " 합격 예시", " 작성 가이드", " 내 자소서"])
 
 
 # ========================================
 # 탭1: 첨삭받기
 # ========================================
 with tab1:
-    st.subheader("✍️ 자소서 첨삭받기")
+    st.subheader("️ 자소서 첨삭받기")
 
     # 항공사 선택
     selected_airline = st.selectbox("지원 항공사", AIRLINES, key="airline_select")
@@ -408,16 +445,25 @@ with tab1:
     # 항공사 키워드 표시
     keywords = AIRLINE_KEYWORDS.get(selected_airline, {})
     if keywords:
-        with st.expander("🔑 이 항공사 핵심 키워드 (자소서에 녹여보세요!)"):
-            st.markdown("**인재상:**")
-            kw_html = " ".join([f'<span class="keyword-tag">{k}</span>' for k in keywords.get("인재상", [])])
-            st.markdown(kw_html, unsafe_allow_html=True)
-
-            st.markdown("**추천 키워드:**")
-            rec_html = " ".join([f'<span class="keyword-tag">{k}</span>' for k in keywords.get("추천키워드", [])])
-            st.markdown(rec_html, unsafe_allow_html=True)
-
-            st.caption(f"💡 핵심 가치: {', '.join(keywords.get('가치', []))}")
+        with st.expander("이 항공사 핵심 키워드"):
+            kw_list = keywords.get("인재상", [])
+            rec_list = keywords.get("추천키워드", [])
+            val_list = keywords.get("가치", [])
+            
+            keywords_html = f"""
+            <div translate="no" class="notranslate" lang="ko">
+                <p style="font-weight:600; margin-bottom:8px;">인재상</p>
+                <div style="margin-bottom:16px;">
+                    {' '.join([f'<span class="keyword-tag">{k}</span>' for k in kw_list])}
+                </div>
+                <p style="font-weight:600; margin-bottom:8px;">추천 키워드</p>
+                <div style="margin-bottom:16px;">
+                    {' '.join([f'<span class="keyword-tag">{k}</span>' for k in rec_list])}
+                </div>
+                <p style="font-size:13px; color:#666;">핵심 가치: {', '.join(val_list)}</p>
+            </div>
+            """
+            st.markdown(keywords_html, unsafe_allow_html=True)
 
     st.markdown("---")
 
@@ -430,7 +476,7 @@ with tab1:
     all_valid = True
 
     for i in range(num_items):
-        st.markdown(f"#### 📌 문항 {i+1}")
+        st.markdown(f"####  문항 {i+1}")
         q = st.text_input(
             f"질문 {i+1}",
             placeholder="예: 지원동기를 작성하세요 (500자 이내)",
@@ -473,7 +519,7 @@ with tab1:
                 found = [k for k in rec_keywords if k in a]
                 not_found = [k for k in rec_keywords if k not in a]
                 if found:
-                    found_html = " ".join([f'<span class="keyword-tag keyword-found">✓ {k}</span>' for k in found])
+                    found_html = " ".join([f'<span class="keyword-tag keyword-found"> {k}</span>' for k in found])
                     st.markdown(f"**포함된 키워드:** {found_html}", unsafe_allow_html=True)
                 if not_found:
                     nf_html = " ".join([f'<span class="keyword-tag">{k}</span>' for k in not_found[:4]])
@@ -491,12 +537,12 @@ with tab1:
     col1, col2 = st.columns([3, 1])
 
     with col1:
-        submit = st.button("🔍 AI 첨삭받기", type="primary", use_container_width=True, disabled=not all_valid)
+        submit = st.button("AI 첨삭받기", type="primary", use_container_width=True, disabled=not all_valid)
     with col2:
-        save_btn = st.button("💾 저장", use_container_width=True, disabled=not all_valid)
+        save_btn = st.button("저장", use_container_width=True, disabled=not all_valid)
 
     if not all_valid and any(q.strip() for q in questions):
-        st.caption("⚠️ 모든 문항에 질문을 입력하고, 답변은 50자 이상 작성해주세요.")
+        st.caption("️ 모든 문항에 질문을 입력하고, 답변은 50자 이상 작성해주세요.")
 
     if save_btn and all_valid:
         resumes = load_my_resumes()
@@ -516,7 +562,7 @@ with tab1:
         with st.spinner("AI가 첨삭 중입니다..."):
             for i in range(num_items):
                 st.markdown("---")
-                st.markdown(f"### 📋 문항 {i+1} 첨삭 결과")
+                st.markdown(f"###  문항 {i+1} 첨삭 결과")
                 st.caption(f"질문: {questions[i]}")
 
                 feedback = get_ai_feedback(selected_airline, questions[i], answers[i])
@@ -538,33 +584,33 @@ with tab1:
                     })
                     save_my_resumes(resumes)
 
-            st.success("✅ 모든 문항 첨삭 완료! 결과가 자동 저장되었습니다.")
+            st.success("모든 문항 첨삭 완료! 결과가 자동 저장되었습니다.")
 
 
 # ========================================
 # 탭2: 합격 예시
 # ========================================
 with tab2:
-    st.subheader("📖 합격 자소서 예시")
-    st.info("💡 항목별 좋은 자소서 예시를 참고하세요. 그대로 베끼면 안 되지만, 구조와 방식을 배울 수 있습니다!")
+    st.subheader(" 합격 자소서 예시")
+    st.info("항목별 좋은 자소서 예시를 참고하세요. 그대로 베끼면 안 되지만, 구조와 방식을 배울 수 있습니다!")
 
     for item_name, info in RESUME_ITEMS.items():
         examples = info.get("good_examples", [])
         if not examples:
             continue
 
-        st.markdown(f"### 📌 {item_name}")
+        st.markdown(f"###  {item_name}")
         st.caption(f"{info['description']}")
 
         for ex in examples:
-            with st.expander(f"✅ {ex['title']}"):
+            with st.expander(f" {ex['title']}"):
                 st.markdown(f"""
                 <div class="example-card">
                     <div style="white-space: pre-wrap; line-height: 1.8;">{ex['content']}</div>
                 </div>
                 """, unsafe_allow_html=True)
 
-                st.success(f"💡 **왜 좋은가:** {ex['why_good']}")
+                st.success(f" **왜 좋은가:** {ex['why_good']}")
 
         st.markdown("---")
 
@@ -575,20 +621,20 @@ with tab2:
 # 탭3: 작성 가이드
 # ========================================
 with tab3:
-    st.subheader("📚 항목별 작성 가이드")
+    st.subheader(" 항목별 작성 가이드")
 
     for item_name, info in RESUME_ITEMS.items():
-        with st.expander(f"📌 {item_name}"):
+        with st.expander(f" {item_name}"):
             st.markdown(f"**{info['description']}**")
             st.markdown("---")
 
             col1, col2 = st.columns(2)
             with col1:
-                st.markdown("**✅ 작성 팁**")
+                st.markdown("** 작성 팁**")
                 for tip in info["tips"]:
                     st.markdown(f"- {tip}")
             with col2:
-                st.markdown("**❌ 피해야 할 표현**")
+                st.markdown("** 피해야 할 표현**")
                 for bad in info["bad_examples"]:
                     st.error(bad)
 
@@ -606,10 +652,10 @@ with tab3:
 
     # 항공사별 키워드 총정리
     st.markdown("---")
-    st.markdown("### 🔑 항공사별 핵심 키워드 총정리")
+    st.markdown("### 항공사별 핵심 키워드 총정리")
 
     for airline_name, kw in AIRLINE_KEYWORDS.items():
-        with st.expander(f"✈️ {airline_name}"):
+        with st.expander(f"️ {airline_name}"):
             col1, col2 = st.columns(2)
             with col1:
                 st.markdown("**인재상:**")
@@ -626,7 +672,7 @@ with tab3:
 # 탭4: 내 자소서 (버전 비교 포함)
 # ========================================
 with tab4:
-    st.subheader("💾 저장된 자소서")
+    st.subheader(" 저장된 자소서")
 
     resumes = load_my_resumes()
 
@@ -636,7 +682,7 @@ with tab4:
         # 점수 추이
         scored = [r for r in resumes if r.get("score")]
         if len(scored) >= 2:
-            st.markdown("#### 📈 점수 추이")
+            st.markdown("#### 점수 추이")
             import pandas as pd
             chart_data = []
             for r in scored:
@@ -658,7 +704,7 @@ with tab4:
         # 버전 비교 기능
         if filter_item != "전체" and len(filtered) >= 2:
             st.markdown("---")
-            st.markdown("#### 🔄 버전 비교")
+            st.markdown("#### 버전 비교")
             col1, col2 = st.columns(2)
             with col1:
                 v1_idx = st.selectbox("이전 버전",
@@ -675,7 +721,7 @@ with tab4:
                         key="v2_select"
                     )
 
-                    if st.button("📊 비교하기", use_container_width=True):
+                    if st.button("비교하기", use_container_width=True):
                         r1 = filtered[v1_idx]
                         r2 = filtered[v2_idx]
 
@@ -692,24 +738,24 @@ with tab4:
                         if isinstance(s1, int) and isinstance(s2, int):
                             diff = s2 - s1
                             if diff > 0:
-                                st.success(f"📈 {diff}점 개선되었습니다!")
+                                st.success(f" {diff}점 개선되었습니다!")
                             elif diff == 0:
                                 st.info("점수가 동일합니다.")
                             else:
-                                st.warning(f"📉 {abs(diff)}점 하락했습니다.")
+                                st.warning(f" {abs(diff)}점 하락했습니다.")
 
             st.markdown("---")
 
         # 개별 자소서 목록
-        st.markdown("#### 📋 저장 목록")
+        st.markdown("#### 저장 목록")
         for resume in filtered:
             date_str = resume.get("created_at", "")[:10]
             has_feedback = "feedback" in resume
             score = resume.get("score")
             score_str = f" | {score}점" if score else ""
-            re_review = " 🔄" if resume.get("is_re_review") else ""
+            re_review = " " if resume.get("is_re_review") else ""
 
-            with st.expander(f"📄 {resume.get('airline', '')} - {resume.get('item', '')} ({date_str}{score_str}){re_review}"):
+            with st.expander(f" {resume.get('airline', '')} - {resume.get('item', '')} ({date_str}{score_str}){re_review}"):
                 st.markdown("**원본:**")
                 st.write(resume.get("content", ""))
 
@@ -718,7 +764,7 @@ with tab4:
                     st.markdown("**AI 첨삭:**")
                     st.markdown(resume.get("feedback", ""))
 
-                if st.button("🗑️ 삭제", key=f"del_{resume.get('id')}"):
+                if st.button("️ 삭제", key=f"del_{resume.get('id')}"):
                     all_resumes = load_my_resumes()
                     all_resumes = [r for r in all_resumes if r.get("id") != resume.get("id")]
                     save_my_resumes(all_resumes)

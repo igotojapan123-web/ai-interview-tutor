@@ -10,6 +10,9 @@ import streamlit as st
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from logging_config import get_logger
+logger = get_logger(__name__)
+
 # 롤플레잉 시나리오
 try:
     from roleplay_scenarios import SCENARIOS as RP_SCENARIOS, get_all_scenarios
@@ -44,14 +47,14 @@ except ImportError:
     RECOMMENDATIONS_AVAILABLE = False
 
 
-from sidebar_common import render_sidebar
+from sidebar_common import init_page, end_page
 
-st.set_page_config(
-    page_title="진도 관리",
-    page_icon="📅",
-    layout="wide"
+# Initialize page with new layout
+init_page(
+    title="진도 관리",
+    current_page="진도관리",
+    wide_layout=True
 )
-render_sidebar("진도관리")
 
 
 
@@ -74,8 +77,8 @@ def load_progress_data():
         try:
             with open(DATA_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"진도 데이터 로드 실패: {e}")
     return {
         "checklist_completed": {},
     }
@@ -85,8 +88,8 @@ def save_progress_data(data):
     try:
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-    except:
-        pass
+    except Exception as e:
+        logger.warning(f"진도 데이터 저장 실패: {e}")
 
 
 def load_roleplay_progress():
@@ -94,8 +97,8 @@ def load_roleplay_progress():
         try:
             with open(RP_PROGRESS_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"롤플레이 진도 로드 실패: {e}")
     return {"history": [], "completed_scenarios": []}
 
 
@@ -569,7 +572,7 @@ st.markdown("""
 # UI 시작
 # =====================
 
-st.title("📅 진도 관리")
+st.title("진도 관리")
 
 data = get_data()
 progress = get_actual_progress()
@@ -584,11 +587,11 @@ today_count = len([s for s in scores_data.get("scores", []) if s.get("date") == 
 # 간단한 상단 요약
 col_stat1, col_stat2, col_stat3 = st.columns(3)
 with col_stat1:
-    st.metric("🔥 연속 학습일", f"{streak}일")
+    st.metric(" 연속 학습일", f"{streak}일")
 with col_stat2:
-    st.metric("📊 전체 진도", f"{total_progress}%")
+    st.metric(" 전체 진도", f"{total_progress}%")
 with col_stat3:
-    st.metric("✅ 오늘 연습", f"{today_count}회")
+    st.metric(" 오늘 연습", f"{today_count}회")
 
 st.markdown("---")
 
@@ -597,7 +600,7 @@ col_left, col_right = st.columns([2, 1])
 
 with col_left:
     # ===== 학습 캘린더 히트맵 =====
-    st.markdown("### 📅 학습 캘린더")
+    st.markdown("### 학습 캘린더")
 
     heatmap_data = get_heatmap_data(91)  # 13주
 
@@ -677,17 +680,17 @@ with col_left:
             score_count += 1
     week_avg_score = round(week_avg_score / score_count, 1) if score_count > 0 else 0
 
-    st.caption(f"📊 이번 주: {week_total}회 연습 | 평균 {week_avg_score}점")
+    st.caption(f" 이번 주: {week_total}회 연습 | 평균 {week_avg_score}점")
 
     # ===== 카테고리별 진도 =====
-    st.markdown("### 📈 카테고리별 진도")
+    st.markdown("### 카테고리별 진도")
 
-    category_icons = {"롤플레잉": "🎭", "영어면접": "🌍", "모의면접": "👔", "자소서": "📝"}
+    category_icons = {"롤플레잉": "", "영어면접": "", "모의면접": "", "자소서": ""}
     category_colors = {"롤플레잉": "#f59e0b", "영어면접": "#10b981", "모의면접": "#3b82f6", "자소서": "#8b5cf6"}
 
     for cat_name, cat_data in progress.items():
         percent = get_category_percent(progress, cat_name)
-        icon = category_icons.get(cat_name, "📋")
+        icon = category_icons.get(cat_name, "")
         color = category_colors.get(cat_name, "#667eea")
 
         st.markdown(f'''
@@ -706,13 +709,13 @@ with col_left:
         with st.expander(f"{cat_name} 세부 항목 보기", expanded=False):
             items = cat_data.get("items", [])
             for item in items:
-                status = "✅" if item.get("completed") else "⬜"
+                status = "" if item.get("completed") else "⬜"
                 st.write(f"{status} {item.get('title', '')}")
 
 
 with col_right:
     # ===== AI 맞춤 추천 =====
-    st.markdown("### 🤖 오늘의 추천")
+    st.markdown("### 오늘의 추천")
 
     recommendations = get_ai_recommendations()
 
@@ -739,17 +742,17 @@ with col_right:
     st.markdown("---")
 
     # ===== 바로가기 =====
-    st.markdown("### ⚡ 바로가기")
+    st.markdown("### 바로가기")
 
-    st.page_link("pages/1_롤플레잉.py", label="🎭 롤플레잉", use_container_width=True)
-    st.page_link("pages/2_영어면접.py", label="🌍 영어면접", use_container_width=True)
-    st.page_link("pages/4_모의면접.py", label="👔 모의면접", use_container_width=True)
-    st.page_link("pages/6_성장그래프.py", label="📈 성장그래프", use_container_width=True)
+    st.page_link("pages/1_롤플레잉.py", label= " 롤플레잉", use_container_width=True)
+    st.page_link("pages/2_영어면접.py", label= " 영어면접", use_container_width=True)
+    st.page_link("pages/4_모의면접.py", label= " 모의면접", use_container_width=True)
+    st.page_link("pages/6_성장그래프.py", label= " 성장그래프", use_container_width=True)
 
     st.markdown("---")
 
     # ===== 자소서 체크리스트 (수동) =====
-    st.markdown("### 📝 자소서 체크리스트")
+    st.markdown("### 자소서 체크리스트")
 
     resume_items = [
         ("resume_written", "자소서 작성 완료"),
@@ -775,7 +778,7 @@ with col_right:
 
 # ========== 최근 학습 기록 ==========
 st.markdown("---")
-with st.expander("📜 최근 학습 기록", expanded=False):
+with st.expander("최근 학습 기록", expanded=False):
     all_records = []
 
     # 롤플레잉 기록
@@ -787,7 +790,7 @@ with st.expander("📜 최근 학습 기록", expanded=False):
             scenario_title = RP_SCENARIOS.get(scenario_id, {}).get("title", scenario_id)
             all_records.append({
                 "timestamp": timestamp,
-                "type": "🎭 롤플레잉",
+                "type": " 롤플레잉",
                 "detail": scenario_title,
                 "score": h.get("score", 0),
             })

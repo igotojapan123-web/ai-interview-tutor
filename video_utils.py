@@ -7,6 +7,10 @@ import requests
 import base64
 from typing import Optional, Dict, Any
 
+from logging_config import get_logger
+
+logger = get_logger(__name__)
+
 # D-ID API 설정
 DID_API_URL = "https://api.d-id.com"
 DID_API_KEY = os.environ.get("DID_API_KEY", "")
@@ -47,7 +51,8 @@ def check_did_api_available() -> bool:
         }
         r = requests.get(f"{DID_API_URL}/credits", headers=headers, timeout=10)
         return r.status_code == 200
-    except:
+    except Exception as e:
+        logger.warning(f"D-ID API availability check failed: {e}")
         return False
 
 

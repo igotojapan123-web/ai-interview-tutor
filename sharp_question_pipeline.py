@@ -19,6 +19,9 @@ import re
 import requests
 from typing import Dict, List, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from logging_config import get_logger
+
+logger = get_logger(__name__)
 
 # ===========================================
 # HyperCLOVA X 클라이언트 (CLOVA Studio 서비스 앱)
@@ -831,7 +834,7 @@ def _call_llm(system: str, user: str, temperature: float = 0.3) -> Optional[Dict
                             data = json.loads(line[5:])
                             if 'message' in data and 'content' in data['message']:
                                 full_content = data['message']['content']
-                        except:
+                        except json.JSONDecodeError:
                             continue
         except Exception as e:
             print(f"[LLM ERROR] 응답 파싱 실패: {e}")
@@ -850,7 +853,7 @@ def _call_llm(system: str, user: str, temperature: float = 0.3) -> Optional[Dict
             if json_block:
                 try:
                     return json.loads(json_block.group(1).strip())
-                except:
+                except json.JSONDecodeError:
                     pass
 
             # 방법 2: 첫 번째 완전한 JSON 객체 추출
@@ -866,7 +869,7 @@ def _call_llm(system: str, user: str, temperature: float = 0.3) -> Optional[Dict
                     if brace_count == 0 and start_idx >= 0:
                         try:
                             return json.loads(full_content[start_idx:i+1])
-                        except:
+                        except json.JSONDecodeError:
                             break
 
             # 방법 3: 단순 regex
@@ -874,7 +877,7 @@ def _call_llm(system: str, user: str, temperature: float = 0.3) -> Optional[Dict
             if json_match:
                 try:
                     return json.loads(json_match.group())
-                except:
+                except json.JSONDecodeError:
                     pass
 
             print(f"[LLM ERROR] JSON 파싱 실패: {full_content[:300]}...")

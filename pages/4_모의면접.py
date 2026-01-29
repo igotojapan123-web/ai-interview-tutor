@@ -47,6 +47,7 @@ except ImportError:
 # 항공사별 맞춤 질문 import
 try:
     from airline_questions import (
+        get_airline_questions_fresh,  # 중복 방지 버전
         get_airline_questions,
         get_airline_values,
         get_airline_keywords,
@@ -67,25 +68,38 @@ except ImportError:
     REPORT_AVAILABLE = False
 
 
-from sidebar_common import render_sidebar
+# Use new layout system
+from sidebar_common import init_page, end_page
 
-st.set_page_config(
-    page_title="모의면접",
-    page_icon="🎙️",
-    layout="wide"
+# 공용 유틸리티 (Stage 2)
+try:
+    from shared_utils import get_api_key, load_json, save_json
+except ImportError:
+    pass
+
+# Initialize page with new layout
+init_page(
+    title="AI 모의면접",
+    current_page="모의면접",
+    wide_layout=True
 )
-render_sidebar("모의면접")
 
 
 
 # 구글 번역 방지
-st.markdown(
-    """
-    <meta name="google" content="notranslate">
-    <style>html { translate: no; }</style>
-    """,
-    unsafe_allow_html=True,
-)
+st.markdown("""
+<meta name="google" content="notranslate">
+<meta http-equiv="Content-Language" content="ko">
+<style>
+html, body, .stApp, .main, [data-testid="stAppViewContainer"] {
+    translate: no !important;
+}
+.notranslate, [translate="no"] {
+    translate: no !important;
+}
+</style>
+""", unsafe_allow_html=True)
+st.markdown('<div translate="no" class="notranslate" lang="ko">', unsafe_allow_html=True)
 
 # ----------------------------
 # 비밀번호 보호
@@ -187,7 +201,7 @@ def generate_questions(airline: str, count: int = 6) -> list:
     """면접 질문 생성 - 항공사별 맞춤 질문 사용"""
     # 항공사별 맞춤 질문 모듈이 있으면 사용
     if AIRLINE_QUESTIONS_AVAILABLE:
-        return get_airline_questions(airline, count)
+        return get_airline_questions_fresh(airline, count)
 
     # 폴백: 기존 공통 질문 사용
     questions = []
@@ -335,8 +349,7 @@ def evaluate_interview_combined(
 # UI
 # =====================
 
-st.title("🎙️ 실전 모의면접")
-st.caption("AI 면접관과 함께하는 실전 연습 (음성/텍스트 선택 가능)")
+# Page description already handled by init_page
 
 # D-ID API 상태 확인
 did_available = VIDEO_UTILS_AVAILABLE and check_did_api_available() if VIDEO_UTILS_AVAILABLE else False
@@ -372,19 +385,19 @@ if not st.session_state.mock_started:
     # 안내 박스
     if answer_mode == "음성 녹음":
         st.info("""
-        ### 🎤 음성 모의면접
-        1. **AI 면접관**이 질문을 읽어줍니다
-        2. **마이크**로 답변을 녹음합니다
-        3. **음성 분석**: 말 속도, 필러 단어, 발음 등 평가
-        4. **내용 분석**: STAR 구조, 구체성, 논리성 평가
-        5. **종합 피드백**: 음성 + 내용 통합 평가
+        **음성 모의면접 안내**
+        1. AI 면접관이 질문을 읽어줍니다
+        2. 마이크로 답변을 녹음합니다
+        3. 음성 분석: 말 속도, 필러 단어, 발음 등 평가
+        4. 내용 분석: STAR 구조, 구체성, 논리성 평가
+        5. 종합 피드백: 음성 + 내용 통합 평가
         """)
     else:
         st.info("""
-        ### 📝 텍스트 모의면접
-        1. 질문이 표시되면 **타이머**가 시작됩니다
-        2. 실제 면접처럼 **60-90초** 내에 답변하세요
-        3. **내용 분석**: STAR 구조, 구체성, 논리성 평가
+        **텍스트 모의면접 안내**
+        1. 질문이 표시되면 타이머가 시작됩니다
+        2. 실제 면접처럼 60-90초 내에 답변하세요
+        3. 내용 분석: STAR 구조, 구체성, 논리성 평가
         """)
 
     # 남은 사용량 표시
@@ -445,14 +458,14 @@ elif not st.session_state.mock_completed:
     if did_available:
         # D-ID 영상 (실제 구현 시)
         st.markdown(get_fallback_avatar_html(question, "interviewer", is_speaking=True), unsafe_allow_html=True)
-        st.caption("🎬 AI 면접관이 질문합니다")
+        st.caption("AI 면접관이 질문합니다")
     else:
         # 폴백 아바타
         st.markdown(get_fallback_avatar_html(question, "interviewer", is_speaking=True), unsafe_allow_html=True)
 
     # TTS로 질문 읽기 (옵션)
     if st.session_state.mock_mode == "voice" and VIDEO_UTILS_AVAILABLE:
-        if st.button("🔊 질문 다시 듣기"):
+        if st.button("질문 다시 듣기"):
             with st.spinner("음성 생성 중..."):
                 audio_bytes = generate_tts_audio(question, voice="alloy", speed=0.85)
                 if audio_bytes:
@@ -466,7 +479,7 @@ elif not st.session_state.mock_completed:
 
     if st.session_state.mock_mode == "voice":
         # 음성 녹음 모드
-        st.subheader("🎤 음성으로 답변하세요")
+        st.subheader("음성으로 답변하세요")
 
         # 타이머 시작 (음성 모드에서도 시간 측정)
         if st.session_state.answer_start_time is None:
@@ -478,7 +491,7 @@ elif not st.session_state.mock_completed:
         st.markdown(f"""
         <div style="text-align: center; margin: 15px 0;">
             <div style="font-size: 36px; font-weight: bold; color: {timer_color};">
-                ⏱️ {elapsed_display // 60:02d}:{elapsed_display % 60:02d}
+                {elapsed_display // 60:02d}:{elapsed_display % 60:02d}
             </div>
             <div style="font-size: 12px; color: #666;">적정 답변 시간: 60~90초</div>
         </div>
@@ -493,14 +506,14 @@ elif not st.session_state.mock_completed:
                 if "mock_processed_audio_id" not in st.session_state:
                     st.session_state.mock_processed_audio_id = None
 
-                audio_data = st.audio_input("🎤 녹음 버튼을 클릭하고 답변하세요", key=f"voice_input_{current_idx}")
+                audio_data = st.audio_input("녹음 버튼을 클릭하고 답변하세요", key=f"voice_input_{current_idx}")
 
                 if audio_data:
                     # 오디오 ID로 중복 체크
                     audio_id = f"{audio_data.name}_{audio_data.size}"
 
                     if audio_id != st.session_state.mock_processed_audio_id:
-                        with st.spinner("🔊 음성 인식 중..."):
+                        with st.spinner("음성 인식 중..."):
                             # 음성 데이터 읽기
                             audio_bytes = audio_data.read()
 
@@ -509,7 +522,7 @@ elif not st.session_state.mock_completed:
 
                             if result and result.get("text"):
                                 transcribed_text = result["text"]
-                                st.success(f"✅ 인식됨: {transcribed_text[:100]}{'...' if len(transcribed_text) > 100 else ''}")
+                                st.success(f"인식됨: {transcribed_text[:100]}{'...' if len(transcribed_text) > 100 else ''}")
 
                                 # 응답 시간 계산
                                 elapsed = int(time.time() - st.session_state.answer_start_time) if st.session_state.answer_start_time else 60
@@ -552,15 +565,15 @@ elif not st.session_state.mock_completed:
 
                                 st.rerun()
                             else:
-                                st.error("❌ 음성 인식 실패 - 다시 녹음하거나 아래 텍스트로 입력하세요")
+                                st.error("음성 인식 실패 - 다시 녹음하거나 아래 텍스트로 입력하세요")
                                 st.session_state.mock_processed_audio_id = audio_id
             except Exception as e:
                 st.warning(f"음성 입력 기능을 사용할 수 없습니다: {e}")
 
         with col_rec2:
             st.markdown("""
-            **💡 녹음 팁**
-            - 🎙️ 마이크 아이콘 클릭 → 답변 → 정지
+            **녹음 팁**
+            - 마이크 아이콘 클릭 후 답변 후 정지
             - 조용한 환경에서 녹음
             - 60~90초 내 답변 권장
             """)
@@ -568,7 +581,7 @@ elif not st.session_state.mock_completed:
         st.divider()
 
         # 텍스트 폴백 (음성 인식 실패 시)
-        with st.expander("📝 텍스트로 직접 입력하기"):
+        with st.expander("텍스트로 직접 입력하기"):
             fallback_answer = st.text_area(
                 "음성 인식이 안 될 경우 여기에 입력하세요",
                 height=150,
@@ -608,7 +621,7 @@ elif not st.session_state.mock_completed:
 
         # 패스 버튼
         st.divider()
-        if st.button("⏭️ 이 질문 패스", use_container_width=True):
+        if st.button("이 질문 패스", use_container_width=True):
             st.session_state.mock_answers.append("[답변 못함]")
             st.session_state.mock_times.append(0)
             st.session_state.mock_voice_analyses.append({"total_score": 0})
@@ -625,9 +638,9 @@ elif not st.session_state.mock_completed:
     else:
         # 텍스트 입력 모드 (기존 방식)
         if not st.session_state.timer_running:
-            st.info("💡 준비가 되면 '답변 시작' 버튼을 눌러주세요.")
+            st.info("준비가 되면 '답변 시작' 버튼을 눌러주세요.")
 
-            if st.button("🎬 답변 시작", type="primary", use_container_width=True):
+            if st.button("답변 시작", type="primary", use_container_width=True):
                 st.session_state.timer_running = True
                 st.session_state.answer_start_time = time.time()
                 st.rerun()
@@ -638,7 +651,7 @@ elif not st.session_state.mock_completed:
 
             timer_html = f"""
             <div style="text-align: center; margin: 20px 0;">
-                <div id="timer" style="font-size: 48px; font-weight: bold; color: #28a745;">⏱️ 00:00</div>
+                <div id="timer" style="font-size: 48px; font-weight: bold; color: #28a745;">00:00</div>
                 <div style="font-size: 14px; color: #666; margin-top: 5px;">적정 답변 시간: 60~90초</div>
             </div>
             <script>
@@ -649,7 +662,7 @@ elif not st.session_state.mock_completed:
                     const secs = elapsed % 60;
                     const el = document.getElementById('timer');
                     if (el) {{
-                        el.textContent = '⏱️ ' + String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+                        el.textContent = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
                         el.style.color = elapsed < 60 ? '#28a745' : elapsed < 90 ? '#ffc107' : '#dc3545';
                     }}
                 }}
@@ -715,7 +728,7 @@ else:
     # =====================
     # 면접 완료 - 종합 평가
     # =====================
-    st.subheader("🎉 모의면접 완료!")
+    st.subheader("모의면접 완료")
 
     st.markdown(f"**지원 항공사:** {st.session_state.mock_airline}")
     st.markdown(f"**답변 방식:** {'음성' if st.session_state.mock_mode == 'voice' else '텍스트'}")
@@ -728,7 +741,7 @@ else:
     if st.session_state.mock_mode == "voice" and st.session_state.mock_audio_bytes_list and VIDEO_UTILS_AVAILABLE:
         if st.session_state.mock_combined_voice_analysis is None:
             try:
-                with st.spinner("🎤 종합 음성 분석 중..."):
+                with st.spinner("종합 음성 분석 중..."):
                     # 모든 음성 데이터 합쳐서 분석
                     combined_audio = b''.join(st.session_state.mock_audio_bytes_list)
                     voice_result = analyze_voice_complete(
@@ -742,7 +755,7 @@ else:
     st.divider()
 
     # 질문별 결과 탭
-    tab1, tab2, tab3 = st.tabs(["📊 질문별 분석", "🎤 음성 평가", "📝 종합 평가"])
+    tab1, tab2, tab3 = st.tabs(["질문별 분석", "음성 평가", "종합 평가"])
 
     with tab1:
         for i, (q, a, t) in enumerate(zip(
@@ -768,9 +781,9 @@ else:
                         ]):
                             with cols[j]:
                                 if star.get(key):
-                                    st.success(f"✅ {label}")
+                                    st.success(f" {label}")
                                 else:
-                                    st.error(f"❌ {label}")
+                                    st.error(f" {label}")
 
                     # 개선점
                     improvements = content.get("improvements", [])
@@ -801,7 +814,7 @@ else:
                 """, unsafe_allow_html=True)
 
                 # 텍스트 분석 (말 속도, 필러, 휴지, 발음)
-                st.subheader("📝 텍스트 분석")
+                st.subheader("텍스트 분석")
                 text_analysis = voice_analysis.get("text_analysis", {})
 
                 col1, col2, col3, col4 = st.columns(4)
@@ -833,7 +846,7 @@ else:
                 st.divider()
 
                 # 음성 분석 (떨림, 말끝, 억양, 서비스톤)
-                st.subheader("🎤 음성 전달력 분석")
+                st.subheader("음성 전달력 분석")
                 voice_detail = voice_analysis.get("voice_analysis", {})
 
                 col1, col2 = st.columns(2)
@@ -864,7 +877,7 @@ else:
                 rt_analysis = voice_analysis.get("response_time_analysis", {})
                 if rt_analysis:
                     st.divider()
-                    st.subheader("⏱️ 응답 시간 분석")
+                    st.subheader("응답 시간 분석")
                     col1, col2, col3 = st.columns(3)
                     with col1:
                         st.metric("평균 응답 시간", f"{rt_analysis.get('avg_time', 0):.1f}초")
@@ -877,7 +890,7 @@ else:
                 improvements = voice_analysis.get("top_improvements", [])
                 if improvements:
                     st.divider()
-                    st.subheader("🎯 우선 개선 포인트")
+                    st.subheader("우선 개선 포인트")
                     for i, imp in enumerate(improvements, 1):
                         st.markdown(f"{i}. {imp}")
 
@@ -885,11 +898,11 @@ else:
                 st.warning(f"음성 분석 오류: {voice_analysis.get('error')}")
 
             elif not st.session_state.mock_audio_bytes_list:
-                st.info("💡 음성 모드로 녹음한 데이터가 없습니다. 텍스트 입력을 사용한 경우 음성 분석이 제공되지 않습니다.")
+                st.info("음성 모드로 녹음한 데이터가 없습니다. 텍스트 입력을 사용한 경우 음성 분석이 제공되지 않습니다.")
 
             # 질문별 음성 분석 (개별)
             st.divider()
-            st.subheader("📋 질문별 음성 분석")
+            st.subheader("질문별 음성 분석")
             for i, voice in enumerate(st.session_state.mock_voice_analyses, 1):
                 if voice and voice.get("total_score", 0) > 0:
                     with st.expander(f"질문 {i} 음성 분석", expanded=False):
@@ -967,7 +980,7 @@ else:
     # =====================
     if REPORT_AVAILABLE:
         st.divider()
-        st.subheader("📄 리포트 다운로드")
+        st.subheader("리포트 다운로드")
 
         col_pdf1, col_pdf2 = st.columns([2, 1])
         with col_pdf1:
@@ -987,7 +1000,7 @@ else:
                 filename = get_mock_interview_report_filename(st.session_state.mock_airline)
 
                 st.download_button(
-                    label="📥 PDF 다운로드",
+                    label="PDF 다운로드",
                     data=pdf_bytes,
                     file_name=filename,
                     mime="application/pdf",

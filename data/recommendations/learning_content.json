@@ -1,0 +1,195 @@
+[
+  {
+    "id": "intro_001",
+    "title": "자기소개 1분 스피치 완성 가이드",
+    "description": "면접관의 눈길을 사로잡는 1분 자기소개 작성법",
+    "content_type": "article",
+    "skill_category": "self_introduction",
+    "difficulty": 1,
+    "duration_minutes": 15,
+    "tags": [
+      "자기소개",
+      "1분스피치",
+      "면접"
+    ],
+    "url": "",
+    "is_premium": false
+  },
+  {
+    "id": "intro_002",
+    "title": "자기소개 롤플레잉 연습",
+    "description": "AI와 함께 자기소개 말하기 연습",
+    "content_type": "practice",
+    "skill_category": "self_introduction",
+    "difficulty": 2,
+    "duration_minutes": 20,
+    "tags": [
+      "자기소개",
+      "연습",
+      "AI"
+    ],
+    "url": "",
+    "is_premium": false
+  },
+  {
+    "id": "motiv_001",
+    "title": "항공사별 지원동기 작성 비법",
+    "description": "대한항공, 아시아나 등 항공사별 맞춤 지원동기",
+    "content_type": "article",
+    "skill_category": "motivation",
+    "difficulty": 2,
+    "duration_minutes": 20,
+    "tags": [
+      "지원동기",
+      "항공사",
+      "대한항공",
+      "아시아나"
+    ],
+    "url": "",
+    "is_premium": false
+  },
+  {
+    "id": "situation_001",
+    "title": "기내 돌발 상황 대처법",
+    "description": "실제 면접에 출제된 상황 질문 30선",
+    "content_type": "quiz",
+    "skill_category": "situational",
+    "difficulty": 2,
+    "duration_minutes": 30,
+    "tags": [
+      "상황대처",
+      "면접질문",
+      "기내서비스"
+    ],
+    "url": "",
+    "is_premium": false
+  },
+  {
+    "id": "situation_002",
+    "title": "까다로운 승객 응대 시뮬레이션",
+    "description": "AI와 함께하는 상황극 연습",
+    "content_type": "mock_interview",
+    "skill_category": "situational",
+    "difficulty": 3,
+    "duration_minutes": 25,
+    "tags": [
+      "상황대처",
+      "승객응대",
+      "AI면접"
+    ],
+    "url": "",
+    "is_premium": true
+  },
+  {
+    "id": "eng_001",
+    "title": "기내 영어 필수 표현 100",
+    "description": "실제 비행에서 사용하는 영어 표현 학습",
+    "content_type": "article",
+    "skill_category": "english_speaking",
+    "difficulty": 1,
+    "duration_minutes": 30,
+    "tags": [
+      "영어",
+      "기내방송",
+      "필수표현"
+    ],
+    "url": "",
+    "is_premium": false
+  },
+  {
+    "id": "eng_002",
+    "title": "영어 인터뷰 실전 연습",
+    "description": "원어민 AI와 함께하는 영어 면접 연습",
+    "content_type": "mock_interview",
+    "skill_category": "english_speaking",
+    "difficulty": 3,
+    "duration_minutes": 30,
+    "tags": [
+      "영어면접",
+      "AI면접",
+      "원어민"
+    ],
+    "url": "",
+    "is_premium": true
+  },
+  {
+    "id": "image_001",
+    "title": "승무원 면접 메이크업 가이드",
+    "description": "항공사별 선호 메이크업 스타일 분석",
+    "content_type": "video",
+    "skill_category": "makeup",
+    "difficulty": 1,
+    "duration_minutes": 25,
+    "tags": [
+      "메이크업",
+      "이미지메이킹",
+      "면접"
+    ],
+    "url": "",
+    "is_premium": false
+  },
+  {
+    "id": "image_002",
+    "title": "워킹 & 자세 교정",
+    "description": "면접장 입장부터 퇴장까지 완벽 자세",
+    "content_type": "video",
+    "skill_category": "posture",
+    "difficulty": 1,
+    "duration_minutes": 20,
+    "tags": [
+      "워킹",
+      "자세",
+      "이미지메이킹"
+    ],
+    "url": "",
+    "is_premium": false
+  },
+  {
+    "id": "aviation_001",
+    "title": "항공상식 퀴즈 100제",
+    "description": "면접 필수 항공상식 총정리",
+    "content_type": "quiz",
+    "skill_category": "aviation_knowledge",
+    "difficulty": 2,
+    "duration_minutes": 40,
+    "tags": [
+      "항공상식",
+      "퀴즈",
+      "면접"
+    ],
+    "url": "",
+    "is_premium": false
+  },
+  {
+    "id": "cover_001",
+    "title": "합격 자소서 분석 및 작성법",
+    "description": "실제 합격자 자소서 분석과 핵심 작성 전략",
+    "content_type": "article",
+    "skill_category": "cover_letter",
+    "difficulty": 2,
+    "duration_minutes": 35,
+    "tags": [
+      "자소서",
+      "합격",
+      "분석"
+    ],
+    "url": "",
+    "is_premium": false
+  },
+  {
+    "id": "cover_002",
+    "title": "AI 자소서 첨삭 받기",
+    "description": "AI가 분석하는 나의 자소서 강점과 보완점",
+    "content_type": "practice",
+    "skill_category": "cover_letter",
+    "difficulty": 2,
+    "duration_minutes": 30,
+    "tags": [
+      "자소서",
+      "AI첨삭",
+      "피드백"
+    ],
+    "url": "",
+    "is_premium": true
+  }
+]

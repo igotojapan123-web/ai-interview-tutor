@@ -1,0 +1,203 @@
+[
+  {
+    "id": "mentor_001",
+    "user_id": "user_m001",
+    "name": "김수현",
+    "mentor_type": "current_crew",
+    "status": "active",
+    "airlines": [
+      "KE"
+    ],
+    "current_airline": "KE",
+    "position": "부사무장",
+    "years_experience": 8,
+    "hire_year": 2016,
+    "specialties": [
+      "영어면접",
+      "자기소개",
+      "이미지메이킹"
+    ],
+    "languages": [
+      "ko",
+      "en",
+      "jp"
+    ],
+    "session_types": [
+      "video_call",
+      "mock_interview"
+    ],
+    "bio": "대한항공 8년차 부사무장입니다. 면접 준비의 A to Z를 함께 하겠습니다.",
+    "profile_image": null,
+    "verified": true,
+    "rating": 4.9,
+    "total_sessions": 156,
+    "total_reviews": 142,
+    "hourly_rate": 50000,
+    "discount_rate": 0,
+    "available_days": [
+      "토",
+      "일"
+    ],
+    "available_times": [
+      "10:00",
+      "11:00",
+      "14:00",
+      "15:00"
+    ],
+    "created_at": "2026-01-28T13:11:21.617124",
+    "updated_at": "2026-01-28T13:11:21.617134"
+  },
+  {
+    "id": "mentor_002",
+    "user_id": "user_m002",
+    "name": "이지원",
+    "mentor_type": "recent_pass",
+    "status": "active",
+    "airlines": [
+      "OZ"
+    ],
+    "current_airline": "OZ",
+    "position": "승무원",
+    "years_experience": 1,
+    "hire_year": 2023,
+    "specialties": [
+      "자소서첨삭",
+      "지원동기",
+      "최신면접동향"
+    ],
+    "languages": [
+      "ko",
+      "en",
+      "zh"
+    ],
+    "session_types": [
+      "document_review",
+      "chat"
+    ],
+    "bio": "2023년 아시아나 합격! 최신 면접 경험을 공유합니다.",
+    "profile_image": null,
+    "verified": true,
+    "rating": 4.8,
+    "total_sessions": 45,
+    "total_reviews": 38,
+    "hourly_rate": 30000,
+    "discount_rate": 0,
+    "available_days": [
+      "월",
+      "화",
+      "수",
+      "목",
+      "금"
+    ],
+    "available_times": [
+      "20:00",
+      "21:00"
+    ],
+    "created_at": "2026-01-28T13:11:21.617149",
+    "updated_at": "2026-01-28T13:11:21.617151"
+  },
+  {
+    "id": "mentor_003",
+    "user_id": "user_m003",
+    "name": "박서연",
+    "mentor_type": "current_crew",
+    "status": "active",
+    "airlines": [
+      "EK",
+      "SQ"
+    ],
+    "current_airline": "EK",
+    "position": "Senior Cabin Crew",
+    "years_experience": 6,
+    "hire_year": 2018,
+    "specialties": [
+      "외항사면접",
+      "영어스피킹",
+      "오픈데이"
+    ],
+    "languages": [
+      "ko",
+      "en"
+    ],
+    "session_types": [
+      "video_call",
+      "mock_interview",
+      "career_consult"
+    ],
+    "bio": "싱가포르항공 3년, 에미레이트 3년 경력. 외항사 합격 전략을 알려드립니다.",
+    "profile_image": null,
+    "verified": true,
+    "rating": 4.95,
+    "total_sessions": 203,
+    "total_reviews": 189,
+    "hourly_rate": 70000,
+    "discount_rate": 0,
+    "available_days": [
+      "토",
+      "일"
+    ],
+    "available_times": [
+      "09:00",
+      "10:00",
+      "16:00",
+      "17:00"
+    ],
+    "created_at": "2026-01-28T13:11:21.617160",
+    "updated_at": "2026-01-28T13:11:21.617162"
+  },
+  {
+    "id": "mentor_004",
+    "user_id": "user_m004",
+    "name": "정하늘",
+    "mentor_type": "instructor",
+    "status": "active",
+    "airlines": [
+      "KE",
+      "OZ",
+      "7C"
+    ],
+    "current_airline": null,
+    "position": "수석강사",
+    "years_experience": 12,
+    "hire_year": null,
+    "specialties": [
+      "종합면접",
+      "상황대처",
+      "그룹토론"
+    ],
+    "languages": [
+      "ko",
+      "en"
+    ],
+    "session_types": [
+      "video_call",
+      "mock_interview",
+      "document_review"
+    ],
+    "bio": "12년 경력 승무원 전문 강사. 1,000명 이상 합격 배출.",
+    "profile_image": null,
+    "verified": true,
+    "rating": 4.85,
+    "total_sessions": 520,
+    "total_reviews": 480,
+    "hourly_rate": 80000,
+    "discount_rate": 0,
+    "available_days": [
+      "월",
+      "화",
+      "수",
+      "목",
+      "금",
+      "토"
+    ],
+    "available_times": [
+      "10:00",
+      "11:00",
+      "14:00",
+      "15:00",
+      "16:00"
+    ],
+    "created_at": "2026-01-28T13:11:21.617168",
+    "updated_at": "2026-01-28T13:11:21.617169"
+  }
+]

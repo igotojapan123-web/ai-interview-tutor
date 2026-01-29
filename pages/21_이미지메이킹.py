@@ -7,14 +7,28 @@ import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sidebar_common import render_sidebar
+from sidebar_common import init_page, end_page
 
-st.set_page_config(page_title="이미지메이킹", page_icon="👗", layout="wide")
-render_sidebar("이미지메이킹")
+init_page(
+    title="이미지메이킹",
+    current_page="이미지메이킹",
+    wide_layout=True
+)
 
 
-st.markdown('<meta name="google" content="notranslate"><style>html{translate:no;}</style>', unsafe_allow_html=True)
-st.markdown('<div translate="no" class="notranslate">', unsafe_allow_html=True)
+st.markdown("""
+<meta name="google" content="notranslate">
+<meta http-equiv="Content-Language" content="ko">
+<style>
+html, body, .stApp, .main, [data-testid="stAppViewContainer"] {
+    translate: no !important;
+}
+.notranslate, [translate="no"] {
+    translate: no !important;
+}
+</style>
+""", unsafe_allow_html=True)
+st.markdown('<div translate="no" class="notranslate" lang="ko">', unsafe_allow_html=True)
 
 # ========================================
 # 항공사별 이미지 데이터 (11개)
@@ -349,14 +363,14 @@ SELF_CHECK = {
 # 면접 당일 타임라인
 # ========================================
 TIMELINE = [
-    {"time": "3시간 전", "tasks": ["기상 + 가벼운 스트레칭", "세안 + 스킨케어 (충분히 흡수시키기)", "아침 식사 (가볍게, 냄새나는 음식 X)"], "icon": "🌅"},
-    {"time": "2시간 30분 전", "tasks": ["베이스 메이크업 시작", "컨실러 → 파운데이션 → 세팅", "눈썹 정리"], "icon": "🎨"},
-    {"time": "2시간 전", "tasks": ["아이 메이크업 + 립 + 치크", "메이크업 전체 확인 (자연광에서)", "수정할 부분 터치업"], "icon": "💄"},
-    {"time": "1시간 30분 전", "tasks": ["헤어스타일 세팅", "잔머리 정리 + 스프레이 고정", "앞/옆/뒷모습 확인"], "icon": "💇"},
-    {"time": "1시간 전", "tasks": ["복장 착용 (블라우스 → 스커트 → 자켓)", "스타킹 올 확인", "구두 착용 + 전신 확인"], "icon": "👔"},
-    {"time": "45분 전", "tasks": ["소지품 최종 점검 (서류, 여분 스타킹, 거울, 립)", "핸드폰 무음 확인", "집 출발"], "icon": "🎒"},
-    {"time": "30분 전", "tasks": ["면접장 도착 (여유있게!)", "화장실에서 최종 점검", "미소 연습 + 자세 확인"], "icon": "🏢"},
-    {"time": "10분 전", "tasks": ["대기실에서 바른 자세로 대기", "가벼운 미소 유지", "심호흡으로 긴장 완화"], "icon": "✨"},
+    {"time": "3시간 전", "tasks": ["기상 + 가벼운 스트레칭", "세안 + 스킨케어 (충분히 흡수시키기)", "아침 식사 (가볍게, 냄새나는 음식 X)"], "icon": ""},
+    {"time": "2시간 30분 전", "tasks": ["베이스 메이크업 시작", "컨실러 → 파운데이션 → 세팅", "눈썹 정리"], "icon": ""},
+    {"time": "2시간 전", "tasks": ["아이 메이크업 + 립 + 치크", "메이크업 전체 확인 (자연광에서)", "수정할 부분 터치업"], "icon": ""},
+    {"time": "1시간 30분 전", "tasks": ["헤어스타일 세팅", "잔머리 정리 + 스프레이 고정", "앞/옆/뒷모습 확인"], "icon": ""},
+    {"time": "1시간 전", "tasks": ["복장 착용 (블라우스 → 스커트 → 자켓)", "스타킹 올 확인", "구두 착용 + 전신 확인"], "icon": ""},
+    {"time": "45분 전", "tasks": ["소지품 최종 점검 (서류, 여분 스타킹, 거울, 립)", "핸드폰 무음 확인", "집 출발"], "icon": ""},
+    {"time": "30분 전", "tasks": ["면접장 도착 (여유있게!)", "화장실에서 최종 점검", "미소 연습 + 자세 확인"], "icon": ""},
+    {"time": "10분 전", "tasks": ["대기실에서 바른 자세로 대기", "가벼운 미소 유지", "심호흡으로 긴장 완화"], "icon": ""},
 ]
 
 # ========================================
@@ -497,13 +511,13 @@ st.markdown("""
 # ========================================
 # 메인 UI
 # ========================================
-st.title("👗 이미지메이킹 가이드")
+st.title("이미지메이킹 가이드")
 st.caption("항공사 면접을 위한 메이크업, 헤어, 복장, 셀프체크까지!")
 
 # 탭
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-    "✅ 셀프 체크", "⏰ 당일 타임라인", "🎨 메이크업",
-    "💇 헤어", "👔 복장", "⚠️ NG 사례", "✈️ 항공사별"
+ " 셀프 체크", "⏰ 당일 타임라인", " 메이크업",
+ " 헤어", " 복장", "️ NG 사례", "️ 항공사별"
 ])
 
 
@@ -511,15 +525,15 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
 # 탭1: 셀프 체크
 # ========================================
 with tab1:
-    st.subheader("✅ 이미지 셀프 체크")
+    st.subheader(" 이미지 셀프 체크")
     st.markdown("각 항목을 체크하고 현재 준비도를 확인하세요!")
 
     total_checks = 0
     total_checked = 0
 
     for category, questions in SELF_CHECK.items():
-        emoji_map = {"메이크업": "🎨", "헤어": "💇", "복장": "👔", "태도": "🙋"}
-        emoji = emoji_map.get(category, "✅")
+        emoji_map = {"메이크업": "", "헤어": "", "복장": "", "태도": ""}
+        emoji = emoji_map.get(category, "")
 
         st.markdown(f"#### {emoji} {category}")
 
@@ -532,11 +546,11 @@ with tab1:
 
         progress = checked / len(questions)
         if progress == 1.0:
-            st.success(f"✅ {category} 완벽!")
+            st.success(f" {category} 완벽!")
         elif progress >= 0.7:
-            st.info(f"👍 {category} {int(progress*100)}% 준비됨")
+            st.info(f" {category} {int(progress*100)}% 준비됨")
         elif progress > 0:
-            st.warning(f"💪 {category} {int(progress*100)}% - 더 준비하세요!")
+            st.warning(f" {category} {int(progress*100)}% - 더 준비하세요!")
 
         st.markdown("---")
 
@@ -544,16 +558,16 @@ with tab1:
     overall = int(total_checked / total_checks * 100) if total_checks > 0 else 0
 
     if overall >= 90:
-        grade_text = "완벽한 준비! 🏆"
+        grade_text = "완벽한 준비! "
         grade_color = "#28a745"
     elif overall >= 70:
-        grade_text = "거의 다 됐어요! 🌟"
+        grade_text = "거의 다 됐어요! "
         grade_color = "#4facfe"
     elif overall >= 50:
-        grade_text = "조금 더 준비하세요! 💪"
+        grade_text = "조금 더 준비하세요! "
         grade_color = "#ffc107"
     else:
-        grade_text = "아직 준비가 필요해요! 📚"
+        grade_text = "아직 준비가 필요해요! "
         grade_color = "#dc3545"
 
     st.markdown(f"""
@@ -570,7 +584,7 @@ with tab1:
 # ========================================
 with tab2:
     st.subheader("⏰ 면접 당일 준비 타임라인")
-    st.info("💡 면접 시간 기준으로 역산하여 준비하세요! (예: 10시 면접 → 7시 기상)")
+    st.info("면접 시간 기준으로 역산하여 준비하세요! (예: 10시 면접 → 7시 기상)")
 
     for item in TIMELINE:
         tasks_html = "<br>".join([f"• {t}" for t in item["tasks"]])
@@ -589,7 +603,7 @@ with tab2:
     st.markdown("---")
 
     # 계절별 팁
-    st.markdown("### 🌡️ 계절별 추가 팁")
+    st.markdown("### ️ 계절별 추가 팁")
 
     season = st.selectbox("계절 선택", list(SEASON_TIPS.keys()), key="season_select")
     tips = SEASON_TIPS[season]
@@ -603,10 +617,10 @@ with tab2:
 
     # 화상면접 팁
     st.markdown("---")
-    st.markdown("### 💻 화상면접 이미지 팁")
+    st.markdown("### 화상면접 이미지 팁")
 
     for category, tips_list in ONLINE_TIPS.items():
-        with st.expander(f"📹 {category}"):
+        with st.expander(f" {category}"):
             for t in tips_list:
                 st.markdown(f"- {t}")
 
@@ -615,10 +629,10 @@ with tab2:
 # 탭3: 메이크업
 # ========================================
 with tab3:
-    st.subheader("🎨 면접 메이크업 가이드")
+    st.subheader(" 면접 메이크업 가이드")
 
     for part, info in MAKEUP_GUIDE.items():
-        with st.expander(f"💄 {part} 메이크업", expanded=(part == "베이스")):
+        with st.expander(f" {part} 메이크업", expanded=(part == "베이스")):
             col1, col2 = st.columns([3, 2])
             with col1:
                 st.markdown("**순서:**")
@@ -643,10 +657,10 @@ with tab3:
 # 탭4: 헤어스타일
 # ========================================
 with tab4:
-    st.subheader("💇 면접 헤어스타일 가이드")
+    st.subheader(" 면접 헤어스타일 가이드")
 
     for style, info in HAIR_GUIDE.items():
-        with st.expander(f"💇‍♀️ {style}"):
+        with st.expander(f"‍️ {style}"):
             st.markdown(f"**{info['description']}**")
             st.caption(f"추천 항공사: {', '.join(info['suitable'])}")
             st.markdown("---")
@@ -675,17 +689,17 @@ with tab4:
 # 탭5: 복장
 # ========================================
 with tab5:
-    st.subheader("👔 면접 복장 가이드")
+    st.subheader(" 면접 복장 가이드")
 
     for item_name, info in OUTFIT_GUIDE.items():
-        with st.expander(f"👗 {item_name}"):
+        with st.expander(f" {item_name}"):
             col1, col2 = st.columns(2)
             with col1:
-                st.markdown("**✅ DO**")
+                st.markdown("** DO**")
                 for do in info["do"]:
                     st.success(do)
             with col2:
-                st.markdown("**❌ DON'T**")
+                st.markdown("** DON'T**")
                 for dont in info["dont"]:
                     st.error(dont)
 
@@ -704,18 +718,18 @@ with tab5:
 # 탭6: NG 사례
 # ========================================
 with tab6:
-    st.subheader("⚠️ NG 사례 모음")
+    st.subheader("️ NG 사례 모음")
     st.markdown("이렇게 하면 감점! 흔한 실수와 올바른 대안을 확인하세요.")
 
     for category, cases in NG_CASES.items():
-        st.markdown(f"### {'🎨' if '메이크업' in category else '💇' if '헤어' in category else '👔' if '복장' in category else '🙋'} {category}")
+        st.markdown(f"### {'' if '메이크업' in category else '' if '헤어' in category else '' if '복장' in category else ''} {category}")
 
         for case in cases:
             col1, col2 = st.columns(2)
             with col1:
-                st.markdown(f"""<div class="ng-card">❌ {case['ng']}</div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="ng-card"> {case['ng']}</div>""", unsafe_allow_html=True)
             with col2:
-                st.markdown(f"""<div class="fix-card">✅ {case['fix']}</div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="fix-card"> {case['fix']}</div>""", unsafe_allow_html=True)
 
         st.markdown("---")
 
@@ -724,7 +738,7 @@ with tab6:
 # 탭7: 항공사별 (비교 기능 포함)
 # ========================================
 with tab7:
-    st.subheader("✈️ 항공사별 이미지 가이드")
+    st.subheader("️ 항공사별 이미지 가이드")
 
     # 비교 모드 선택
     mode = st.radio("보기 모드", ["개별 조회", "2개 항공사 비교"], horizontal=True, key="airline_mode")
@@ -747,16 +761,16 @@ with tab7:
         st.markdown("---")
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.markdown("**🎨 메이크업**")
+            st.markdown("** 메이크업**")
             st.write(info["makeup"])
         with col2:
-            st.markdown("**💇 헤어**")
+            st.markdown("** 헤어**")
             st.write(info["hair"])
         with col3:
-            st.markdown("**👔 복장**")
+            st.markdown("** 복장**")
             st.write(info["outfit"])
 
-        st.info(f"💡 **TIP:** {info['tip']}")
+        st.info(f" **TIP:** {info['tip']}")
 
     else:  # 2개 비교
         col1, col2 = st.columns(2)
@@ -779,11 +793,11 @@ with tab7:
             </div>
             """, unsafe_allow_html=True)
             st.markdown("")
-            st.markdown(f"**🎨 메이크업:** {info1['makeup']}")
-            st.markdown(f"**💇 헤어:** {info1['hair']}")
-            st.markdown(f"**👔 복장:** {info1['outfit']}")
+            st.markdown(f"** 메이크업:** {info1['makeup']}")
+            st.markdown(f"** 헤어:** {info1['hair']}")
+            st.markdown(f"** 복장:** {info1['outfit']}")
             st.caption(f"키워드: {', '.join(info1['keywords'])}")
-            st.info(f"💡 {info1['tip']}")
+            st.info(f" {info1['tip']}")
 
         with col2:
             st.markdown(f"""
@@ -793,15 +807,15 @@ with tab7:
             </div>
             """, unsafe_allow_html=True)
             st.markdown("")
-            st.markdown(f"**🎨 메이크업:** {info2['makeup']}")
-            st.markdown(f"**💇 헤어:** {info2['hair']}")
-            st.markdown(f"**👔 복장:** {info2['outfit']}")
+            st.markdown(f"** 메이크업:** {info2['makeup']}")
+            st.markdown(f"** 헤어:** {info2['hair']}")
+            st.markdown(f"** 복장:** {info2['outfit']}")
             st.caption(f"키워드: {', '.join(info2['keywords'])}")
-            st.info(f"💡 {info2['tip']}")
+            st.info(f" {info2['tip']}")
 
     # 전체 비교표
     st.markdown("---")
-    st.markdown("### 📊 전체 항공사 비교")
+    st.markdown("### 전체 항공사 비교")
 
     comparison_data = []
     for airline, data in AIRLINE_IMAGE.items():

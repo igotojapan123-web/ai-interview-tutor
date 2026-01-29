@@ -975,3 +975,38 @@ def get_airline_keywords(airline: str) -> list:
 def get_available_airlines() -> list:
     """지원되는 항공사 목록 반환"""
     return list(AIRLINE_SPECIFIC_QUESTIONS.keys())
+
+
+def get_all_airline_questions(airline: str) -> list:
+    """항공사의 전체 질문 풀 반환 (중복 방지용)"""
+    questions = []
+    if airline in AIRLINE_SPECIFIC_QUESTIONS:
+        airline_qs = AIRLINE_SPECIFIC_QUESTIONS[airline]
+        for category in ["common", "values", "situational", "personality"]:
+            questions.extend(airline_qs.get(category, []))
+    else:
+        for category in COMMON_QUESTIONS.values():
+            questions.extend(category)
+    return questions
+
+
+def get_airline_questions_fresh(airline: str, count: int = 6) -> list:
+    """
+    항공사별 맞춤 질문 생성 (중복 방지 적용)
+    - 이전에 나온 질문을 제외하고 새 질문만 선택
+    - 모든 질문이 소진되면 자동으로 리셋
+
+    Args:
+        airline: 항공사 이름
+        count: 질문 개수 (4-8)
+
+    Returns:
+        질문 리스트 (이전에 안 나온 질문 우선)
+    """
+    try:
+        from question_history import get_fresh_mock_questions
+        all_questions = get_all_airline_questions(airline)
+        return get_fresh_mock_questions(all_questions, airline, count)
+    except ImportError:
+        # question_history 모듈 없으면 기존 방식 사용
+        return get_airline_questions(airline, count)

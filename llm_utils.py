@@ -23,6 +23,9 @@ from config import (
 from text_utils import normalize_ws
 from analysis import _classify_prompt_type_kor
 from extraction_verifier import verify_llm_extraction, two_stage_extraction
+from logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 def _now_ts() -> float:
@@ -53,14 +56,16 @@ def _llm_gc():
     for k, v in box.items():
         try:
             ts = float((v or {}).get("ts", 0.0))
-        except Exception:
+        except Exception as e:
+            logger.warning(f"LLM GC timestamp parsing failed: {e}")
             ts = 0.0
         if (now - ts) > LLM_TTL_SEC:
             to_del.append(k)
     for k in to_del:
         try:
             del box[k]
-        except Exception:
+        except Exception as e:
+            logger.warning(f"LLM GC box deletion failed: {e}")
             pass
     st.session_state._llm_extract_box = box
 
@@ -673,7 +678,8 @@ def _llm_parse_json_from_response(resp: Dict[str, Any]) -> Optional[Dict[str, An
         if isinstance(parsed, dict):
             return parsed
         return None
-    except Exception:
+    except Exception as e:
+        logger.warning(f"LLM response JSON parsing failed: {e}")
         return None
 
 
@@ -1090,8 +1096,9 @@ def _llm_try_extract_or_reuse(qa_sets: List[Dict[str, str]]) -> Optional[Dict[st
                 if "verification_stats" in data:
                     stats = data["verification_stats"]
                     data["verification_confidence"] = stats.get("confidence_ratio", 0)
-        except Exception:
+        except Exception as e:
             # 검증 실패해도 원본 데이터 유지
+            logger.warning(f"LLM extraction verification failed: {e}")
             pass
 
         box[llm_hash] = {
@@ -1131,7 +1138,8 @@ def generate_q3_from_answer(q2_question: str, user_answer: str, essay_context: s
         resp = r.json()
         content = (resp.get("choices", [{}])[0] or {}).get("message", {}).get("content", "")
         return content.strip() if content else None
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Single Q2 generation failed: {e}")
         return None
 
 
@@ -1156,7 +1164,8 @@ def generate_resume_questions(resume_data: dict, airline: str, num_questions: in
         if not content: return []
         questions = [line.strip().lstrip("0123456789.-) ") for line in content.strip().split("\n") if line.strip()]
         return questions[:num_questions]
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Resume questions generation failed: {e}")
         return []
 
 
@@ -1311,7 +1320,8 @@ def premium_analyze_resume(question: str, answer: str) -> Optional[Dict[str, Any
             if attempt < MAX_RETRIES:
                 time.sleep(2)  # 2초 대기 후 재시도
                 continue
-        except Exception:
+        except Exception as e:
+            logger.warning(f"LLM API call failed (attempt {attempt + 1}): {e}")
             if attempt < MAX_RETRIES:
                 time.sleep(1)
                 continue
@@ -1511,7 +1521,8 @@ def generate_simple_q2(question: str, answer: str, is_soft: bool = False) -> Opt
             if len(content) > 100:
                 content = content.split("?")[0] + "?"
             return content
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Followup question generation failed: {e}")
         pass
 
     return None
@@ -1563,7 +1574,8 @@ def generate_simple_q3(answer: str, q2_question: str, is_soft: bool = False) -> 
             if len(content) > 100:
                 content = content.split("?")[0] + "?"
             return content
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Alternative followup generation failed: {e}")
         pass
 
     return None

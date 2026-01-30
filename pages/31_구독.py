@@ -145,11 +145,12 @@ st.markdown("""
     transition: all 0.2s;
 }
 .plan-btn-primary {
-    background: #3b82f6;
-    color: white;
+    background: #1d4ed8 !important;
+    color: #FFFFFF !important;
 }
 .plan-btn-primary:hover {
-    background: #2563eb;
+    background: #1e40af !important;
+    color: #FFFFFF !important;
 }
 .plan-btn-secondary {
     background: #f1f5f9;

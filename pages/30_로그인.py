@@ -69,13 +69,13 @@ st.markdown("""
     color: #191919;
 }
 .google-btn {
-    background: white;
-    color: #333;
+    background: white !important;
+    color: #333 !important;
     border: 1px solid #ddd;
 }
 .apple-btn {
-    background: #000;
-    color: white;
+    background: #000 !important;
+    color: #FFFFFF !important;
 }
 
 .divider {

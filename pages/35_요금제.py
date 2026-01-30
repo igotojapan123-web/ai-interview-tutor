@@ -65,10 +65,10 @@ header[data-testid="stHeader"] { display: none; }
 .plan-btn { display: block; width: 100%; padding: 16px; border-radius: 10px; font-size: 1rem; font-weight: 700; text-decoration: none; text-align: center; transition: all 0.2s; box-sizing: border-box; }
 .plan-btn-secondary { background: #e2e8f0; color: #475569; }
 .plan-btn-secondary:hover { background: #cbd5e1; }
-.plan-btn-primary { background: #3b82f6; color: white; }
-.plan-btn-primary:hover { background: #2563eb; }
-.plan-btn-premium { background: #8b5cf6; color: white; }
-.plan-btn-premium:hover { background: #7c3aed; }
+.plan-btn-primary { background: #1d4ed8 !important; color: #FFFFFF !important; }
+.plan-btn-primary:hover { background: #1e40af !important; color: #FFFFFF !important; }
+.plan-btn-premium { background: #6d28d9 !important; color: #FFFFFF !important; }
+.plan-btn-premium:hover { background: #5b21b6 !important; color: #FFFFFF !important; }
 .feature-note { font-size: 0.85rem; color: #94a3b8; text-align: center; margin-top: 40px; padding-top: 24px; border-top: 1px solid #e2e8f0; }
 
 /* Material Icon 텍스트 폴백 숨김 */

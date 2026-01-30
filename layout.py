@@ -795,13 +795,14 @@ section[data-testid="stSidebar"] {{display: none !important;}}
 }}
 
 .hero-btn-secondary {{
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: #FFFFFF !important;
     border: 1px solid rgba(255, 255, 255, 0.2);
 }}
 
 .hero-btn-secondary:hover {{
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.15) !important;
+    color: #FFFFFF !important;
 }}
 
 /* Page Header */

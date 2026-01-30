@@ -151,9 +151,8 @@ def auto_retry(
 
             for attempt in range(max_retries + 1):
                 try:
-                    # 타임아웃 설정 (kwargs로 전달 가능한 경우)
-                    if 'timeout' not in kwargs:
-                        kwargs['timeout'] = actual_timeout
+                    # timeout 파라미터는 함수가 받을 수 있는 경우에만 전달
+                    # (일반 함수에는 전달하지 않음)
 
                     result = func(*args, **kwargs)
 

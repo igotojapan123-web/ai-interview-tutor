@@ -203,9 +203,9 @@ class ErrorLogger:
 
         self._save()
 
-        # 심각한 에러는 즉시 알림
-        if level == ErrorLevel.CRITICAL:
-            self._send_critical_alert(error_entry)
+        # ERROR 이상은 즉시 알림 (WARNING은 알림 안함)
+        if level in [ErrorLevel.ERROR, ErrorLevel.CRITICAL]:
+            self._send_error_alert(error_entry)
 
         return error_id
 
@@ -229,12 +229,13 @@ class ErrorLogger:
                 self.stats["by_page"] = {}
             self.stats["by_page"][page] = self.stats["by_page"].get(page, 0) + 1
 
-    def _send_critical_alert(self, error_entry: Dict):
-        """심각한 에러 즉시 알림"""
+    def _send_error_alert(self, error_entry: Dict):
+        """에러 발생시 즉시 이메일 알림"""
         try:
             from admin_alerts import AlertManager
             alert_mgr = AlertManager()
             alert_mgr.send_error_alert(error_entry)
+            logger.info(f"에러 알림 전송 완료: {error_entry.get('id', '')}")
         except Exception as e:
             logger.error(f"알림 전송 실패: {e}")
 

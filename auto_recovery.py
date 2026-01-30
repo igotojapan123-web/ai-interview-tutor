@@ -260,28 +260,16 @@ def _notify_admin_async(error: Exception, func_name: str, retries: int):
     def notify():
         try:
             from error_monitor import ErrorLogger, ErrorLevel
-            from admin_alerts import AlertManager, AlertType
 
-            # 에러 로깅
+            # 에러 로깅 (ERROR 레벨로 → 이메일 알림 자동 트리거)
             error_logger = ErrorLogger()
             error_id = error_logger.log_error(
                 error=error,
-                level=ErrorLevel.WARNING,
-                page=func_name,
-                context={"retries": retries, "auto_recovery": True}
+                level=ErrorLevel.ERROR,
+                page=f"[자동복구실패] {func_name}",
+                context={"retries": retries, "auto_recovery": True, "all_retries_failed": True}
             )
-
-            # 관리자 알림 (WARNING 레벨도 알림)
-            alert_mgr = AlertManager()
-            alert_mgr.send(
-                f"[자동복구실패] {func_name}",
-                f"함수: {func_name}\n"
-                f"에러: {type(error).__name__}\n"
-                f"메시지: {str(error)[:200]}\n"
-                f"재시도: {retries}회 모두 실패\n"
-                f"에러ID: {error_id}",
-                AlertType.WARNING
-            )
+            # error_monitor가 자동으로 이메일 발송함
         except Exception as e:
             logger.error(f"알림 전송 실패: {e}")
 

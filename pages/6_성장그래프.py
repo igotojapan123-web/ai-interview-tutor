@@ -28,6 +28,30 @@ try:
 except ImportError:
     GROWTH_REPORT_AVAILABLE = False
 
+# Phase 3: 벤치마킹 시스템
+try:
+    from score_aggregator import (
+        calculate_percentile,
+        get_statistics,
+        get_passing_average,
+        compare_to_passing,
+        get_weekly_ranking,
+        get_monthly_ranking,
+        PASSING_AVERAGES,
+    )
+    from benchmark_service import (
+        get_leaderboard,
+        get_achievement_badges,
+        get_streak_info,
+        get_percentile_gauge_data,
+        get_comparison_chart_data,
+        BADGES,
+    )
+    BENCHMARK_AVAILABLE = True
+except ImportError as e:
+    BENCHMARK_AVAILABLE = False
+    logger.warning(f"벤치마킹 시스템 로드 실패: {e}")
+
 from sidebar_common import init_page, end_page
 
 # 공용 유틸리티 (Stage 2)
@@ -920,6 +944,198 @@ if type_stats:
             """, unsafe_allow_html=True)
 else:
     st.info("연습 기록이 없습니다.")
+
+st.markdown("---")
+
+# ========== Phase 3: 벤치마킹 / 경쟁 ==========
+st.markdown("### 🏆 벤치마킹 / 경쟁")
+
+if BENCHMARK_AVAILABLE:
+    # 사용자 ID (익명)
+    user_id = st.session_state.get("user_id", "anonymous")
+
+    # 항공사 선택
+    benchmark_col1, benchmark_col2 = st.columns([1, 3])
+    with benchmark_col1:
+        selected_airline = st.selectbox(
+            "목표 항공사",
+            ["대한항공", "아시아나", "제주항공", "진에어", "티웨이", "에어부산", "이스타항공"],
+            key="benchmark_airline"
+        )
+
+    # 최근 점수 계산
+    recent_scores_list = [s["score"] for s in all_scores[-10:] if s.get("score", 0) > 0]
+    user_avg_score = sum(recent_scores_list) / len(recent_scores_list) if recent_scores_list else 0
+
+    with benchmark_col2:
+        st.markdown(f"**내 최근 평균 점수**: {user_avg_score:.1f}점")
+
+    # 탭 구성
+    bench_tab1, bench_tab2, bench_tab3 = st.tabs(["📊 합격선 비교", "🏅 리더보드", "🎖️ 배지"])
+
+    with bench_tab1:
+        # 합격선 비교
+        if user_avg_score > 0:
+            user_scores = {
+                "음성점수": user_avg_score,
+                "내용점수": user_avg_score,
+                "감정점수": user_avg_score * 0.9,
+                "종합점수": user_avg_score,
+            }
+            comparison = compare_to_passing(user_scores, selected_airline)
+
+            # 비교 차트
+            try:
+                import plotly.graph_objects as go
+
+                categories = list(comparison.keys())
+                user_vals = [comparison[c]["user_score"] for c in categories]
+                pass_vals = [comparison[c]["passing_avg"] for c in categories]
+
+                fig = go.Figure()
+                fig.add_trace(go.Bar(
+                    name='내 점수',
+                    x=categories,
+                    y=user_vals,
+                    marker_color='#667eea',
+                    text=[f'{v:.0f}' for v in user_vals],
+                    textposition='outside'
+                ))
+                fig.add_trace(go.Bar(
+                    name='합격선',
+                    x=categories,
+                    y=pass_vals,
+                    marker_color='#10b981',
+                    text=[f'{v:.0f}' for v in pass_vals],
+                    textposition='outside'
+                ))
+
+                fig.update_layout(
+                    barmode='group',
+                    title=f"{selected_airline} 합격선 대비 내 점수",
+                    yaxis=dict(range=[0, 100], title="점수"),
+                    height=350,
+                    legend=dict(orientation="h", y=1.15, x=0.5, xanchor="center")
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+            except ImportError:
+                st.warning("Plotly가 설치되지 않아 차트를 표시할 수 없습니다.")
+
+            # 상태별 피드백
+            status_icons = {"excellent": "🌟", "passing": "✅", "close": "📈", "below": "💪"}
+            status_msgs = {
+                "excellent": "합격선을 크게 상회! 완벽해요!",
+                "passing": "합격선 돌파! 잘하고 있어요!",
+                "close": "거의 다 왔어요! 조금만 더!",
+                "below": "더 연습이 필요해요. 파이팅!"
+            }
+
+            st.markdown("**영역별 상태:**")
+            status_cols = st.columns(4)
+            for idx, (cat, data) in enumerate(comparison.items()):
+                with status_cols[idx]:
+                    status = data["status"]
+                    diff = data["difference"]
+                    diff_str = f"+{diff:.1f}" if diff >= 0 else f"{diff:.1f}"
+                    st.markdown(f"""
+                    <div style="text-align:center;padding:10px;background:#f8f9fa;border-radius:10px;">
+                        <div style="font-size:1.5rem;">{status_icons.get(status, "❓")}</div>
+                        <div style="font-weight:600;">{cat}</div>
+                        <div style="color:#666;font-size:0.9rem;">{diff_str}점</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+            # 백분위
+            percentile = calculate_percentile(user_avg_score, "종합점수", selected_airline)
+            st.markdown(f"""
+            <div style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:20px;border-radius:15px;text-align:center;margin-top:20px;">
+                <div style="font-size:0.9rem;opacity:0.9;">나의 위치</div>
+                <div style="font-size:2.5rem;font-weight:800;">상위 {100-percentile:.0f}%</div>
+                <div style="font-size:0.85rem;opacity:0.9;">{selected_airline} 준비생 중</div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.info("연습 기록이 있으면 합격선과 비교해드려요!")
+
+    with bench_tab2:
+        # 리더보드
+        period = st.radio("기간", ["주간", "월간"], horizontal=True, key="leaderboard_period")
+        period_key = "weekly" if period == "주간" else "monthly"
+
+        leaderboard = get_leaderboard(selected_airline, period_key, limit=10)
+
+        if leaderboard:
+            st.markdown(f"**{selected_airline} {period} TOP 10**")
+            for idx, entry in enumerate(leaderboard, 1):
+                medal = "🥇" if idx == 1 else ("🥈" if idx == 2 else ("🥉" if idx == 3 else f"{idx}."))
+                score = entry.get("score", 0)
+                st.markdown(f"""
+                <div style="display:flex;align-items:center;padding:10px;background:{'#fff7ed' if idx <= 3 else '#f8f9fa'};border-radius:8px;margin-bottom:5px;">
+                    <span style="font-size:1.2rem;margin-right:10px;">{medal}</span>
+                    <span style="flex:1;">익명 사용자</span>
+                    <span style="font-weight:700;color:#667eea;">{score:.0f}점</span>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.info(f"{selected_airline} {period} 순위 데이터가 없습니다. 연습하고 순위에 도전해보세요!")
+
+    with bench_tab3:
+        # 배지 시스템
+        badges_info = get_achievement_badges(user_id)
+        earned = badges_info.get("earned", [])
+        not_earned = badges_info.get("not_earned", [])
+
+        st.markdown(f"**획득 배지: {len(earned)}/{len(BADGES)}개**")
+        st.progress(len(earned) / len(BADGES) if BADGES else 0)
+
+        # 획득한 배지
+        if earned:
+            st.markdown("**🎖️ 획득한 배지:**")
+            badge_cols = st.columns(min(len(earned), 5))
+            for idx, badge in enumerate(earned):
+                with badge_cols[idx % 5]:
+                    badge_info = BADGES.get(badge, {})
+                    st.markdown(f"""
+                    <div style="text-align:center;padding:15px;background:#ecfdf5;border-radius:12px;border:2px solid #10b981;">
+                        <div style="font-size:2rem;">🏅</div>
+                        <div style="font-weight:700;font-size:0.85rem;">{badge}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+        # 미획득 배지
+        if not_earned:
+            with st.expander(f"🔒 아직 못 얻은 배지 ({len(not_earned)}개)"):
+                for badge in not_earned:
+                    badge_info = BADGES.get(badge, {})
+                    st.markdown(f"- **{badge}**: {badge_info.get('description', '')}")
+
+        # 연속 학습 정보
+        streak_info = get_streak_info(user_id)
+        current_streak = streak_info.get("current_streak", 0)
+        longest_streak = streak_info.get("longest_streak", 0)
+
+        st.markdown("---")
+        streak_col1, streak_col2 = st.columns(2)
+        with streak_col1:
+            st.markdown(f"""
+            <div style="text-align:center;padding:20px;background:#fef3c7;border-radius:12px;">
+                <div style="font-size:2rem;">🔥</div>
+                <div style="font-size:2rem;font-weight:800;color:#f59e0b;">{current_streak}일</div>
+                <div style="color:#92400e;">현재 연속 학습</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with streak_col2:
+            st.markdown(f"""
+            <div style="text-align:center;padding:20px;background:#eff6ff;border-radius:12px;">
+                <div style="font-size:2rem;">⭐</div>
+                <div style="font-size:2rem;font-weight:800;color:#3b82f6;">{longest_streak}일</div>
+                <div style="color:#1e40af;">최장 연속 기록</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+else:
+    st.info("벤치마킹 시스템을 준비 중입니다. 곧 서비스될 예정이에요!")
 
 st.markdown("---")
 

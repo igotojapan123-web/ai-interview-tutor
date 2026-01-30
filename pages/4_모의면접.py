@@ -47,6 +47,13 @@ try:
 except ImportError:
     SCORE_UTILS_AVAILABLE = False
 
+# Phase 3: 점수 집계 시스템
+try:
+    from score_aggregator import add_score as add_benchmark_score
+    BENCHMARK_AVAILABLE = True
+except ImportError:
+    BENCHMARK_AVAILABLE = False
+
 # 항공사별 맞춤 질문 import
 try:
     from airline_questions import (
@@ -1482,6 +1489,31 @@ else:
                             detailed_scores=parsed.get("detailed") if "parsed" in dir() else None,
                             scenario=f"{st.session_state.mock_airline} 모의면접 ({len(st.session_state.mock_questions)}문항)"
                         )
+
+                        # Phase 3: 벤치마킹 점수 저장
+                        if BENCHMARK_AVAILABLE:
+                            try:
+                                user_id = st.session_state.get("user_id", "anonymous")
+                                benchmark_scores = {
+                                    "음성점수": evaluation.get("avg_voice", total_score),
+                                    "내용점수": evaluation.get("avg_content", total_score),
+                                    "종합점수": total_score,
+                                }
+                                # 고도화 분석이 있으면 감정점수 추가
+                                if st.session_state.mock_advanced_analyses:
+                                    emotions = st.session_state.mock_emotion_analyses
+                                    if emotions:
+                                        avg_conf = sum(e.get("confidence_score", 5) for e in emotions) / len(emotions)
+                                        benchmark_scores["감정점수"] = int(avg_conf * 10)
+                                add_benchmark_score(
+                                    user_id=user_id,
+                                    airline=st.session_state.mock_airline,
+                                    question_type="모의면접",
+                                    scores=benchmark_scores,
+                                    anonymous=True
+                                )
+                            except Exception as e:
+                                pass  # 벤치마크 저장 실패해도 면접 결과에는 영향 없음
             st.rerun()
         else:
             eval_result = st.session_state.mock_evaluation

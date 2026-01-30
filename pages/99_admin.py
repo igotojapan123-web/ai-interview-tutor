@@ -1,22 +1,33 @@
-# pages/90_시스템관리.py
-# FlyReady Lab - 관리자 대시보드
+# pages/99_admin.py
+# FlyReady Lab - 관리자 전용 대시보드
 # 사용자/구독/수익 관리, 에러 모니터링, 시스템 상태
+# 접근: URL 직접 입력으로만 접근 가능 (사이드바 숨김)
 
 import streamlit as st
 import os
 import sys
 from datetime import datetime, timedelta
 import json
+import hashlib
+from pathlib import Path
 
 # 상위 디렉토리 import
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 st.set_page_config(
-    page_title="관리자 대시보드 | FlyReady Lab",
+    page_title="Admin",
     page_icon="⚙️",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
+
+# 사이드바 완전 숨김
+st.markdown("""
+<style>
+[data-testid="stSidebar"] { display: none; }
+[data-testid="collapsedControl"] { display: none; }
+</style>
+""", unsafe_allow_html=True)
 
 # 로깅
 try:
@@ -132,38 +143,103 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# 인증 체크
+# 관리자 인증 시스템
 # ============================================================
+
+BASE_DIR = Path(__file__).parent.parent
+CREDENTIALS_FILE = BASE_DIR / "data" / "admin" / "credentials.json"
+
+def load_admin_credentials():
+    """관리자 계정 정보 로드"""
+    if CREDENTIALS_FILE.exists():
+        try:
+            with open(CREDENTIALS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            pass
+    return {"admins": []}
+
+def verify_admin(username: str, password: str) -> bool:
+    """관리자 인증 확인"""
+    credentials = load_admin_credentials()
+    password_hash = hashlib.sha256(password.encode()).hexdigest()
+
+    for admin in credentials.get("admins", []):
+        if admin.get("username") == username and admin.get("password_hash") == password_hash:
+            return True
+    return False
+
+def get_admin_info(username: str) -> dict:
+    """관리자 정보 조회"""
+    credentials = load_admin_credentials()
+    for admin in credentials.get("admins", []):
+        if admin.get("username") == username:
+            return admin
+    return {}
 
 def check_admin_auth():
     if "admin_authenticated" not in st.session_state:
         st.session_state.admin_authenticated = False
+    if "admin_username" not in st.session_state:
+        st.session_state.admin_username = None
     return st.session_state.admin_authenticated
 
 def admin_login():
+    # 로그인 페이지 스타일
     st.markdown("""
-    <div class="admin-header">
-        <h1>FlyReady Lab 관리자</h1>
-        <p>관리자 인증이 필요합니다</p>
-    </div>
+    <style>
+    .login-container {
+        max-width: 400px;
+        margin: 80px auto;
+        padding: 40px;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    .login-logo {
+        text-align: center;
+        margin-bottom: 24px;
+    }
+    .login-logo h1 {
+        font-size: 1.5rem;
+        color: #1e3a5f;
+        margin: 0;
+    }
+    .login-logo p {
+        color: #64748b;
+        font-size: 0.9rem;
+        margin-top: 8px;
+    }
+    </style>
     """, unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
+        st.markdown("""
+        <div class="login-logo">
+            <h1>FlyReady Lab Admin</h1>
+            <p>관리자 전용 페이지입니다</p>
+        </div>
+        """, unsafe_allow_html=True)
+
         with st.form("admin_login"):
-            password = st.text_input("관리자 비밀번호", type="password")
-            submit = st.form_submit_button("로그인", use_container_width=True)
+            username = st.text_input("아이디", placeholder="관리자 아이디 입력")
+            password = st.text_input("비밀번호", type="password", placeholder="비밀번호 입력")
+            submit = st.form_submit_button("로그인", use_container_width=True, type="primary")
 
             if submit:
-                admin_pw = os.getenv("ADMIN_PASSWORD", "admin123")
-                if password == admin_pw:
-                    st.session_state.admin_authenticated = True
-                    if ADMIN_AVAILABLE:
-                        audit = AuditLogger()
-                        audit.log("admin_login", "admin", level="info")
-                    st.rerun()
+                if username and password:
+                    if verify_admin(username, password):
+                        st.session_state.admin_authenticated = True
+                        st.session_state.admin_username = username
+                        if ADMIN_AVAILABLE:
+                            audit = AuditLogger()
+                            audit.log("admin_login", username, level="info")
+                        st.rerun()
+                    else:
+                        st.error("아이디 또는 비밀번호가 올바르지 않습니다.")
                 else:
-                    st.error("비밀번호가 올바르지 않습니다.")
+                    st.warning("아이디와 비밀번호를 입력하세요.")
 
 if not check_admin_auth():
     admin_login()

@@ -135,6 +135,7 @@ def create_webcam_streamer(
     on_feedback: Optional[Callable[[List[RealtimeFeedback]], None]] = None,
     show_video: bool = True,
     analysis_enabled: bool = True,
+    compact: bool = True,  # 작은 크기 모드
 ) -> Optional[Dict[str, Any]]:
     """
     웹캠 스트리머 생성
@@ -144,12 +145,35 @@ def create_webcam_streamer(
         on_feedback: 피드백 콜백 함수
         show_video: 비디오 표시 여부
         analysis_enabled: 분석 활성화 여부
+        compact: 작은 크기 모드 (기본 True)
 
     Returns:
         웹캠 컨텍스트 또는 None
     """
+    import streamlit as st
+
     if not WEBRTC_AVAILABLE:
         return None
+
+    # 비디오 크기 CSS
+    st.markdown("""
+    <style>
+    /* 웹캠 비디오 크기 설정 */
+    [data-testid="stVerticalBlock"] video {
+        width: 100% !important;
+        max-width: 480px !important;
+        height: auto !important;
+        border-radius: 12px;
+        border: 2px solid #e5e7eb;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    iframe[title*="webrtc"], iframe[src*="webrtc"] {
+        width: 100% !important;
+        max-width: 500px !important;
+        min-height: 380px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
     # RTC 설정 (STUN 서버)
     rtc_config = RTCConfiguration({
@@ -164,7 +188,10 @@ def create_webcam_streamer(
     if analysis_enabled and ANALYZER_AVAILABLE:
         processor.initialize_analyzer()
 
-    # webrtc 스트리머 생성
+    # webrtc 스트리머 생성 (적절한 해상도)
+    video_width = 640
+    video_height = 480
+
     ctx = webrtc_streamer(
         key=key,
         mode=WebRtcMode.SENDRECV,
@@ -172,9 +199,9 @@ def create_webcam_streamer(
         video_processor_factory=lambda: processor,
         media_stream_constraints={
             "video": {
-                "width": {"ideal": 640},
-                "height": {"ideal": 480},
-                "frameRate": {"ideal": 15, "max": 30}
+                "width": {"ideal": video_width, "max": video_width},
+                "height": {"ideal": video_height, "max": video_height},
+                "frameRate": {"ideal": 15, "max": 20}
             },
             "audio": False  # 오디오는 별도 처리
         },
@@ -206,12 +233,14 @@ def get_realtime_feedback_html(feedback_list: List[RealtimeFeedback]) -> str:
 
     # 우선순위별 색상
     priority_colors = {
+        "critical": "#dc2626",
         "high": "#ef4444",
         "medium": "#f59e0b",
         "low": "#3b82f6",
     }
 
     priority_icons = {
+        "critical": "🚨",
         "high": "⚠️",
         "medium": "💡",
         "low": "ℹ️",

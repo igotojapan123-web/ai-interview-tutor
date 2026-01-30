@@ -109,12 +109,20 @@ def get_simple_css():
     }
 
     .nav-btn-primary {
-        background: #2563EB;
-        color: white;
+        background: #2563EB !important;
+        color: #FFFFFF !important;
+        text-shadow: none !important;
     }
 
     .nav-btn-primary:hover {
-        background: #1D4ED8;
+        background: #1D4ED8 !important;
+        color: #FFFFFF !important;
+    }
+
+    .nav-btn-primary:visited,
+    .nav-btn-primary:active,
+    .nav-btn-primary:link {
+        color: #FFFFFF !important;
     }
 
     .nav-logo {

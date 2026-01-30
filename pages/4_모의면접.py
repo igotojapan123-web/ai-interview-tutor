@@ -546,42 +546,75 @@ elif not st.session_state.mock_completed:
         </div>
         """, unsafe_allow_html=True)
 
-        # Phase 2: 웹캠 분석 영역
+        # Phase 2: 웹캠 분석 영역 (실시간 피드백 포함)
         if st.session_state.mock_webcam_enabled and WEBCAM_AVAILABLE:
-            webcam_col, feedback_col = st.columns([2, 1])
+            webcam_col, feedback_col = st.columns([3, 2])
 
             with webcam_col:
-                st.markdown("##### 📹 실시간 자세 분석")
+                st.markdown("##### 📹 자세 분석")
                 webcam_ctx = create_webcam_streamer(
                     key=f"mock_webcam_{current_idx}",
-                    analysis_enabled=True
+                    analysis_enabled=True,
+                    compact=False
                 )
 
+            with feedback_col:
+                st.markdown("##### 실시간 피드백")
+
+                # 피드백 새로고침 버튼
+                if st.button("🔄 피드백 새로고침", key=f"refresh_feedback_{current_idx}", use_container_width=True):
+                    st.rerun()
+
+                feedback_container = st.container()
+
                 if webcam_ctx and webcam_ctx.get("is_playing"):
-                    # 웹캠 점수 수집
                     processor = webcam_ctx.get("processor")
                     if processor:
+                        # 점수 가져오기
                         avg_score = processor.get_average_score()
                         if avg_score > 0:
                             st.session_state.mock_webcam_scores.append(avg_score)
 
-            with feedback_col:
-                st.markdown("##### 실시간 피드백")
-                feedback_placeholder = st.empty()
+                            # 점수 게이지 표시
+                            score_color = "#10b981" if avg_score >= 70 else "#f59e0b" if avg_score >= 50 else "#ef4444"
+                            feedback_container.markdown(f"""
+                            <div style="text-align: center; padding: 15px; background: #f8fafc; border-radius: 12px; margin-bottom: 10px;">
+                                <div style="font-size: 36px; font-weight: 700; color: {score_color};">{avg_score:.0f}</div>
+                                <div style="font-size: 12px; color: #6b7280;">자세 점수</div>
+                            </div>
+                            """, unsafe_allow_html=True)
 
-                if webcam_ctx and webcam_ctx.get("is_playing"):
-                    processor = webcam_ctx.get("processor")
-                    if processor:
-                        feedback = processor.get_latest_feedback()
-                        feedback_placeholder.markdown(
-                            get_realtime_feedback_html(feedback),
-                            unsafe_allow_html=True
-                        )
+                        # 피드백 가져오기
+                        feedback_list = processor.get_latest_feedback()
+                        if feedback_list:
+                            for fb in feedback_list[:3]:  # 최대 3개
+                                priority = fb.priority.value
+                                if priority == "critical":
+                                    feedback_container.error(f"🚨 {fb.message}")
+                                elif priority == "high":
+                                    feedback_container.warning(f"⚠️ {fb.message}")
+                                else:
+                                    feedback_container.info(f"💡 {fb.message}")
+
+                                # 히스토리에 저장
+                                st.session_state.mock_posture_feedback.append({
+                                    "type": fb.feedback_type.value,
+                                    "message": fb.message,
+                                    "priority": priority
+                                })
+                        elif avg_score >= 70:
+                            feedback_container.success("✅ 자세가 좋습니다!")
+                        else:
+                            feedback_container.info("📹 웹캠이 분석 중입니다...")
+                    else:
+                        feedback_container.warning("⏳ 분석기 초기화 중...")
                 else:
-                    feedback_placeholder.markdown(
-                        get_webcam_placeholder_html(),
-                        unsafe_allow_html=True
-                    )
+                    feedback_container.markdown("""
+                    <div style="padding: 20px; background: #f1f5f9; border-radius: 12px; text-align: center;">
+                        <div style="font-size: 32px; margin-bottom: 10px;">👈</div>
+                        <div style="color: #475569; font-size: 14px;">START 버튼을 클릭하여<br/>웹캠을 시작하세요</div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
         # 음성 녹음 (st.audio_input 사용 - 롤플레잉과 동일)
         col_rec1, col_rec2 = st.columns([2, 1])

@@ -1,14 +1,22 @@
 # webcam_analyzer.py
-# Phase 2: 실시간 웹캠 분석 모듈 (MediaPipe + OpenCV)
+# Phase 2: 실시간 웹캠 분석 - MediaPipe Tasks API 버전 (0.10.30+)
 
 import logging
-from typing import Dict, Any, Optional, List, Tuple
+import math
+import os
+from typing import Dict, Any, List, Tuple, Optional
 from dataclasses import dataclass
 from enum import Enum
+from collections import deque
 
 logger = logging.getLogger(__name__)
 
-# MediaPipe/OpenCV 가용성 확인
+# 모델 파일 경로
+MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
+FACE_MODEL = os.path.join(MODEL_DIR, "face_landmarker.task")
+POSE_MODEL = os.path.join(MODEL_DIR, "pose_landmarker_heavy.task")
+HAND_MODEL = os.path.join(MODEL_DIR, "hand_landmarker.task")
+
 MEDIAPIPE_AVAILABLE = False
 OPENCV_AVAILABLE = False
 
@@ -16,33 +24,40 @@ try:
     import cv2
     OPENCV_AVAILABLE = True
 except ImportError:
-    logger.warning("OpenCV not installed. Run: pip install opencv-python")
+    pass
 
 try:
     import mediapipe as mp
-    MEDIAPIPE_AVAILABLE = True
-except ImportError:
-    logger.warning("MediaPipe not installed. Run: pip install mediapipe")
+    from mediapipe.tasks import python as mp_python
+    from mediapipe.tasks.python import vision
+    from mediapipe import Image as MpImage
+    from mediapipe import ImageFormat
+    # 모델 파일 존재 여부 확인
+    if os.path.exists(FACE_MODEL) and os.path.exists(POSE_MODEL) and os.path.exists(HAND_MODEL):
+        MEDIAPIPE_AVAILABLE = True
+    else:
+        logger.warning(f"MediaPipe model files not found in {MODEL_DIR}")
+except ImportError as e:
+    logger.warning(f"MediaPipe import error: {e}")
 
 try:
     import numpy as np
 except ImportError:
-    import warnings
-    warnings.warn("NumPy not installed")
     np = None
 
 
 class FeedbackType(str, Enum):
-    """피드백 유형"""
     POSTURE = "posture"
     EYE_CONTACT = "eye_contact"
     EXPRESSION = "expression"
     GESTURE = "gesture"
     HEAD_POSITION = "head_position"
+    SHOULDER = "shoulder"
+    FACE_POSITION = "face_position"
 
 
 class FeedbackPriority(str, Enum):
-    """피드백 우선순위"""
+    CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
@@ -50,536 +65,593 @@ class FeedbackPriority(str, Enum):
 
 @dataclass
 class RealtimeFeedback:
-    """실시간 피드백 데이터"""
     feedback_type: FeedbackType
     message: str
     priority: FeedbackPriority
-    score: float  # 0-100
+    score: float
     suggestion: str = ""
+    detail: str = ""
 
 
 class WebcamAnalyzer:
-    """
-    실시간 웹캠 분석 클래스
-    MediaPipe를 사용한 자세, 표정, 시선 분석
-    """
+    """MediaPipe Tasks API를 사용한 웹캠 분석기"""
 
-    # 최적 기준값
-    OPTIMAL_EYE_CONTACT_RATIO = 0.7  # 70% 시선 맞춤
-    OPTIMAL_HEAD_CENTERED_THRESHOLD = 0.15  # 중앙 기준 허용 오차
-    OPTIMAL_SHOULDER_LEVEL_THRESHOLD = 0.05  # 어깨 수평 허용 오차
+    # 임계값 설정 (엄격한 기준)
+    EYE_CONTACT_THRESHOLD = 0.15  # 시선 이탈 임계값
+    HEAD_CENTER_STRICT_X = 0.08   # 머리 중앙 이탈 (심각)
+    HEAD_CENTER_STRICT_Y = 0.10
+    HEAD_CENTER_WARN_X = 0.05     # 머리 중앙 이탈 (경고)
+    HEAD_CENTER_WARN_Y = 0.06
+    SHOULDER_TILT_STRICT = 0.025  # 어깨 기울기 (심각)
+    SHOULDER_TILT_WARN = 0.015    # 어깨 기울기 (경고)
+    FACE_SIZE_MIN = 0.10          # 얼굴 크기 최소 (너무 멀리)
+    FACE_SIZE_MAX = 0.55          # 얼굴 크기 최대 (너무 가까이)
+    HEAD_TILT_STRICT = 5.0        # 머리 기울기 (심각) - 도
+    HEAD_TILT_WARN = 3.0          # 머리 기울기 (경고) - 도
 
     def __init__(self):
-        self.mp_face_mesh = None
-        self.mp_pose = None
-        self.mp_hands = None
-        self.mp_drawing = None
-        self.face_mesh = None
-        self.pose = None
-        self.hands = None
+        self.face_landmarker = None
+        self.pose_landmarker = None
+        self.hand_landmarker = None
         self._initialized = False
+        self._frame_timestamp = 0
 
-        # 분석 히스토리 (평균 계산용)
-        self._eye_contact_history: List[bool] = []
-        self._head_position_history: List[str] = []
-        self._expression_history: List[str] = []
+        # 히스토리 (노이즈 감소용, 5프레임)
+        self._eye_hist = deque(maxlen=5)
+        self._head_x_hist = deque(maxlen=5)
+        self._head_y_hist = deque(maxlen=5)
+        self._shoulder_hist = deque(maxlen=5)
+        self._tilt_hist = deque(maxlen=5)
+        self._face_size_hist = deque(maxlen=5)
 
     def initialize(self) -> bool:
-        """MediaPipe 모델 초기화"""
+        """분석기 초기화"""
         if not MEDIAPIPE_AVAILABLE or not OPENCV_AVAILABLE:
-            logger.warning("MediaPipe or OpenCV not available")
+            logger.error(f"MediaPipe available: {MEDIAPIPE_AVAILABLE}, OpenCV available: {OPENCV_AVAILABLE}")
             return False
 
         try:
-            self.mp_face_mesh = mp.solutions.face_mesh
-            self.mp_pose = mp.solutions.pose
-            self.mp_hands = mp.solutions.hands
-            self.mp_drawing = mp.solutions.drawing_utils
-
-            # Face Mesh 초기화 (얼굴 478개 랜드마크)
-            self.face_mesh = self.mp_face_mesh.FaceMesh(
-                max_num_faces=1,
-                refine_landmarks=True,  # 눈/입술 정밀 추적
-                min_detection_confidence=0.5,
-                min_tracking_confidence=0.5
-            )
-
-            # Pose 초기화 (몸 33개 랜드마크)
-            self.pose = self.mp_pose.Pose(
-                min_detection_confidence=0.5,
+            # Face Landmarker 초기화
+            face_options = vision.FaceLandmarkerOptions(
+                base_options=mp_python.BaseOptions(model_asset_path=FACE_MODEL),
+                running_mode=vision.RunningMode.IMAGE,
+                num_faces=1,
+                min_face_detection_confidence=0.5,
+                min_face_presence_confidence=0.5,
                 min_tracking_confidence=0.5,
-                model_complexity=1  # 0=lite, 1=full, 2=heavy
+                output_face_blendshapes=True,
             )
+            self.face_landmarker = vision.FaceLandmarker.create_from_options(face_options)
 
-            # Hands 초기화 (손 21개 랜드마크 x 2)
-            self.hands = self.mp_hands.Hands(
-                max_num_hands=2,
-                min_detection_confidence=0.5,
-                min_tracking_confidence=0.5
+            # Pose Landmarker 초기화
+            pose_options = vision.PoseLandmarkerOptions(
+                base_options=mp_python.BaseOptions(model_asset_path=POSE_MODEL),
+                running_mode=vision.RunningMode.IMAGE,
+                num_poses=1,
+                min_pose_detection_confidence=0.5,
+                min_pose_presence_confidence=0.5,
+                min_tracking_confidence=0.5,
             )
+            self.pose_landmarker = vision.PoseLandmarker.create_from_options(pose_options)
+
+            # Hand Landmarker 초기화
+            hand_options = vision.HandLandmarkerOptions(
+                base_options=mp_python.BaseOptions(model_asset_path=HAND_MODEL),
+                running_mode=vision.RunningMode.IMAGE,
+                num_hands=2,
+                min_hand_detection_confidence=0.5,
+                min_hand_presence_confidence=0.5,
+                min_tracking_confidence=0.5,
+            )
+            self.hand_landmarker = vision.HandLandmarker.create_from_options(hand_options)
 
             self._initialized = True
-            logger.info("WebcamAnalyzer initialized successfully")
+            logger.info("WebcamAnalyzer initialized successfully with MediaPipe Tasks API")
             return True
 
         except Exception as e:
-            logger.error(f"Failed to initialize WebcamAnalyzer: {e}")
+            logger.error(f"WebcamAnalyzer initialization failed: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
-    def analyze_frame(self, frame: 'np.ndarray') -> Dict[str, Any]:
-        """
-        단일 프레임 분석 (실시간용)
-
-        Args:
-            frame: BGR 이미지 (OpenCV 형식)
-
-        Returns:
-            분석 결과 딕셔너리
-        """
+    def analyze_frame(self, frame: np.ndarray) -> Dict[str, Any]:
+        """프레임 분석"""
         if not self._initialized:
-            return self._get_fallback_result()
+            return self._fallback()
 
         try:
-            # BGR -> RGB 변환 (MediaPipe는 RGB 사용)
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            rgb_frame.flags.writeable = False  # 성능 최적화
+            # BGR -> RGB 변환
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-            # 병렬 분석
-            face_result = self._analyze_face(rgb_frame)
-            pose_result = self._analyze_pose(rgb_frame)
-            hand_result = self._analyze_hands(rgb_frame)
+            # MediaPipe Image 생성
+            mp_image = MpImage(image_format=ImageFormat.SRGB, data=rgb)
 
-            # 결과 통합
-            result = {
-                "face": face_result,
-                "pose": pose_result,
-                "hands": hand_result,
-                "feedback": self._generate_realtime_feedback(face_result, pose_result, hand_result),
-                "overall_score": self._calculate_frame_score(face_result, pose_result, hand_result),
+            # 각 분석 수행
+            face = self._analyze_face(mp_image)
+            pose = self._analyze_pose(mp_image)
+            hands = self._analyze_hands(mp_image, face)
+
+            # 피드백 생성
+            feedback = self._gen_feedback(face, pose, hands)
+
+            # 점수 계산
+            score = self._calc_score(face, pose, hands)
+
+            return {
+                "face": face,
+                "pose": pose,
+                "hands": hands,
+                "feedback": feedback,
+                "overall_score": score
             }
-
-            return result
 
         except Exception as e:
             logger.warning(f"Frame analysis error: {e}")
-            return self._get_fallback_result()
+            import traceback
+            traceback.print_exc()
+            return self._fallback()
 
-    def _analyze_face(self, rgb_frame: 'np.ndarray') -> Dict[str, Any]:
-        """얼굴 분석 (시선, 표정, 위치)"""
-        if self.face_mesh is None:
+    def _analyze_face(self, mp_image: MpImage) -> Dict[str, Any]:
+        """얼굴 분석"""
+        if not self.face_landmarker:
             return {"detected": False}
 
-        results = self.face_mesh.process(rgb_frame)
+        try:
+            result = self.face_landmarker.detect(mp_image)
 
-        if not results.multi_face_landmarks:
-            return {"detected": False}
+            if not result.face_landmarks:
+                return {"detected": False, "reason": "얼굴 미감지"}
 
-        face_landmarks = results.multi_face_landmarks[0]
-        h, w = rgb_frame.shape[:2]
+            landmarks = result.face_landmarks[0]
 
-        # 주요 랜드마크 추출
-        landmarks = face_landmarks.landmark
+            # 얼굴 바운딩 박스 계산
+            xs = [lm.x for lm in landmarks]
+            ys = [lm.y for lm in landmarks]
+            min_x, max_x = min(xs), max(xs)
+            min_y, max_y = min(ys), max(ys)
 
-        # 코 끝 (얼굴 중심)
-        nose_tip = landmarks[4]
+            face_width = max_x - min_x
+            face_height = max_y - min_y
+            face_size = (face_width + face_height) / 2
 
-        # 눈 랜드마크 (왼쪽/오른쪽 눈 중심)
-        left_eye_center = self._get_eye_center(landmarks, "left")
-        right_eye_center = self._get_eye_center(landmarks, "right")
+            self._face_size_hist.append(face_size)
+            avg_face_size = sum(self._face_size_hist) / len(self._face_size_hist)
 
-        # 시선 방향 계산
-        eye_contact = self._calculate_eye_contact(landmarks, w, h)
+            # 코 위치 (얼굴 중심 기준점) - landmark 4번이 코끝
+            nose = landmarks[4]
+            self._head_x_hist.append(nose.x)
+            self._head_y_hist.append(nose.y)
 
-        # 머리 위치 (중앙 기준)
-        head_position = self._calculate_head_position(nose_tip, w, h)
+            avg_x = sum(self._head_x_hist) / len(self._head_x_hist)
+            avg_y = sum(self._head_y_hist) / len(self._head_y_hist)
 
-        # 표정 분석 (입술 모양 기반)
-        expression = self._analyze_expression(landmarks)
+            # 중앙에서의 이탈 정도
+            off_x = abs(avg_x - 0.5)
+            off_y = abs(avg_y - 0.5)
 
-        # 히스토리 업데이트
-        self._eye_contact_history.append(eye_contact)
-        self._head_position_history.append(head_position)
-        self._expression_history.append(expression)
+            # 머리 기울기 계산 (눈 위치 기준)
+            # 왼쪽 눈: 33, 오른쪽 눈: 263 (FaceMesh 기준)
+            left_eye = landmarks[33]
+            right_eye = landmarks[263]
+            tilt = math.degrees(math.atan2(right_eye.y - left_eye.y, right_eye.x - left_eye.x))
+            self._tilt_hist.append(tilt)
+            avg_tilt = sum(self._tilt_hist) / len(self._tilt_hist)
 
-        # 히스토리 제한 (최근 30프레임)
-        if len(self._eye_contact_history) > 30:
-            self._eye_contact_history.pop(0)
-            self._head_position_history.pop(0)
-            self._expression_history.pop(0)
+            # 시선 분석 (눈동자 위치)
+            eye_contact = self._check_eye_contact(landmarks)
+            self._eye_hist.append(1.0 if eye_contact else 0.0)
+            eye_ratio = sum(self._eye_hist) / len(self._eye_hist)
 
-        return {
-            "detected": True,
-            "eye_contact": eye_contact,
-            "eye_contact_ratio": sum(self._eye_contact_history) / len(self._eye_contact_history) if self._eye_contact_history else 0,
-            "head_position": head_position,
-            "head_x": nose_tip.x,
-            "head_y": nose_tip.y,
-            "expression": expression,
-            "face_center": (nose_tip.x, nose_tip.y),
-        }
+            # 표정 분석 (blendshapes 사용)
+            expression = self._check_expression(result.face_blendshapes[0] if result.face_blendshapes else None)
 
-    def _get_eye_center(self, landmarks, side: str) -> Tuple[float, float]:
-        """눈 중심점 계산"""
-        if side == "left":
-            # 왼쪽 눈 랜드마크 인덱스
-            indices = [33, 133, 160, 144, 153, 154, 155, 157, 158, 159, 161, 163]
-        else:
-            # 오른쪽 눈 랜드마크 인덱스
-            indices = [362, 263, 387, 373, 380, 381, 382, 384, 385, 386, 388, 390]
+            # 머리 위치 상태 판정
+            head_position = "centered"
+            if off_x >= self.HEAD_CENTER_WARN_X or off_y >= self.HEAD_CENTER_WARN_Y:
+                parts = []
+                if avg_x < 0.5 - self.HEAD_CENTER_STRICT_X:
+                    parts.append("왼쪽")
+                elif avg_x > 0.5 + self.HEAD_CENTER_STRICT_X:
+                    parts.append("오른쪽")
+                if avg_y < 0.5 - self.HEAD_CENTER_STRICT_Y:
+                    parts.append("위")
+                elif avg_y > 0.5 + self.HEAD_CENTER_STRICT_Y:
+                    parts.append("아래")
+                head_position = " ".join(parts) if parts else "약간 벗어남"
 
-        x_sum = sum(landmarks[i].x for i in indices)
-        y_sum = sum(landmarks[i].y for i in indices)
-        return (x_sum / len(indices), y_sum / len(indices))
+            return {
+                "detected": True,
+                "eye_contact": eye_contact,
+                "eye_contact_ratio": eye_ratio,
+                "head_position": head_position,
+                "head_offset_x": off_x,
+                "head_offset_y": off_y,
+                "head_tilt_deg": avg_tilt,
+                "expression": expression,
+                "face_size": avg_face_size,
+                "face_center": (avg_x, avg_y)
+            }
 
-    def _calculate_eye_contact(self, landmarks, w: int, h: int) -> bool:
-        """시선이 카메라를 향하는지 판단"""
-        # 홍채 위치 기반 시선 추적
-        # 왼쪽 홍채: 468, 오른쪽 홍채: 473
-        left_iris = landmarks[468]
-        right_iris = landmarks[473]
+        except Exception as e:
+            logger.warning(f"Face analysis error: {e}")
+            return {"detected": False, "reason": str(e)}
 
-        # 왼쪽 눈 영역
-        left_eye_inner = landmarks[133]
-        left_eye_outer = landmarks[33]
+    def _check_eye_contact(self, landmarks) -> bool:
+        """시선이 정면을 향하는지 확인"""
+        try:
+            # 왼쪽 눈 중심과 홍채
+            left_eye_inner = landmarks[133]  # 왼쪽 눈 안쪽
+            left_eye_outer = landmarks[33]   # 왼쪽 눈 바깥쪽
+            left_iris = landmarks[468]       # 왼쪽 홍채 (refine_landmarks 필요)
 
-        # 오른쪽 눈 영역
-        right_eye_inner = landmarks[362]
-        right_eye_outer = landmarks[263]
+            # 오른쪽 눈 중심과 홍채
+            right_eye_inner = landmarks[362]
+            right_eye_outer = landmarks[263]
+            right_iris = landmarks[473]
 
-        # 홍채가 눈 중앙에 있는지 확인
-        left_eye_width = abs(left_eye_outer.x - left_eye_inner.x)
-        right_eye_width = abs(right_eye_outer.x - right_eye_inner.x)
+            # 눈 너비
+            left_width = abs(left_eye_outer.x - left_eye_inner.x)
+            right_width = abs(right_eye_outer.x - right_eye_inner.x)
 
-        # 홍채의 상대적 위치 (0=외측, 1=내측)
-        left_iris_ratio = (left_iris.x - left_eye_outer.x) / left_eye_width if left_eye_width > 0 else 0.5
-        right_iris_ratio = (right_iris.x - right_eye_inner.x) / right_eye_width if right_eye_width > 0 else 0.5
+            if left_width > 0 and right_width > 0:
+                # 눈 중심 계산
+                left_center = (left_eye_inner.x + left_eye_outer.x) / 2
+                right_center = (right_eye_inner.x + right_eye_outer.x) / 2
 
-        # 중앙 범위 (0.3~0.7)이면 시선 맞춤으로 판단
-        left_centered = 0.3 < left_iris_ratio < 0.7
-        right_centered = 0.3 < abs(1 - right_iris_ratio) < 0.7
+                # 홍채가 눈 중심에서 얼마나 벗어났는지
+                left_offset = abs(left_iris.x - left_center) / left_width
+                right_offset = abs(right_iris.x - right_center) / right_width
 
-        return left_centered and right_centered
+                avg_offset = (left_offset + right_offset) / 2
+                return avg_offset < self.EYE_CONTACT_THRESHOLD
 
-    def _calculate_head_position(self, nose_tip, w: int, h: int) -> str:
-        """머리 위치 판단"""
-        # 화면 중앙 기준 (0.5, 0.5)
-        x_offset = nose_tip.x - 0.5
-        y_offset = nose_tip.y - 0.5
+            return False
 
-        threshold = self.OPTIMAL_HEAD_CENTERED_THRESHOLD
+        except (IndexError, AttributeError):
+            # 홍채 랜드마크가 없는 경우 (468, 473은 refine_landmarks=True 필요)
+            return True  # 기본값
 
-        if abs(x_offset) < threshold and abs(y_offset) < threshold:
-            return "centered"
-        elif x_offset < -threshold:
-            return "left"
-        elif x_offset > threshold:
-            return "right"
-        elif y_offset < -threshold:
-            return "up"
-        elif y_offset > threshold:
-            return "down"
-        else:
-            return "tilted"
-
-    def _analyze_expression(self, landmarks) -> str:
-        """표정 분석 (입술 기반)"""
-        # 입술 랜드마크
-        upper_lip = landmarks[13]
-        lower_lip = landmarks[14]
-        left_mouth = landmarks[61]
-        right_mouth = landmarks[291]
-
-        # 입 벌림 정도
-        mouth_open = abs(upper_lip.y - lower_lip.y)
-
-        # 입 너비
-        mouth_width = abs(left_mouth.x - right_mouth.x)
-
-        # 입꼬리 높이 (미소 판단)
-        left_corner = landmarks[61]
-        right_corner = landmarks[291]
-        mouth_center_y = (upper_lip.y + lower_lip.y) / 2
-
-        corner_lift = ((mouth_center_y - left_corner.y) + (mouth_center_y - right_corner.y)) / 2
-
-        # 표정 판단
-        if corner_lift > 0.01 and mouth_width > 0.15:
-            return "smile"
-        elif mouth_open > 0.03:
-            return "speaking"
-        elif corner_lift < -0.01:
-            return "serious"
-        else:
+    def _check_expression(self, blendshapes) -> str:
+        """표정 분석 (blendshapes 기반)"""
+        if not blendshapes:
             return "neutral"
 
-    def _analyze_pose(self, rgb_frame: 'np.ndarray') -> Dict[str, Any]:
+        try:
+            # blendshapes에서 표정 관련 값 추출
+            scores = {bs.category_name: bs.score for bs in blendshapes}
+
+            # 미소 감지
+            mouth_smile_left = scores.get("mouthSmileLeft", 0)
+            mouth_smile_right = scores.get("mouthSmileRight", 0)
+            avg_smile = (mouth_smile_left + mouth_smile_right) / 2
+
+            # 긴장 감지 (눈썹, 입술)
+            brow_down_left = scores.get("browDownLeft", 0)
+            brow_down_right = scores.get("browDownRight", 0)
+            jaw_clench = scores.get("jawForward", 0)
+
+            if avg_smile > 0.3:
+                return "smile"
+            elif (brow_down_left + brow_down_right) / 2 > 0.3 or jaw_clench > 0.3:
+                return "tense"
+            else:
+                return "neutral"
+
+        except Exception:
+            return "neutral"
+
+    def _analyze_pose(self, mp_image: MpImage) -> Dict[str, Any]:
         """자세 분석"""
-        if self.pose is None:
+        if not self.pose_landmarker:
             return {"detected": False}
 
-        results = self.pose.process(rgb_frame)
+        try:
+            result = self.pose_landmarker.detect(mp_image)
 
-        if not results.pose_landmarks:
+            if not result.pose_landmarks:
+                return {"detected": False}
+
+            landmarks = result.pose_landmarks[0]
+
+            # 어깨 랜드마크 (11: 왼쪽 어깨, 12: 오른쪽 어깨)
+            left_shoulder = landmarks[11]
+            right_shoulder = landmarks[12]
+
+            # 가시성 확인
+            if left_shoulder.visibility < 0.5 or right_shoulder.visibility < 0.5:
+                return {"detected": False}
+
+            # 어깨 높이 차이
+            shoulder_diff = abs(left_shoulder.y - right_shoulder.y)
+            self._shoulder_hist.append(shoulder_diff)
+            avg_diff = sum(self._shoulder_hist) / len(self._shoulder_hist)
+
+            # 어깨 정렬 상태
+            aligned = avg_diff < self.SHOULDER_TILT_STRICT
+            warning = avg_diff >= self.SHOULDER_TILT_WARN
+
+            # 기울기 방향
+            tilt_direction = ""
+            if warning:
+                if left_shoulder.y < right_shoulder.y:
+                    tilt_direction = "왼쪽 어깨 올라감"
+                else:
+                    tilt_direction = "오른쪽 어깨 올라감"
+
+            # 몸 중심
+            body_center_x = (left_shoulder.x + right_shoulder.x) / 2
+
+            # 자세 점수
+            score = 100
+            if not aligned:
+                score -= 35
+            elif warning:
+                score -= 20
+            if abs(body_center_x - 0.5) > 0.10:
+                score -= 20
+
+            return {
+                "detected": True,
+                "shoulder_aligned": aligned,
+                "shoulder_warning": warning,
+                "shoulder_diff": avg_diff,
+                "tilt_direction": tilt_direction,
+                "body_center_x": body_center_x,
+                "posture_score": max(0, score)
+            }
+
+        except Exception as e:
+            logger.warning(f"Pose analysis error: {e}")
             return {"detected": False}
 
-        landmarks = results.pose_landmarks.landmark
-
-        # 어깨 랜드마크 (11=왼쪽, 12=오른쪽)
-        left_shoulder = landmarks[11]
-        right_shoulder = landmarks[12]
-
-        # 어깨 기울기
-        shoulder_diff = abs(left_shoulder.y - right_shoulder.y)
-        shoulder_aligned = shoulder_diff < self.OPTIMAL_SHOULDER_LEVEL_THRESHOLD
-
-        # 어깨 너비 (화면 대비)
-        shoulder_width = abs(left_shoulder.x - right_shoulder.x)
-
-        # 몸 중심
-        body_center_x = (left_shoulder.x + right_shoulder.x) / 2
-
-        # 자세 점수 계산
-        posture_score = 100
-        if not shoulder_aligned:
-            posture_score -= 20
-        if abs(body_center_x - 0.5) > 0.15:
-            posture_score -= 15
-
-        return {
-            "detected": True,
-            "shoulder_aligned": shoulder_aligned,
-            "shoulder_diff": shoulder_diff,
-            "shoulder_width": shoulder_width,
-            "body_center_x": body_center_x,
-            "posture_score": max(0, posture_score),
-        }
-
-    def _analyze_hands(self, rgb_frame: 'np.ndarray') -> Dict[str, Any]:
+    def _analyze_hands(self, mp_image: MpImage, face: Dict) -> Dict[str, Any]:
         """손 분석"""
-        if self.hands is None:
-            return {"detected": False, "count": 0}
+        if not self.hand_landmarker:
+            return {"detected": False, "count": 0, "touching_face": False}
 
-        results = self.hands.process(rgb_frame)
+        try:
+            result = self.hand_landmarker.detect(mp_image)
 
-        if not results.multi_hand_landmarks:
-            return {"detected": False, "count": 0}
+            if not result.hand_landmarks:
+                return {"detected": False, "count": 0, "touching_face": False}
 
-        hand_count = len(results.multi_hand_landmarks)
+            face_center = face.get("face_center", (0.5, 0.5))
+            face_size = face.get("face_size", 0.2)
 
-        # 손 위치 분석
-        hand_positions = []
-        for hand_landmarks in results.multi_hand_landmarks:
-            # 손목 위치 (랜드마크 0)
-            wrist = hand_landmarks.landmark[0]
-            hand_positions.append({
-                "x": wrist.x,
-                "y": wrist.y,
-                "visible": True
-            })
+            touching_face = False
 
-        # 손이 얼굴 근처에 있는지 (긴장 제스처 감지)
-        touching_face = False
-        for pos in hand_positions:
-            if pos["y"] < 0.4:  # 화면 상단 40%에 손이 있으면
-                touching_face = True
-                break
+            for hand_landmarks in result.hand_landmarks:
+                # 손가락 끝 랜드마크 확인 (4, 8, 12, 16, 20)
+                fingertips = [4, 8, 12, 16, 20]
+                for idx in fingertips:
+                    tip = hand_landmarks[idx]
+                    distance = math.sqrt(
+                        (tip.x - face_center[0]) ** 2 +
+                        (tip.y - face_center[1]) ** 2
+                    )
+                    if distance < face_size * 1.2:
+                        touching_face = True
+                        break
 
-        return {
-            "detected": True,
-            "count": hand_count,
-            "positions": hand_positions,
-            "touching_face": touching_face,
-        }
+            return {
+                "detected": True,
+                "count": len(result.hand_landmarks),
+                "touching_face": touching_face
+            }
 
-    def _generate_realtime_feedback(
-        self,
-        face: Dict[str, Any],
-        pose: Dict[str, Any],
-        hands: Dict[str, Any]
-    ) -> List[RealtimeFeedback]:
-        """실시간 피드백 생성"""
-        feedback_list = []
+        except Exception as e:
+            logger.warning(f"Hand analysis error: {e}")
+            return {"detected": False, "count": 0, "touching_face": False}
+
+    def _gen_feedback(self, face: Dict, pose: Dict, hands: Dict) -> List[RealtimeFeedback]:
+        """피드백 생성"""
+        feedback = []
 
         # 얼굴 미감지
         if not face.get("detected"):
-            feedback_list.append(RealtimeFeedback(
-                feedback_type=FeedbackType.POSTURE,
-                message="얼굴이 감지되지 않습니다",
-                priority=FeedbackPriority.HIGH,
-                score=0,
-                suggestion="카메라를 정면으로 바라봐주세요"
+            feedback.append(RealtimeFeedback(
+                FeedbackType.FACE_POSITION,
+                "얼굴이 감지되지 않습니다",
+                FeedbackPriority.CRITICAL,
+                0,
+                "카메라를 정면으로 바라봐주세요"
             ))
-            return feedback_list
+            return feedback
 
-        # 시선 피드백
+        # 시선 체크
         eye_ratio = face.get("eye_contact_ratio", 0)
-        if eye_ratio < 0.5:
-            feedback_list.append(RealtimeFeedback(
-                feedback_type=FeedbackType.EYE_CONTACT,
-                message="시선을 카메라로 향해주세요",
-                priority=FeedbackPriority.HIGH,
-                score=eye_ratio * 100,
-                suggestion="면접관(카메라)과 눈을 맞추세요"
+        if eye_ratio < 0.6:
+            priority = FeedbackPriority.CRITICAL if eye_ratio < 0.4 else FeedbackPriority.HIGH
+            msg = "시선이 카메라를 벗어났습니다" if eye_ratio < 0.4 else "시선이 불안정합니다"
+            feedback.append(RealtimeFeedback(
+                FeedbackType.EYE_CONTACT,
+                msg,
+                priority,
+                eye_ratio * 100,
+                "카메라 렌즈를 바라보세요"
             ))
 
-        # 머리 위치 피드백
+        # 머리 위치
         head_pos = face.get("head_position", "centered")
         if head_pos != "centered":
-            pos_messages = {
-                "left": "고개가 왼쪽으로 치우쳤습니다",
-                "right": "고개가 오른쪽으로 치우쳤습니다",
-                "up": "고개를 조금 내려주세요",
-                "down": "고개를 조금 들어주세요",
-                "tilted": "고개를 바르게 해주세요",
-            }
-            feedback_list.append(RealtimeFeedback(
-                feedback_type=FeedbackType.HEAD_POSITION,
-                message=pos_messages.get(head_pos, "고개를 바르게 해주세요"),
-                priority=FeedbackPriority.MEDIUM,
-                score=70,
-                suggestion="화면 중앙을 바라봐주세요"
+            offset_sum = face.get("head_offset_x", 0) + face.get("head_offset_y", 0)
+            priority = FeedbackPriority.HIGH if offset_sum > 0.12 else FeedbackPriority.MEDIUM
+            feedback.append(RealtimeFeedback(
+                FeedbackType.HEAD_POSITION,
+                f"얼굴이 {head_pos}으로 치우쳤습니다",
+                priority,
+                max(0, 100 - offset_sum * 300),
+                "화면 중앙에 위치시키세요"
             ))
 
-        # 자세 피드백
-        if pose.get("detected") and not pose.get("shoulder_aligned", True):
-            feedback_list.append(RealtimeFeedback(
-                feedback_type=FeedbackType.POSTURE,
-                message="어깨가 기울어져 있습니다",
-                priority=FeedbackPriority.MEDIUM,
-                score=pose.get("posture_score", 70),
-                suggestion="어깨를 수평으로 맞춰주세요"
+        # 머리 기울기
+        head_tilt = abs(face.get("head_tilt_deg", 0))
+        if head_tilt > self.HEAD_TILT_WARN:
+            priority = FeedbackPriority.HIGH if head_tilt > self.HEAD_TILT_STRICT else FeedbackPriority.MEDIUM
+            feedback.append(RealtimeFeedback(
+                FeedbackType.HEAD_POSITION,
+                "고개가 기울어져 있습니다",
+                priority,
+                max(0, 100 - head_tilt * 10),
+                "고개를 똑바로 세워주세요",
+                f"{head_tilt:.1f}도"
             ))
 
-        # 손 피드백 (얼굴 만짐)
+        # 얼굴 크기 (거리)
+        face_size = face.get("face_size", 0.25)
+        if face_size < self.FACE_SIZE_MIN:
+            feedback.append(RealtimeFeedback(
+                FeedbackType.FACE_POSITION,
+                "너무 멀리 있습니다",
+                FeedbackPriority.MEDIUM,
+                50,
+                "카메라에 가까이 앉아주세요"
+            ))
+        elif face_size > self.FACE_SIZE_MAX:
+            feedback.append(RealtimeFeedback(
+                FeedbackType.FACE_POSITION,
+                "너무 가깝습니다",
+                FeedbackPriority.MEDIUM,
+                50,
+                "카메라에서 떨어져 앉아주세요"
+            ))
+
+        # 어깨 자세
+        if pose.get("detected"):
+            if not pose.get("shoulder_aligned"):
+                feedback.append(RealtimeFeedback(
+                    FeedbackType.SHOULDER,
+                    "어깨가 기울어져 있습니다",
+                    FeedbackPriority.HIGH,
+                    pose.get("posture_score", 45),
+                    "어깨를 수평으로 맞춰주세요",
+                    pose.get("tilt_direction", "")
+                ))
+            elif pose.get("shoulder_warning"):
+                feedback.append(RealtimeFeedback(
+                    FeedbackType.SHOULDER,
+                    "어깨가 약간 기울어져 있습니다",
+                    FeedbackPriority.MEDIUM,
+                    pose.get("posture_score", 65),
+                    "어깨를 수평으로 유지하세요"
+                ))
+
+            # 몸 중심 이탈
+            body_cx = pose.get("body_center_x", 0.5)
+            if abs(body_cx - 0.5) > 0.10:
+                direction = "왼쪽" if body_cx < 0.5 else "오른쪽"
+                feedback.append(RealtimeFeedback(
+                    FeedbackType.POSTURE,
+                    f"몸이 {direction}으로 치우쳐 있습니다",
+                    FeedbackPriority.MEDIUM,
+                    65,
+                    "화면 중앙에 앉아주세요"
+                ))
+
+        # 손이 얼굴에 닿음
         if hands.get("touching_face"):
-            feedback_list.append(RealtimeFeedback(
-                feedback_type=FeedbackType.GESTURE,
-                message="손이 얼굴 근처에 있습니다",
-                priority=FeedbackPriority.LOW,
-                score=60,
-                suggestion="손을 편하게 내려놓으세요"
+            feedback.append(RealtimeFeedback(
+                FeedbackType.GESTURE,
+                "손이 얼굴에 닿아 있습니다",
+                FeedbackPriority.HIGH,
+                30,
+                "손을 내려놓으세요"
             ))
 
-        # 표정 피드백
-        expression = face.get("expression", "neutral")
-        if expression == "serious":
-            feedback_list.append(RealtimeFeedback(
-                feedback_type=FeedbackType.EXPRESSION,
-                message="표정이 굳어 보입니다",
-                priority=FeedbackPriority.LOW,
-                score=70,
-                suggestion="자연스러운 미소를 지어보세요"
+        # 표정
+        if face.get("expression") == "tense":
+            feedback.append(RealtimeFeedback(
+                FeedbackType.EXPRESSION,
+                "표정이 긴장되어 보입니다",
+                FeedbackPriority.LOW,
+                60,
+                "자연스러운 미소를 지어보세요"
             ))
 
-        return feedback_list
+        return feedback
 
-    def _calculate_frame_score(
-        self,
-        face: Dict[str, Any],
-        pose: Dict[str, Any],
-        hands: Dict[str, Any]
-    ) -> float:
-        """프레임 종합 점수 계산"""
+    def _calc_score(self, face: Dict, pose: Dict, hands: Dict) -> float:
+        """종합 점수 계산"""
         if not face.get("detected"):
             return 0.0
 
-        score = 0.0
-        weights = {"face": 0.5, "pose": 0.3, "hands": 0.2}
+        score = 100.0
 
-        # 얼굴 점수
-        face_score = 0.0
-        if face.get("eye_contact"):
-            face_score += 40
-        if face.get("head_position") == "centered":
-            face_score += 30
-        if face.get("expression") in ["neutral", "smile"]:
-            face_score += 30
-        score += face_score * weights["face"]
+        # 시선 (최대 -35점)
+        eye_ratio = face.get("eye_contact_ratio", 0)
+        if eye_ratio < 0.4:
+            score -= 35
+        elif eye_ratio < 0.55:
+            score -= 25
+        elif eye_ratio < 0.7:
+            score -= 15
+        elif eye_ratio < 0.85:
+            score -= 8
 
-        # 자세 점수
+        # 머리 위치 (최대 -20점)
+        offset_sum = face.get("head_offset_x", 0) + face.get("head_offset_y", 0)
+        score -= min(20, offset_sum * 150)
+
+        # 머리 기울기 (최대 -15점)
+        head_tilt = abs(face.get("head_tilt_deg", 0))
+        if head_tilt > self.HEAD_TILT_STRICT:
+            score -= 15
+        elif head_tilt > self.HEAD_TILT_WARN:
+            score -= 8
+
+        # 어깨 자세 (최대 -20점)
         if pose.get("detected"):
-            score += pose.get("posture_score", 70) * weights["pose"]
-        else:
-            score += 70 * weights["pose"]  # 기본값
+            if not pose.get("shoulder_aligned"):
+                score -= 20
+            elif pose.get("shoulder_warning"):
+                score -= 12
 
-        # 손 점수
-        hand_score = 80  # 기본값
+        # 손 얼굴 접촉 (-10점)
         if hands.get("touching_face"):
-            hand_score -= 20
-        score += hand_score * weights["hands"]
+            score -= 10
 
-        return round(min(100, max(0, score)), 1)
+        return max(0, min(100, round(score, 1)))
 
-    def _get_fallback_result(self) -> Dict[str, Any]:
-        """폴백 결과 (분석 실패 시)"""
+    def _fallback(self) -> Dict[str, Any]:
+        """분석 실패 시 기본 반환값"""
         return {
             "face": {"detected": False},
             "pose": {"detected": False},
-            "hands": {"detected": False, "count": 0},
-            "feedback": [],
-            "overall_score": 0,
-            "error": "Analysis not available"
+            "hands": {"detected": False, "count": 0, "touching_face": False},
+            "feedback": [RealtimeFeedback(
+                FeedbackType.FACE_POSITION,
+                "분석 불가",
+                FeedbackPriority.CRITICAL,
+                0,
+                "카메라를 확인해주세요"
+            )],
+            "overall_score": 0
         }
-
-    def get_annotated_frame(self, frame: 'np.ndarray') -> 'np.ndarray':
-        """분석 결과가 오버레이된 프레임 반환 (디버그/시각화용)"""
-        if not self._initialized or not OPENCV_AVAILABLE:
-            return frame
-
-        try:
-            annotated = frame.copy()
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            rgb_frame.flags.writeable = False
-
-            # Face Mesh 그리기
-            face_results = self.face_mesh.process(rgb_frame)
-            if face_results.multi_face_landmarks:
-                for face_landmarks in face_results.multi_face_landmarks:
-                    self.mp_drawing.draw_landmarks(
-                        annotated,
-                        face_landmarks,
-                        self.mp_face_mesh.FACEMESH_CONTOURS,
-                        landmark_drawing_spec=None,
-                        connection_drawing_spec=self.mp_drawing.DrawingSpec(
-                            color=(0, 255, 0), thickness=1
-                        )
-                    )
-
-            # Pose 그리기
-            pose_results = self.pose.process(rgb_frame)
-            if pose_results.pose_landmarks:
-                self.mp_drawing.draw_landmarks(
-                    annotated,
-                    pose_results.pose_landmarks,
-                    self.mp_pose.POSE_CONNECTIONS
-                )
-
-            return annotated
-
-        except Exception as e:
-            logger.warning(f"Annotation error: {e}")
-            return frame
 
     def release(self):
         """리소스 해제"""
-        if self.face_mesh:
-            self.face_mesh.close()
-        if self.pose:
-            self.pose.close()
-        if self.hands:
-            self.hands.close()
+        if self.face_landmarker:
+            self.face_landmarker.close()
+        if self.pose_landmarker:
+            self.pose_landmarker.close()
+        if self.hand_landmarker:
+            self.hand_landmarker.close()
         self._initialized = False
 
 
 # 싱글톤 인스턴스
-webcam_analyzer = WebcamAnalyzer()
+_instance: Optional[WebcamAnalyzer] = None
 
 
 def get_webcam_analyzer() -> WebcamAnalyzer:
-    """WebcamAnalyzer 인스턴스 반환"""
-    if not webcam_analyzer._initialized:
-        webcam_analyzer.initialize()
-    return webcam_analyzer
+    """웹캠 분석기 싱글톤 인스턴스 반환"""
+    global _instance
+    if _instance is None:
+        _instance = WebcamAnalyzer()
+    if not _instance._initialized:
+        _instance.initialize()
+    return _instance
 
 
 def is_webcam_analysis_available() -> bool:

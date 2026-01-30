@@ -571,13 +571,46 @@ elif menu == "에러 모니터링":
                 for error in errors:
                     level = error.get('level', 'error')
                     item_class = 'error' if level in ['error', 'critical'] else 'warning'
+
+                    # 파일 경로에서 파일명만 추출
+                    file_path = error.get('file', '')
+                    file_name = file_path.split('\\')[-1].split('/')[-1] if file_path else 'N/A'
+                    line_num = error.get('line', '')
+                    func_name = error.get('function', '')
+                    code_snippet = error.get('code', '')
+
+                    # 위치 정보
+                    location = f"{file_name}:{line_num}" if line_num else file_name
+                    if func_name:
+                        location += f" ({func_name})"
+
                     st.markdown(f"""
-                    <div class="alert-item {item_class}">
+                    <div class="alert-item {item_class}" style="font-family: monospace;">
                         <strong>[{level.upper()}] {error.get('type', 'Unknown')}</strong>
-                        <br>{error.get('message', '')[:150]}
-                        <br><small>페이지: {error.get('page', 'N/A')} | {error.get('timestamp', '')}</small>
+                        <br><span style="color:#dc2626;">{error.get('message', '')[:200]}</span>
+                        <br><strong>위치:</strong> <code>{location}</code>
+                        {f'<br><strong>코드:</strong> <code>{code_snippet[:100]}</code>' if code_snippet else ''}
+                        <br><small style="color:#64748b;">페이지: {error.get('page', 'N/A')} | {error.get('timestamp', '')[:19]}</small>
                     </div>
                     """, unsafe_allow_html=True)
+
+                    # 상세 보기 버튼
+                    with st.expander(f"상세 정보 (복사용) - {error.get('id', '')[:8]}"):
+                        error_detail = f"""[에러 리포트]
+ID: {error.get('id', '')}
+시간: {error.get('timestamp', '')}
+레벨: {level.upper()}
+타입: {error.get('type', '')}
+메시지: {error.get('message', '')}
+파일: {file_path}
+라인: {line_num}
+함수: {func_name}
+코드: {code_snippet}
+페이지: {error.get('page', '')}
+
+[Traceback]
+{error.get('traceback', '')}"""
+                        st.code(error_detail, language="text")
             else:
                 st.success("최근 에러 없음")
 

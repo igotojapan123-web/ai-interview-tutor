@@ -10,6 +10,22 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from collections import defaultdict
 
+# Sentry 에러 모니터링 초기화
+try:
+    import sentry_sdk
+    from dotenv import load_dotenv
+    load_dotenv()
+
+    sentry_dsn = os.getenv("SENTRY_DSN")
+    if sentry_dsn:
+        sentry_sdk.init(
+            dsn=sentry_dsn,
+            traces_sample_rate=0.1,
+            send_default_pii=False,
+        )
+except ImportError:
+    pass
+
 from logging_config import get_logger
 
 # 로거 설정

@@ -137,13 +137,45 @@ class ErrorLogger:
             f"{type(error).__name__}{str(error)}{datetime.now().isoformat()}".encode()
         ).hexdigest()[:12]
 
+        # 트레이스백에서 파일/라인 정보 추출
+        tb = traceback.format_exc()
+        file_path = ""
+        line_number = ""
+        function_name = ""
+        code_snippet = ""
+
+        try:
+            import sys
+            exc_tb = sys.exc_info()[2]
+            if exc_tb:
+                # 마지막 프레임 (실제 에러 발생 위치)
+                while exc_tb.tb_next:
+                    exc_tb = exc_tb.tb_next
+                frame = exc_tb.tb_frame
+                file_path = frame.f_code.co_filename
+                line_number = exc_tb.tb_lineno
+                function_name = frame.f_code.co_name
+
+                # 해당 라인의 코드 가져오기
+                try:
+                    import linecache
+                    code_snippet = linecache.getline(file_path, line_number).strip()
+                except:
+                    pass
+        except:
+            pass
+
         error_entry = {
             "id": error_id,
             "timestamp": datetime.now().isoformat(),
             "level": level,
             "type": type(error).__name__,
             "message": str(error),
-            "traceback": traceback.format_exc(),
+            "file": file_path,
+            "line": line_number,
+            "function": function_name,
+            "code": code_snippet,
+            "traceback": tb,
             "page": page,
             "user_id": user_id,
             "context": context or {},

@@ -456,15 +456,35 @@ class AlertManager:
     # ============================================================
 
     def send_error_alert(self, error_info: Dict) -> Dict:
-        """에러 알림"""
-        title = f"에러 발생: {error_info.get('type', 'Unknown')}"
-        content = f"""
-페이지: {error_info.get('page', 'N/A')}
-메시지: {error_info.get('message', 'N/A')}
-시간: {error_info.get('timestamp', 'N/A')}
+        """에러 알림 - 상세 위치 정보 포함"""
+        title = f"[FlyReady] 에러: {error_info.get('type', 'Unknown')}"
 
-상세:
-{error_info.get('traceback', '')[:500]}
+        # 파일 경로에서 파일명 추출
+        file_path = error_info.get('file', 'N/A')
+        file_name = file_path.split('\\')[-1].split('/')[-1] if file_path else 'N/A'
+        line_num = error_info.get('line', 'N/A')
+        func_name = error_info.get('function', 'N/A')
+        code_snippet = error_info.get('code', '')
+
+        content = f"""[에러 리포트]
+
+타입: {error_info.get('type', 'Unknown')}
+메시지: {error_info.get('message', 'N/A')}
+
+[위치 정보 - Claude에게 전달용]
+파일: {file_name}
+전체경로: {file_path}
+라인: {line_num}
+함수: {func_name}
+코드: {code_snippet}
+
+[추가 정보]
+페이지: {error_info.get('page', 'N/A')}
+시간: {error_info.get('timestamp', 'N/A')}
+에러ID: {error_info.get('id', 'N/A')}
+
+[Traceback]
+{error_info.get('traceback', '')[:800]}
         """.strip()
 
         level = error_info.get('level', 'error')

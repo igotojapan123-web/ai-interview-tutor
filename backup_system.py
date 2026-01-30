@@ -604,3 +604,64 @@ def get_latest_backup() -> Optional[BackupMetadata]:
 def cleanup_backups(keep_days: int = 30) -> int:
     """Clean up old backups"""
     return _backup_system.cleanup_old_backups(keep_days)
+
+
+# =============================================================================
+# Auto Backup Scheduler
+# =============================================================================
+
+_scheduler_running = False
+_scheduler_thread = None
+
+
+def start_auto_backup(interval_hours: int = 24, backup_time: str = "03:00") -> None:
+    """
+    자동 백업 스케줄러 시작
+
+    Args:
+        interval_hours: 백업 주기 (시간)
+        backup_time: 백업 실행 시각 (HH:MM)
+    """
+    global _scheduler_running, _scheduler_thread
+
+    if _scheduler_running:
+        logger.warning("자동 백업이 이미 실행 중")
+        return
+
+    try:
+        import schedule
+    except ImportError:
+        logger.warning("schedule 모듈 없음 - pip install schedule 필요")
+        return
+
+    def run_scheduler():
+        global _scheduler_running
+        import time
+
+        _scheduler_running = True
+
+        # 매일 지정 시각에 백업
+        schedule.every().day.at(backup_time).do(
+            lambda: _backup_system.create_backup(BackupType.FULL, compress=True)
+        )
+
+        logger.info(f"자동 백업 스케줄러 시작: 매일 {backup_time}")
+
+        while _scheduler_running:
+            schedule.run_pending()
+            time.sleep(60)  # 1분마다 체크
+
+    _scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
+    _scheduler_thread.start()
+
+
+def stop_auto_backup() -> None:
+    """자동 백업 스케줄러 중지"""
+    global _scheduler_running
+    _scheduler_running = False
+    logger.info("자동 백업 스케줄러 중지")
+
+
+def is_auto_backup_running() -> bool:
+    """자동 백업 실행 상태 확인"""
+    return _scheduler_running

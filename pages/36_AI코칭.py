@@ -6,11 +6,42 @@ import streamlit as st
 import os
 import sys
 from datetime import datetime, timedelta
-import plotly.graph_objects as go
-import plotly.express as px
 
 # 상위 디렉토리 import 설정
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# 안전한 실행 유틸리티
+try:
+    from safe_api import safe_execute, validate_dict, validate_list, safe_get
+    SAFE_API_AVAILABLE = True
+except ImportError:
+    SAFE_API_AVAILABLE = False
+    def safe_execute(func, *args, default=None, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except:
+            return default
+    def validate_dict(v, default=None):
+        return v if isinstance(v, dict) else (default or {})
+    def validate_list(v, default=None):
+        return v if isinstance(v, list) else (default or [])
+    def safe_get(d, *keys, default=None):
+        for k in keys:
+            if isinstance(d, dict):
+                d = d.get(k)
+            else:
+                return default
+        return d if d is not None else default
+
+# Plotly import (선택적)
+try:
+    import plotly.graph_objects as go
+    import plotly.express as px
+    PLOTLY_AVAILABLE = True
+except ImportError:
+    PLOTLY_AVAILABLE = False
+    go = None
+    px = None
 
 # 페이지 설정
 st.set_page_config(

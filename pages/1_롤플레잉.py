@@ -13,7 +13,17 @@ import streamlit.components.v1 as components
 import requests
 
 import sys
+import hashlib
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# 안전한 API 유틸리티
+try:
+    from safe_api import get_audio_hash, validate_dict, safe_execute
+    SAFE_API_AVAILABLE = True
+except ImportError:
+    SAFE_API_AVAILABLE = False
+    def get_audio_hash(data):
+        return hashlib.md5(data).hexdigest() if data else ""
 
 from config import LLM_MODEL_NAME, LLM_API_URL, LLM_TIMEOUT_SEC
 from env_config import OPENAI_API_KEY
@@ -480,7 +490,7 @@ defaults = {
     "rp_response_times": [],  # 각 응답별 소요 시간 저장
     "rp_audio_bytes_list": [],  # 각 응답별 음성 데이터 저장
     "rp_voice_analysis": None,  # 음성 분석 결과
-    "rp_processed_audio_id": None,  # 처리된 오디오 ID (중복 방지)
+    "rp_processed_audio_hash": None,  # 처리된 오디오 해시 (중복 방지)
 }
 
 for key, value in defaults.items():
@@ -967,7 +977,7 @@ elif not st.session_state.rp_ready:
             st.session_state.rp_audio_playing = False
             st.session_state.rp_audio_bytes_list = []  # 음성 데이터 초기화
             st.session_state.rp_voice_analysis = None  # 음성 분석 결과 초기화
-            st.session_state.rp_processed_audio_id = None  # 오디오 중복 방지 초기화
+            st.session_state.rp_processed_audio_hash = None  # 오디오 중복 방지 초기화
 
             with st.spinner("승객이 다가옵니다..."):
                 first_msg = generate_passenger_response(
@@ -1007,7 +1017,7 @@ else:
             st.session_state.rp_escalation_level = 0
             st.session_state.rp_audio_bytes_list = []  # 음성 데이터 초기화
             st.session_state.rp_voice_analysis = None  # 음성 분석 결과 초기화
-            st.session_state.rp_processed_audio_id = None  # 오디오 중복 방지 초기화
+            st.session_state.rp_processed_audio_hash = None  # 오디오 중복 방지 초기화
             st.rerun()
 
     # 감정 게이지
@@ -1132,24 +1142,27 @@ else:
             with col_rec1:
                 # 음성 녹음 시도 (st.audio_input 사용 - Streamlit 1.33+)
                 try:
-                    # 처리된 오디오 ID 추적 (중복 처리 방지)
-                    if "rp_processed_audio_id" not in st.session_state:
-                        st.session_state.rp_processed_audio_id = None
+                    # 처리된 오디오 해시 추적 (중복 처리 방지)
+                    if "rp_processed_audio_hash" not in st.session_state:
+                        st.session_state.rp_processed_audio_hash = None
 
                     audio_data = st.audio_input(" 말하기 (녹음 버튼 클릭)", key="voice_input")
                     if audio_data:
-                        # 오디오 ID로 중복 체크 (파일 크기 + 이름 조합)
-                        audio_id = f"{audio_data.name}_{audio_data.size}"
+                        # 오디오 바이트 읽기
+                        audio_bytes = audio_data.read()
+                        audio_data.seek(0)  # 포인터 리셋
+
+                        # 해시로 중복 체크 (실제 데이터 기반)
+                        audio_hash = get_audio_hash(audio_bytes)
 
                         # 이미 처리된 오디오면 건너뛰기
-                        if audio_id != st.session_state.rp_processed_audio_id:
+                        if audio_hash != st.session_state.rp_processed_audio_hash:
                             with st.spinner(" 음성 인식 중..."):
                                 # 타이머 일시정지
                                 if st.session_state.rp_timer_start and not st.session_state.rp_timer_paused_at:
                                     st.session_state.rp_timer_paused_at = time.time()
 
-                                # 음성 데이터 읽기 (분석용으로 저장)
-                                audio_bytes = audio_data.read()
+                                # 음성 인식 (이미 읽은 audio_bytes 사용)
                                 result = transcribe_audio(audio_bytes, language="ko")
                                 if result and result.get("text"):
                                     user_input = result["text"]
@@ -1158,8 +1171,8 @@ else:
                                     # 음성 데이터 저장 (나중에 분석용)
                                     st.session_state.rp_audio_bytes_list.append(audio_bytes)
 
-                                    # 처리 완료 표시
-                                    st.session_state.rp_processed_audio_id = audio_id
+                                    # 처리 완료 표시 (해시로 변경)
+                                    st.session_state.rp_processed_audio_hash = audio_hash
 
                                     # 타이머 재개
                                     if st.session_state.rp_timer_paused_at:
@@ -1169,7 +1182,7 @@ else:
                                         st.session_state.rp_timer_paused_at = None
                                 else:
                                     st.error("음성 인식 실패 - 다시 시도하거나 아래 텍스트로 입력하세요")
-                                    st.session_state.rp_processed_audio_id = audio_id  # 실패해도 중복 처리 방지
+                                    st.session_state.rp_processed_audio_hash = audio_hash  # 실패해도 중복 처리 방지
                 except Exception as e:
                     st.warning("음성 입력 기능을 사용할 수 없습니다. 텍스트로 입력해주세요.")
 
@@ -1490,7 +1503,7 @@ else:
                                             st.session_state.rp_evaluation = None
                                             st.session_state.rp_audio_bytes_list = []
                                             st.session_state.rp_voice_analysis = None
-                                            st.session_state.rp_processed_audio_id = None
+                                            st.session_state.rp_processed_audio_hash = None
                                             st.rerun()
 
                 # PDF 리포트 다운로드
@@ -1541,7 +1554,7 @@ else:
                 st.session_state.rp_audio_playing = False
                 st.session_state.rp_audio_bytes_list = []  # 음성 데이터 초기화
                 st.session_state.rp_voice_analysis = None  # 음성 분석 결과 초기화
-                st.session_state.rp_processed_audio_id = None  # 오디오 중복 방지 초기화
+                st.session_state.rp_processed_audio_hash = None  # 오디오 중복 방지 초기화
 
                 first_msg = generate_passenger_response(
                     sc, [], "[상황 시작: 승객이 승무원에게 다가옵니다]", 0
@@ -1569,5 +1582,5 @@ else:
                 st.session_state.rp_audio_playing = False
                 st.session_state.rp_audio_bytes_list = []  # 음성 데이터 초기화
                 st.session_state.rp_voice_analysis = None  # 음성 분석 결과 초기화
-                st.session_state.rp_processed_audio_id = None  # 오디오 중복 방지 초기화
+                st.session_state.rp_processed_audio_hash = None  # 오디오 중복 방지 초기화
                 st.rerun()

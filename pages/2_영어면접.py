@@ -10,7 +10,17 @@ import streamlit as st
 import requests
 
 import sys
+import hashlib
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# 안전한 API 유틸리티
+try:
+    from safe_api import get_audio_hash, validate_dict, safe_execute
+    SAFE_API_AVAILABLE = True
+except ImportError:
+    SAFE_API_AVAILABLE = False
+    def get_audio_hash(data):
+        return hashlib.md5(data).hexdigest() if data else ""
 
 from config import LLM_MODEL_NAME, LLM_API_URL, LLM_TIMEOUT_SEC
 from english_interview_data import (
@@ -80,7 +90,7 @@ defaults = {
     # 음성 분석용
     "eng_audio_bytes_list": [],
     "eng_voice_analysis": None,
-    "eng_processed_audio_id": None,
+    "eng_processed_audio_hash": None,
     "eng_response_times": [],
     "eng_question_start_time": None,
 }
@@ -332,7 +342,7 @@ if st.session_state.eng_mode is None:
             st.session_state.eng_audio_played = {}
             st.session_state.eng_audio_bytes_list = []
             st.session_state.eng_voice_analysis = None
-            st.session_state.eng_processed_audio_id = None
+            st.session_state.eng_processed_audio_hash = None
             st.session_state.eng_response_times = []
             st.session_state.eng_question_start_time = None
             st.rerun()
@@ -456,18 +466,20 @@ elif st.session_state.eng_mode == "practice":
                         audio_data = st.audio_input("음성 녹음", key=f"voice_practice_{selected_cat_key}_{i}")
 
                         if audio_data is not None:
-                            audio_id = f"{audio_data.name}_{audio_data.size}"
+                            # 해시 기반 중복 체크
+                            audio_bytes = audio_data.getvalue()
+                            audio_hash = get_audio_hash(audio_bytes)
 
-                            if audio_id != st.session_state[processed_audio_key]:
+                            if audio_hash != st.session_state[processed_audio_key]:
                                 st.audio(audio_data, format="audio/wav")
 
                                 if st.button("음성 변환", key=f"submit_voice_practice_{selected_cat_key}_{i}", type="primary"):
                                     with st.spinner("음성 인식 중..."):
-                                        transcription = transcribe_audio(audio_data.getvalue(), language="en")
+                                        transcription = transcribe_audio(audio_bytes, language="en")
                                         if transcription and transcription.get("text"):
                                             recognized_text = transcription["text"]
                                             st.session_state[transcription_key] = recognized_text
-                                            st.session_state[processed_audio_key] = audio_id
+                                            st.session_state[processed_audio_key] = audio_hash
                                             st.rerun()
                                         else:
                                             st.error("음성 인식 실패. 다시 시도해주세요.")
@@ -645,22 +657,24 @@ elif st.session_state.eng_mode == "mock":
                         audio_data = st.audio_input("음성 녹음", key=f"voice_ans_{current_idx}")
 
                         if audio_data is not None:
-                            audio_id = f"{audio_data.name}_{audio_data.size}"
+                            # 해시 기반 중복 체크
+                            audio_bytes = audio_data.getvalue()
+                            audio_hash = get_audio_hash(audio_bytes)
 
-                            if audio_id != st.session_state[mock_processed_audio_key]:
+                            if audio_hash != st.session_state[mock_processed_audio_key]:
                                 st.audio(audio_data, format="audio/wav")
 
                                 if st.button("음성 변환", key=f"submit_voice_{current_idx}", type="primary"):
                                     with st.spinner("음성 인식 중..."):
-                                        transcription = transcribe_audio(audio_data.getvalue(), language="en")
+                                        transcription = transcribe_audio(audio_bytes, language="en")
                                         if transcription and transcription.get("text"):
                                             recognized_text = transcription["text"]
                                             st.session_state[mock_transcription_key] = recognized_text
-                                            st.session_state[mock_processed_audio_key] = audio_id
+                                            st.session_state[mock_processed_audio_key] = audio_hash
 
                                             # 음성 데이터 저장 (종합 분석용)
                                             if len(st.session_state.eng_audio_bytes_list) <= current_idx:
-                                                st.session_state.eng_audio_bytes_list.append(audio_data.getvalue())
+                                                st.session_state.eng_audio_bytes_list.append(audio_bytes)
 
                                             st.rerun()
                                         else:

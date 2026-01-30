@@ -8,30 +8,80 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 
-from sidebar_common import init_page, end_page
-from logging_config import get_logger
+# 로깅 먼저 설정
+try:
+    from logging_config import get_logger
+    logger = get_logger(__name__)
+except ImportError:
+    import logging
+    logger = logging.getLogger(__name__)
 
-# Phase 5 모듈 임포트
-from room_manager import (
-    create_room, get_room, join_room, leave_room,
-    list_available_rooms, update_participant_status,
-    start_session, send_message, get_messages,
-    ROOM_TEMPLATES, RoomType, RoomStatus, ParticipantStatus
-)
-from multiplayer_service import (
-    start_group_interview, get_interview_progress,
-    get_current_turn_info, get_live_leaderboard, calculate_winner,
-    DEBATE_TOPICS, start_debate, get_debate_state, submit_argument,
-    get_multiplayer_service, start_answer_timer, check_timer
-)
-from peer_evaluation import (
-    submit_peer_evaluation, get_evaluation_template,
-    add_reaction, REACTIONS, EVALUATION_CRITERIA,
-    get_evaluations_received, get_reaction_summary
-)
-from airline_questions import get_available_airlines
+# 사이드바 유틸리티
+try:
+    from sidebar_common import init_page, end_page
+    SIDEBAR_AVAILABLE = True
+except ImportError:
+    SIDEBAR_AVAILABLE = False
+    def init_page():
+        pass
+    def end_page():
+        pass
 
-logger = get_logger(__name__)
+# 안전한 실행 유틸리티
+try:
+    from safe_api import safe_execute, validate_dict, validate_list
+    SAFE_API_AVAILABLE = True
+except ImportError:
+    SAFE_API_AVAILABLE = False
+    def safe_execute(func, *args, default=None, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logger.error(f"safe_execute 실패: {e}")
+            return default
+
+# Phase 5 모듈 임포트 (에러 처리 포함)
+ROOM_MANAGER_AVAILABLE = False
+MULTIPLAYER_AVAILABLE = False
+PEER_EVAL_AVAILABLE = False
+
+try:
+    from room_manager import (
+        create_room, get_room, join_room, leave_room,
+        list_available_rooms, update_participant_status,
+        start_session, send_message, get_messages,
+        ROOM_TEMPLATES, RoomType, RoomStatus, ParticipantStatus
+    )
+    ROOM_MANAGER_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"room_manager 로드 실패: {e}")
+
+try:
+    from multiplayer_service import (
+        start_group_interview, get_interview_progress,
+        get_current_turn_info, get_live_leaderboard, calculate_winner,
+        DEBATE_TOPICS, start_debate, get_debate_state, submit_argument,
+        get_multiplayer_service, start_answer_timer, check_timer
+    )
+    MULTIPLAYER_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"multiplayer_service 로드 실패: {e}")
+
+try:
+    from peer_evaluation import (
+        submit_peer_evaluation, get_evaluation_template,
+        add_reaction, REACTIONS, EVALUATION_CRITERIA,
+        get_evaluations_received, get_reaction_summary
+    )
+    PEER_EVAL_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"peer_evaluation 로드 실패: {e}")
+
+try:
+    from airline_questions import get_available_airlines
+except ImportError:
+    def get_available_airlines():
+        return ["대한항공", "아시아나항공", "진에어", "티웨이항공"]
 
 # ========================================
 # 페이지 설정 및 CSS
@@ -854,6 +904,13 @@ def render_waiting_room():
 
 def render_interview_in_progress():
     """면접 진행 중 화면"""
+    # 멀티플레이어 서비스 체크
+    if not MULTIPLAYER_AVAILABLE:
+        st.error("멀티플레이어 서비스가 로드되지 않았습니다.")
+        st.info("로비로 돌아갑니다...")
+        st.session_state.view_mode = 'browser'
+        return
+
     room = get_room(st.session_state.current_room_id)
 
     if not room:
@@ -877,6 +934,7 @@ def render_interview_in_progress():
         turn_info = get_current_turn_info(st.session_state.current_room_id)
         progress = get_interview_progress(st.session_state.current_room_id)
     except Exception as e:
+        logger.error(f"면접 진행 상황 로드 실패: {e}")
         st.error(f"진행 상황을 불러올 수 없습니다: {str(e)}")
         return
 
@@ -1302,30 +1360,31 @@ def render_results_view():
     st.markdown("---")
 
     # 동료 평가 섹션
-    st.markdown("### ✍️ 동료 평가")
-    st.info("함께한 참가자들을 평가해주세요! 평가는 서로의 성장에 도움이 됩니다.")
+    if PEER_EVAL_AVAILABLE:
+        st.markdown("### ✍️ 동료 평가")
+        st.info("함께한 참가자들을 평가해주세요! 평가는 서로의 성장에 도움이 됩니다.")
+        render_peer_evaluation_form(room)
 
-    render_peer_evaluation_form(room)
+        # 받은 반응 요약
+        st.markdown("### 👏 내가 받은 반응")
+        try:
+            reaction_summary = get_reaction_summary(st.session_state.user_id)
 
-    # 받은 반응 요약
-    st.markdown("### 👏 내가 받은 반응")
-
-    try:
-        reaction_summary = get_reaction_summary(st.session_state.user_id)
-
-        if reaction_summary.get('total_reactions', 0) > 0:
-            cols = st.columns(5)
-            for idx, item in enumerate(reaction_summary.get('reaction_breakdown', [])[:5]):
-                with cols[idx]:
-                    st.metric(
-                        item['emoji'],
-                        f"{item['count']}개",
-                        delta=None
-                    )
-        else:
-            st.info("아직 받은 반응이 없습니다")
-    except:
-        pass
+            if reaction_summary.get('total_reactions', 0) > 0:
+                cols = st.columns(5)
+                for idx, item in enumerate(reaction_summary.get('reaction_breakdown', [])[:5]):
+                    with cols[idx]:
+                        st.metric(
+                            item['emoji'],
+                            f"{item['count']}개",
+                            delta=None
+                        )
+            else:
+                st.info("아직 받은 반응이 없습니다")
+        except Exception as e:
+            logger.error(f"반응 요약 로드 실패: {e}")
+    else:
+        st.info("동료 평가 기능이 현재 사용 불가합니다.")
 
     st.markdown("---")
 
@@ -1567,6 +1626,20 @@ def main():
 
     # CSS 적용
     st.markdown(get_custom_css(), unsafe_allow_html=True)
+
+    # 필수 모듈 체크
+    if not ROOM_MANAGER_AVAILABLE:
+        st.error("⚠️ 그룹 면접 기능을 사용하려면 room_manager 모듈이 필요합니다.")
+        st.info("관리자에게 문의하세요.")
+        logger.error("room_manager 모듈 로드 실패로 그룹 면접 페이지 비활성화")
+        return
+
+    if not MULTIPLAYER_AVAILABLE:
+        st.warning("⚠️ 멀티플레이어 서비스가 제한됩니다. 일부 기능이 동작하지 않을 수 있습니다.")
+        logger.warning("multiplayer_service 모듈 로드 실패")
+
+    if not PEER_EVAL_AVAILABLE:
+        logger.warning("peer_evaluation 모듈 로드 실패 - 동료 평가 기능 비활성화")
 
     # 세션 상태 초기화
     init_session_state()

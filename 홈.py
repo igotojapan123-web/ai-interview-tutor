@@ -1336,7 +1336,7 @@ with col_rec:
     st.markdown(f'<div class="fr-info-box"><div class="fr-info-title">오늘의 추천</div>{recommend_items_html}</div>', unsafe_allow_html=True)
 
 # =====================
-# 섹션 1: 면접 연습
+# 섹션 1: 면접 연습 (핵심)
 # =====================
 st.markdown('''
 <div class="fr-section">
@@ -1363,23 +1363,38 @@ st.markdown('''
 ''', unsafe_allow_html=True)
 
 # =====================
-# 섹션 2: 준비 도구
+# 섹션 2: 서류 준비
 # =====================
 st.markdown('''
 <div class="fr-section">
-    <div class="fr-section-title">준비 도구</div>
-    <div class="fr-card-grid">
+    <div class="fr-section-title">서류 준비</div>
+    <div class="fr-card-grid" style="grid-template-columns: repeat(2, 1fr);">
         <a target="_self" href="/자소서첨삭" class="fr-card">
             <div class="fr-card-title">자소서 AI 첨삭</div>
-            <div class="fr-card-desc">AI가 자소서<br>피드백 제공</div>
+            <div class="fr-card-desc">AI가 자소서 분석 및<br>피드백 제공</div>
         </a>
+        <a target="_self" href="/자소서기반질문" class="fr-card">
+            <div class="fr-card-title">자소서 기반 질문</div>
+            <div class="fr-card-desc">내 자소서에서<br>예상 질문 생성</div>
+        </a>
+    </div>
+</div>
+''', unsafe_allow_html=True)
+
+# =====================
+# 섹션 3: 실전 훈련
+# =====================
+st.markdown('''
+<div class="fr-section">
+    <div class="fr-section-title">실전 훈련</div>
+    <div class="fr-card-grid" style="grid-template-columns: repeat(3, 1fr);">
         <a target="_self" href="/실전연습" class="fr-card">
             <div class="fr-card-title">실전 연습</div>
             <div class="fr-card-desc">영상/음성 종합<br>분석 연습</div>
         </a>
-        <a target="_self" href="/이미지메이킹" class="fr-card">
-            <div class="fr-card-title">이미지메이킹</div>
-            <div class="fr-card-desc">메이크업/복장<br>가이드</div>
+        <a target="_self" href="/표정연습" class="fr-card">
+            <div class="fr-card-title">표정 연습</div>
+            <div class="fr-card-desc">면접 표정<br>훈련하기</div>
         </a>
         <a target="_self" href="/기내방송연습" class="fr-card">
             <div class="fr-card-title">기내방송 연습</div>
@@ -1390,11 +1405,30 @@ st.markdown('''
 ''', unsafe_allow_html=True)
 
 # =====================
-# 섹션 3: 학습/정보
+# 섹션 4: 이미지 / 체력
 # =====================
 st.markdown('''
 <div class="fr-section">
-    <div class="fr-section-title">학습 / 정보</div>
+    <div class="fr-section-title">이미지 / 체력</div>
+    <div class="fr-card-grid" style="grid-template-columns: repeat(2, 1fr);">
+        <a target="_self" href="/이미지메이킹" class="fr-card">
+            <div class="fr-card-title">이미지메이킹</div>
+            <div class="fr-card-desc">메이크업/복장<br>셀프체크 가이드</div>
+        </a>
+        <a target="_self" href="/국민체력" class="fr-card">
+            <div class="fr-card-title">국민체력 / 수영</div>
+            <div class="fr-card-desc">체력시험 준비<br>가이드</div>
+        </a>
+    </div>
+</div>
+''', unsafe_allow_html=True)
+
+# =====================
+# 섹션 5: 정보 / 가이드
+# =====================
+st.markdown('''
+<div class="fr-section">
+    <div class="fr-section-title">정보 / 가이드</div>
     <div class="fr-mini-grid">
         <a target="_self" href="/항공사퀴즈" class="fr-mini-card">
             <div class="fr-mini-card-title">항공 상식 퀴즈</div>
@@ -1405,18 +1439,18 @@ st.markdown('''
         <a target="_self" href="/항공사가이드" class="fr-mini-card">
             <div class="fr-mini-card-title">항공사 가이드</div>
         </a>
-        <a target="_self" href="/국민체력" class="fr-mini-card">
-            <div class="fr-mini-card-title">국민체력/수영</div>
-        </a>
         <a target="_self" href="/기업분석" class="fr-mini-card">
             <div class="fr-mini-card-title">기업 분석</div>
+        </a>
+        <a target="_self" href="/합격자DB" class="fr-mini-card">
+            <div class="fr-mini-card-title">합격자 DB</div>
         </a>
     </div>
 </div>
 ''', unsafe_allow_html=True)
 
 # =====================
-# 섹션 4: 학습 관리
+# 섹션 6: 학습 관리
 # =====================
 st.markdown('''
 <div class="fr-section">
@@ -1428,14 +1462,37 @@ st.markdown('''
         <a target="_self" href="/성장그래프" class="fr-mini-card">
             <div class="fr-mini-card-title">성장 그래프</div>
         </a>
-        <a target="_self" href="/채용알림" class="fr-mini-card">
-            <div class="fr-mini-card-title">채용 알림</div>
-        </a>
-        <a target="_self" href="/합격자DB" class="fr-mini-card">
-            <div class="fr-mini-card-title">합격자 DB</div>
-        </a>
         <a target="_self" href="/D-Day캘린더" class="fr-mini-card">
             <div class="fr-mini-card-title">D-Day 캘린더</div>
+        </a>
+        <a target="_self" href="/스킬분석" class="fr-mini-card">
+            <div class="fr-mini-card-title">스킬 분석</div>
+        </a>
+        <a target="_self" href="/AI코칭" class="fr-mini-card">
+            <div class="fr-mini-card-title">AI 코칭</div>
+        </a>
+    </div>
+</div>
+''', unsafe_allow_html=True)
+
+# =====================
+# 섹션 7: 채용 / 커뮤니티
+# =====================
+st.markdown('''
+<div class="fr-section">
+    <div class="fr-section-title">채용 / 커뮤니티</div>
+    <div class="fr-card-grid" style="grid-template-columns: repeat(3, 1fr);">
+        <a target="_self" href="/채용알림" class="fr-card">
+            <div class="fr-card-title">채용 알림</div>
+            <div class="fr-card-desc">11개 국내 항공사<br>채용 일정 확인</div>
+        </a>
+        <a target="_self" href="/QnA게시판" class="fr-card">
+            <div class="fr-card-title">Q&A 게시판</div>
+            <div class="fr-card-desc">궁금한 점<br>질문하기</div>
+        </a>
+        <a target="_self" href="/멘토찾기" class="fr-card">
+            <div class="fr-card-title">멘토 찾기</div>
+            <div class="fr-card-desc">현직자/합격자<br>멘토 연결</div>
         </a>
     </div>
 </div>

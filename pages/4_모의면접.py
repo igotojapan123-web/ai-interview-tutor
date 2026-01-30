@@ -33,6 +33,7 @@ try:
         get_audio_player_html,
         get_loud_audio_component,
         analyze_interview_emotion,  # Phase 1: 감정 분석 추가
+        analyze_voice_advanced,  # 고도화된 음성 분석
     )
     from video_utils import get_enhanced_fallback_avatar_html  # Phase 1: 향상된 아바타
     VIDEO_UTILS_AVAILABLE = True
@@ -191,6 +192,8 @@ defaults = {
     "mock_emotion_analyses": [],  # 각 질문별 감정 분석 결과
     "mock_combined_emotion": None,  # 종합 감정 분석
     "mock_confidence_timeline": [],  # 자신감 변화 추이
+    # 고도화된 음성 분석 결과
+    "mock_advanced_analyses": [],  # 각 질문별 고도화 음성 분석 결과
     "mock_stress_timeline": [],  # 스트레스 변화 추이
 }
 
@@ -437,6 +440,11 @@ if not st.session_state.mock_started:
         st.session_state.mock_combined_voice_analysis = None
         st.session_state.mock_processed_audio_id = None
         st.session_state.mock_response_times = []
+        # 감정/고도화 분석 초기화
+        st.session_state.mock_emotion_analyses = []
+        st.session_state.mock_advanced_analyses = []
+        st.session_state.mock_confidence_timeline = []
+        st.session_state.mock_stress_timeline = []
         st.rerun()
 
 
@@ -570,20 +578,35 @@ elif not st.session_state.mock_completed:
                                 else:
                                     content_analysis = {"total_score": 0, "error": "분석 불가"}
 
-                                # Phase 1: 감정 분석 추가
+                                # 고도화된 음성 분석 (감정 + 말속도 + 필러 + 에너지 등)
                                 try:
-                                    emotion_analysis = analyze_interview_emotion(
+                                    advanced_analysis = analyze_voice_advanced(
                                         audio_bytes=audio_bytes,
                                         transcribed_text=transcribed_text,
-                                        question_context=question
+                                        question_context=question,
+                                        audio_duration=float(elapsed) if elapsed else 60.0
                                     )
-                                    st.session_state.mock_emotion_analyses.append(emotion_analysis)
-                                    st.session_state.mock_confidence_timeline.append(emotion_analysis.get("confidence_score", 5.0))
-                                    st.session_state.mock_stress_timeline.append(emotion_analysis.get("stress_level", 5.0))
+                                    st.session_state.mock_advanced_analyses.append(advanced_analysis)
+
+                                    # 기존 감정 분석과의 호환성을 위해 감정 정보도 저장
+                                    emotion_data = advanced_analysis.get("emotion", {})
+                                    st.session_state.mock_emotion_analyses.append(emotion_data)
+                                    st.session_state.mock_confidence_timeline.append(emotion_data.get("confidence_score", 5.0))
+                                    st.session_state.mock_stress_timeline.append(emotion_data.get("stress_level", 5.0))
                                 except Exception as e:
-                                    # 감정 분석 실패해도 면접 진행에는 영향 없음
-                                    default_emotion = {"confidence_score": 5.0, "stress_level": 5.0, "engagement_level": 5.0, "emotion_stability": 5.0, "primary_emotion": "neutral", "emotion_description": "분석 대기", "suggestions": []}
-                                    st.session_state.mock_emotion_analyses.append(default_emotion)
+                                    # 분석 실패해도 면접 진행에는 영향 없음
+                                    default_advanced = {
+                                        "emotion": {"confidence_score": 5.0, "stress_level": 5.0, "engagement_level": 5.0, "emotion_stability": 5.0, "primary_emotion": "neutral", "emotion_description": "분석 대기", "suggestions": []},
+                                        "speech_rate": {"wpm": 0, "rating": "분석불가", "feedback": ""},
+                                        "filler_analysis": {"total_count": 0, "rating": "분석불가", "feedback": ""},
+                                        "pause_analysis": {"rating": "분석불가", "feedback": ""},
+                                        "energy_analysis": {"energy_trend": "유지", "feedback": ""},
+                                        "pronunciation": {"clarity_score": 50, "feedback": ""},
+                                        "structure_analysis": {"star_score": 50, "feedback": ""},
+                                        "overall": {"voice_score": 50, "strengths": [], "improvements": ["분석 중 오류가 발생했습니다."], "detailed_feedback": ""}
+                                    }
+                                    st.session_state.mock_advanced_analyses.append(default_advanced)
+                                    st.session_state.mock_emotion_analyses.append(default_advanced["emotion"])
                                     st.session_state.mock_confidence_timeline.append(5.0)
                                     st.session_state.mock_stress_timeline.append(5.0)
 
@@ -650,6 +673,19 @@ elif not st.session_state.mock_completed:
                     st.session_state.mock_times.append(elapsed)
                     st.session_state.mock_voice_analyses.append(voice_analysis)
                     st.session_state.mock_content_analyses.append(content_analysis)
+                    # 텍스트 모드는 음성/감정 분석 없음 - 빈 데이터 추가
+                    st.session_state.mock_advanced_analyses.append({
+                        "overall": {"voice_score": 0, "strengths": [], "improvements": []},
+                        "speech_rate": {}, "filler_analysis": {}, "energy_analysis": {},
+                        "pronunciation": {}, "structure_analysis": {}
+                    })
+                    st.session_state.mock_emotion_analyses.append({
+                        "confidence_score": 5.0, "stress_level": 5.0,
+                        "engagement_level": 5.0, "emotion_stability": 5.0,
+                        "primary_emotion": "neutral"
+                    })
+                    st.session_state.mock_confidence_timeline.append(5.0)
+                    st.session_state.mock_stress_timeline.append(5.0)
                     st.session_state.answer_start_time = None
 
                     if current_idx + 1 >= total:
@@ -668,6 +704,19 @@ elif not st.session_state.mock_completed:
             st.session_state.mock_times.append(0)
             st.session_state.mock_voice_analyses.append({"total_score": 0})
             st.session_state.mock_content_analyses.append({"total_score": 0})
+            # 패스 시 기본 분석 데이터 추가
+            st.session_state.mock_advanced_analyses.append({
+                "overall": {"voice_score": 0, "strengths": [], "improvements": ["질문을 패스했습니다"]},
+                "speech_rate": {}, "filler_analysis": {}, "energy_analysis": {},
+                "pronunciation": {}, "structure_analysis": {}
+            })
+            st.session_state.mock_emotion_analyses.append({
+                "confidence_score": 5.0, "stress_level": 5.0,
+                "engagement_level": 5.0, "emotion_stability": 5.0,
+                "primary_emotion": "neutral"
+            })
+            st.session_state.mock_confidence_timeline.append(5.0)
+            st.session_state.mock_stress_timeline.append(5.0)
             st.session_state.answer_start_time = None
 
             if current_idx + 1 >= total:
@@ -740,6 +789,19 @@ elif not st.session_state.mock_completed:
                     st.session_state.mock_times.append(elapsed)
                     st.session_state.mock_voice_analyses.append({})  # 텍스트 모드는 음성 분석 없음
                     st.session_state.mock_content_analyses.append(content_analysis)
+                    # 텍스트 모드는 고도화 음성/감정 분석 없음 - 빈 데이터 추가
+                    st.session_state.mock_advanced_analyses.append({
+                        "overall": {"voice_score": 0, "strengths": [], "improvements": []},
+                        "speech_rate": {}, "filler_analysis": {}, "energy_analysis": {},
+                        "pronunciation": {}, "structure_analysis": {}
+                    })
+                    st.session_state.mock_emotion_analyses.append({
+                        "confidence_score": 5.0, "stress_level": 5.0,
+                        "engagement_level": 5.0, "emotion_stability": 5.0,
+                        "primary_emotion": "neutral"
+                    })
+                    st.session_state.mock_confidence_timeline.append(5.0)
+                    st.session_state.mock_stress_timeline.append(5.0)
                     st.session_state.timer_running = False
 
                     if current_idx + 1 >= total:
@@ -756,6 +818,19 @@ elif not st.session_state.mock_completed:
                     st.session_state.mock_times.append(elapsed)
                     st.session_state.mock_voice_analyses.append({})
                     st.session_state.mock_content_analyses.append({"total_score": 0})
+                    # 패스 시 기본 분석 데이터 추가
+                    st.session_state.mock_advanced_analyses.append({
+                        "overall": {"voice_score": 0, "strengths": [], "improvements": ["질문을 패스했습니다"]},
+                        "speech_rate": {}, "filler_analysis": {}, "energy_analysis": {},
+                        "pronunciation": {}, "structure_analysis": {}
+                    })
+                    st.session_state.mock_emotion_analyses.append({
+                        "confidence_score": 5.0, "stress_level": 5.0,
+                        "engagement_level": 5.0, "emotion_stability": 5.0,
+                        "primary_emotion": "neutral"
+                    })
+                    st.session_state.mock_confidence_timeline.append(5.0)
+                    st.session_state.mock_stress_timeline.append(5.0)
                     st.session_state.timer_running = False
 
                     if current_idx + 1 >= total:
@@ -964,160 +1039,415 @@ else:
         else:
             st.info("텍스트 모드에서는 음성 평가가 제공되지 않습니다. 음성 모드로 면접을 진행하면 상세한 음성 분석을 받을 수 있습니다.")
 
-    # Phase 1: 감정 분석 탭
+    # 고도화된 음성 분석 탭 (100점짜리 UI)
     with tab3:
-        st.subheader("💭 면접 감정 분석")
-        st.caption("AI가 음성에서 감지한 감정 상태와 면접 메트릭을 분석합니다.")
+        st.markdown("""
+        <style>
+        .voice-score-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            color: white;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 40px rgba(102, 126, 234, 0.4);
+        }
+        .voice-score-number {
+            font-size: 72px;
+            font-weight: 800;
+            line-height: 1;
+            margin: 10px 0;
+        }
+        .voice-score-label {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+        .voice-grade {
+            display: inline-block;
+            padding: 8px 24px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 30px;
+            font-weight: 700;
+            margin-top: 10px;
+        }
+        .metric-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            border-left: 4px solid;
+            margin-bottom: 16px;
+        }
+        .metric-card.speech { border-left-color: #3b82f6; }
+        .metric-card.filler { border-left-color: #f59e0b; }
+        .metric-card.pause { border-left-color: #8b5cf6; }
+        .metric-card.energy { border-left-color: #10b981; }
+        .metric-card.structure { border-left-color: #ec4899; }
+        .metric-card.pronunciation { border-left-color: #06b6d4; }
+        .metric-title {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+        .metric-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+        .metric-rating {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        .rating-good { background: #dcfce7; color: #166534; }
+        .rating-ok { background: #fef3c7; color: #92400e; }
+        .rating-bad { background: #fee2e2; color: #991b1b; }
+        .strength-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            background: #f0fdf4;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            color: #166534;
+        }
+        .improvement-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            background: #fef3c7;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            color: #92400e;
+        }
+        </style>
+        """, unsafe_allow_html=True)
 
-        if st.session_state.mock_mode == "voice" and st.session_state.mock_emotion_analyses:
+        if st.session_state.mock_mode == "voice" and st.session_state.mock_advanced_analyses:
+            analyses = st.session_state.mock_advanced_analyses
             emotions = st.session_state.mock_emotion_analyses
 
-            # 평균 계산
-            avg_confidence = sum(e.get("confidence_score", 5.0) for e in emotions) / len(emotions) if emotions else 5.0
-            avg_stress = sum(e.get("stress_level", 5.0) for e in emotions) / len(emotions) if emotions else 5.0
-            avg_engagement = sum(e.get("engagement_level", 5.0) for e in emotions) / len(emotions) if emotions else 5.0
-            avg_stability = sum(e.get("emotion_stability", 5.0) for e in emotions) / len(emotions) if emotions else 5.0
+            # 종합 점수 계산
+            overall_scores = [a.get("overall", {}).get("voice_score", 50) for a in analyses]
+            avg_score = sum(overall_scores) / len(overall_scores) if overall_scores else 50
 
-            # 상단 요약 메트릭
-            col1, col2, col3, col4 = st.columns(4)
+            # 등급 계산
+            if avg_score >= 90:
+                grade = "S"
+                grade_text = "최우수"
+            elif avg_score >= 80:
+                grade = "A"
+                grade_text = "우수"
+            elif avg_score >= 70:
+                grade = "B"
+                grade_text = "양호"
+            elif avg_score >= 60:
+                grade = "C"
+                grade_text = "보통"
+            else:
+                grade = "D"
+                grade_text = "개선필요"
+
+            # ===== 상단: 종합 점수 카드 =====
+            st.markdown(f"""
+            <div class="voice-score-card">
+                <div class="voice-score-label">종합 음성 점수</div>
+                <div class="voice-score-number">{avg_score:.0f}</div>
+                <div class="voice-grade">{grade} 등급 - {grade_text}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # ===== 레이더 차트 + 감정 변화 차트 =====
+            col_radar, col_trend = st.columns(2)
+
+            with col_radar:
+                st.markdown("##### 🎯 음성 역량 분석")
+                try:
+                    import plotly.graph_objects as go
+
+                    # 각 항목 평균 계산
+                    avg_speech = sum(a.get("speech_rate", {}).get("wpm", 120) for a in analyses) / len(analyses)
+                    avg_filler = 100 - sum(a.get("filler_analysis", {}).get("filler_ratio", 0.05) * 100 * 10 for a in analyses) / len(analyses)
+                    avg_pause = sum(100 - a.get("pause_analysis", {}).get("pause_ratio", 0.25) * 100 for a in analyses) / len(analyses) if analyses else 70
+                    avg_energy = sum(a.get("energy_analysis", {}).get("energy_score", 70) for a in analyses) / len(analyses) if analyses else 70
+                    avg_pronunciation = sum(a.get("pronunciation", {}).get("clarity_score", 70) for a in analyses) / len(analyses)
+                    avg_structure = sum(a.get("structure_analysis", {}).get("star_score", 50) for a in analyses) / len(analyses)
+
+                    # 점수 정규화 (0-100)
+                    speech_score = min(100, max(0, 50 + (avg_speech - 120) * 0.5)) if avg_speech else 70
+                    filler_score = max(0, min(100, avg_filler))
+                    pause_score = max(0, min(100, avg_pause)) if isinstance(avg_pause, (int, float)) else 70
+                    energy_score = max(0, min(100, avg_energy))
+                    pronunciation_score = max(0, min(100, avg_pronunciation))
+                    structure_score = max(0, min(100, avg_structure))
+
+                    categories = ['말 속도', '명확성', '휴지 활용', '에너지', '발음', 'STAR 구조']
+                    values = [speech_score, filler_score, pause_score, energy_score, pronunciation_score, structure_score]
+                    values.append(values[0])  # 닫기
+
+                    fig_radar = go.Figure()
+                    fig_radar.add_trace(go.Scatterpolar(
+                        r=values,
+                        theta=categories + [categories[0]],
+                        fill='toself',
+                        fillcolor='rgba(102, 126, 234, 0.3)',
+                        line=dict(color='#667eea', width=3),
+                        name='음성 역량'
+                    ))
+
+                    fig_radar.update_layout(
+                        polar=dict(
+                            radialaxis=dict(visible=True, range=[0, 100], tickfont=dict(size=10)),
+                            angularaxis=dict(tickfont=dict(size=12))
+                        ),
+                        showlegend=False,
+                        height=320,
+                        margin=dict(t=30, b=30, l=60, r=60)
+                    )
+
+                    st.plotly_chart(fig_radar, use_container_width=True)
+
+                except ImportError:
+                    st.info("Plotly가 설치되지 않아 차트를 표시할 수 없습니다.")
+
+            with col_trend:
+                st.markdown("##### 📈 감정 변화 추이")
+                try:
+                    import plotly.graph_objects as go
+
+                    if emotions:
+                        x_labels = [f"Q{i+1}" for i in range(len(emotions))]
+                        confidence_vals = [e.get("confidence_score", 5.0) for e in emotions]
+                        stress_vals = [e.get("stress_level", 5.0) for e in emotions]
+
+                        fig_trend = go.Figure()
+                        fig_trend.add_trace(go.Scatter(
+                            x=x_labels, y=confidence_vals,
+                            mode='lines+markers+text', name='자신감',
+                            line=dict(color='#10b981', width=3),
+                            marker=dict(size=12),
+                            text=[f"{v:.1f}" for v in confidence_vals],
+                            textposition="top center"
+                        ))
+                        fig_trend.add_trace(go.Scatter(
+                            x=x_labels, y=stress_vals,
+                            mode='lines+markers+text', name='스트레스',
+                            line=dict(color='#ef4444', width=3),
+                            marker=dict(size=12),
+                            text=[f"{v:.1f}" for v in stress_vals],
+                            textposition="bottom center"
+                        ))
+
+                        fig_trend.update_layout(
+                            yaxis=dict(range=[0, 10.5], title="점수"),
+                            xaxis=dict(title="질문"),
+                            height=320,
+                            legend=dict(orientation="h", y=1.15, x=0.5, xanchor="center"),
+                            margin=dict(t=50, b=30)
+                        )
+
+                        st.plotly_chart(fig_trend, use_container_width=True)
+                    else:
+                        st.info("감정 데이터가 없습니다.")
+
+                except ImportError:
+                    st.info("Plotly가 설치되지 않아 차트를 표시할 수 없습니다.")
+
+            st.divider()
+
+            # ===== 상세 분석 카드 =====
+            st.markdown("### 📊 상세 분석")
+
+            # 첫 번째 행: 말 속도, 필러 단어, 휴지
+            col1, col2, col3 = st.columns(3)
+
+            # 평균값 계산
+            avg_wpm = sum(a.get("speech_rate", {}).get("wpm", 0) for a in analyses) / len(analyses)
+            total_fillers = sum(a.get("filler_analysis", {}).get("total_count", 0) for a in analyses)
+            avg_filler_ratio = sum(a.get("filler_analysis", {}).get("filler_ratio", 0) for a in analyses) / len(analyses)
+
+            speech_rating = "적절" if 100 <= avg_wpm <= 160 else ("빠름" if avg_wpm > 160 else "느림")
+            filler_rating = "우수" if avg_filler_ratio < 0.03 else ("양호" if avg_filler_ratio < 0.08 else "개선필요")
 
             with col1:
-                delta_conf = "좋음" if avg_confidence >= 7 else ("보통" if avg_confidence >= 5 else "개선필요")
-                st.metric("자신감", f"{avg_confidence:.1f}/10", delta=delta_conf)
+                rating_class = "rating-good" if speech_rating == "적절" else "rating-ok"
+                st.markdown(f"""
+                <div class="metric-card speech">
+                    <div class="metric-title">🎙️ 말 속도</div>
+                    <div class="metric-value">{avg_wpm:.0f} <span style="font-size:16px;color:#64748b">WPM</span>
+                        <span class="metric-rating {rating_class}">{speech_rating}</span>
+                    </div>
+                    <div style="color:#64748b;font-size:13px;margin-top:8px">적정 범위: 100-160 WPM</div>
+                </div>
+                """, unsafe_allow_html=True)
 
             with col2:
-                delta_stress = "안정" if avg_stress <= 4 else ("보통" if avg_stress <= 6 else "높음")
-                st.metric("스트레스", f"{avg_stress:.1f}/10", delta=delta_stress, delta_color="inverse")
+                rating_class = "rating-good" if filler_rating == "우수" else ("rating-ok" if filler_rating == "양호" else "rating-bad")
+                st.markdown(f"""
+                <div class="metric-card filler">
+                    <div class="metric-title">💬 필러 단어</div>
+                    <div class="metric-value">{total_fillers}회
+                        <span class="metric-rating {rating_class}">{filler_rating}</span>
+                    </div>
+                    <div style="color:#64748b;font-size:13px;margin-top:8px">비율: {avg_filler_ratio*100:.1f}%</div>
+                </div>
+                """, unsafe_allow_html=True)
 
             with col3:
-                delta_eng = "적극적" if avg_engagement >= 7 else ("보통" if avg_engagement >= 5 else "소극적")
-                st.metric("참여도", f"{avg_engagement:.1f}/10", delta=delta_eng)
+                # 에너지 트렌드
+                energy_trends = [a.get("energy_analysis", {}).get("energy_trend", "유지") for a in analyses]
+                trend_counts = {"상승": energy_trends.count("상승"), "유지": energy_trends.count("유지"), "하락": energy_trends.count("하락")}
+                main_trend = max(trend_counts, key=trend_counts.get)
+                trend_icon = "📈" if main_trend == "상승" else ("➡️" if main_trend == "유지" else "📉")
+                rating_class = "rating-good" if main_trend in ["상승", "유지"] else "rating-ok"
+
+                st.markdown(f"""
+                <div class="metric-card energy">
+                    <div class="metric-title">{trend_icon} 에너지 흐름</div>
+                    <div class="metric-value">{main_trend}
+                        <span class="metric-rating {rating_class}">{"좋음" if main_trend != "하락" else "주의"}</span>
+                    </div>
+                    <div style="color:#64748b;font-size:13px;margin-top:8px">답변 중 에너지 변화 패턴</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # 두 번째 행: 발음, STAR 구조, 종합
+            col4, col5, col6 = st.columns(3)
+
+            avg_clarity = sum(a.get("pronunciation", {}).get("clarity_score", 70) for a in analyses) / len(analyses)
+            avg_star = sum(a.get("structure_analysis", {}).get("star_score", 50) for a in analyses) / len(analyses)
 
             with col4:
-                delta_stab = "안정적" if avg_stability >= 7 else ("보통" if avg_stability >= 5 else "불안정")
-                st.metric("감정 안정성", f"{avg_stability:.1f}/10", delta=delta_stab)
+                clarity_rating = "우수" if avg_clarity >= 80 else ("양호" if avg_clarity >= 60 else "개선필요")
+                rating_class = "rating-good" if clarity_rating == "우수" else ("rating-ok" if clarity_rating == "양호" else "rating-bad")
+
+                st.markdown(f"""
+                <div class="metric-card pronunciation">
+                    <div class="metric-title">🔊 발음 명확도</div>
+                    <div class="metric-value">{avg_clarity:.0f}점
+                        <span class="metric-rating {rating_class}">{clarity_rating}</span>
+                    </div>
+                    <div style="color:#64748b;font-size:13px;margin-top:8px">음성 전달력 평가</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col5:
+                star_rating = "우수" if avg_star >= 70 else ("양호" if avg_star >= 50 else "개선필요")
+                rating_class = "rating-good" if star_rating == "우수" else ("rating-ok" if star_rating == "양호" else "rating-bad")
+
+                st.markdown(f"""
+                <div class="metric-card structure">
+                    <div class="metric-title">⭐ STAR 구조</div>
+                    <div class="metric-value">{avg_star:.0f}점
+                        <span class="metric-rating {rating_class}">{star_rating}</span>
+                    </div>
+                    <div style="color:#64748b;font-size:13px;margin-top:8px">상황-과제-행동-결과 구조</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col6:
+                # 감정 안정성
+                if emotions:
+                    avg_stability = sum(e.get("emotion_stability", 5.0) for e in emotions) / len(emotions)
+                    stability_rating = "안정" if avg_stability >= 7 else ("보통" if avg_stability >= 5 else "불안정")
+                    rating_class = "rating-good" if stability_rating == "안정" else ("rating-ok" if stability_rating == "보통" else "rating-bad")
+                else:
+                    avg_stability = 5.0
+                    stability_rating = "보통"
+                    rating_class = "rating-ok"
+
+                st.markdown(f"""
+                <div class="metric-card pause">
+                    <div class="metric-title">🧘 감정 안정성</div>
+                    <div class="metric-value">{avg_stability:.1f}/10
+                        <span class="metric-rating {rating_class}">{stability_rating}</span>
+                    </div>
+                    <div style="color:#64748b;font-size:13px;margin-top:8px">면접 중 심리 상태</div>
+                </div>
+                """, unsafe_allow_html=True)
 
             st.divider()
 
-            # 감정 변화 차트
-            st.subheader("📈 감정 변화 추이")
+            # ===== 강점 & 개선점 =====
+            st.markdown("### 💪 강점 & 개선점")
 
-            try:
-                import plotly.graph_objects as go
+            col_strength, col_improve = st.columns(2)
 
-                x_labels = [f"Q{i+1}" for i in range(len(emotions))]
-                confidence_vals = [e.get("confidence_score", 5.0) for e in emotions]
-                stress_vals = [e.get("stress_level", 5.0) for e in emotions]
-                engagement_vals = [e.get("engagement_level", 5.0) for e in emotions]
+            # 모든 분석에서 강점/개선점 수집
+            all_strengths = []
+            all_improvements = []
+            for a in analyses:
+                overall = a.get("overall", {})
+                all_strengths.extend(overall.get("strengths", []))
+                all_improvements.extend(overall.get("improvements", []))
 
-                fig = go.Figure()
+            # 중복 제거
+            unique_strengths = list(dict.fromkeys(all_strengths))[:5]
+            unique_improvements = list(dict.fromkeys(all_improvements))[:5]
 
-                fig.add_trace(go.Scatter(
-                    x=x_labels, y=confidence_vals,
-                    mode='lines+markers', name='자신감',
-                    line=dict(color='#10b981', width=3),
-                    marker=dict(size=10)
-                ))
-                fig.add_trace(go.Scatter(
-                    x=x_labels, y=stress_vals,
-                    mode='lines+markers', name='스트레스',
-                    line=dict(color='#ef4444', width=3),
-                    marker=dict(size=10)
-                ))
-                fig.add_trace(go.Scatter(
-                    x=x_labels, y=engagement_vals,
-                    mode='lines+markers', name='참여도',
-                    line=dict(color='#3b82f6', width=3),
-                    marker=dict(size=10)
-                ))
+            with col_strength:
+                st.markdown("##### ✅ 잘한 점")
+                if unique_strengths:
+                    for s in unique_strengths:
+                        st.markdown(f"""<div class="strength-item">✓ {s}</div>""", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"""<div class="strength-item">✓ 면접에 참여해주셔서 감사합니다</div>""", unsafe_allow_html=True)
 
-                fig.update_layout(
-                    title="질문별 감정 변화",
-                    xaxis_title="질문",
-                    yaxis_title="점수 (0-10)",
-                    yaxis=dict(range=[0, 10.5]),
-                    height=350,
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                    template="plotly_white"
-                )
-
-                st.plotly_chart(fig, use_container_width=True)
-
-            except ImportError:
-                # plotly 없으면 간단한 표로 대체
-                st.markdown("**질문별 감정 점수:**")
-                for i, emotion in enumerate(emotions, 1):
-                    st.markdown(f"- Q{i}: 자신감 {emotion.get('confidence_score', 5.0):.1f}, 스트레스 {emotion.get('stress_level', 5.0):.1f}, 참여도 {emotion.get('engagement_level', 5.0):.1f}")
+            with col_improve:
+                st.markdown("##### ⚠️ 개선할 점")
+                if unique_improvements:
+                    for i in unique_improvements:
+                        st.markdown(f"""<div class="improvement-item">→ {i}</div>""", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"""<div class="improvement-item">→ 더 많은 연습으로 완성도를 높여보세요</div>""", unsafe_allow_html=True)
 
             st.divider()
 
-            # 질문별 상세 감정 분석
-            st.subheader("🔍 질문별 감정 상세")
+            # ===== 질문별 상세 분석 =====
+            st.markdown("### 🔍 질문별 상세 분석")
 
-            for i, emotion in enumerate(emotions, 1):
-                primary = emotion.get("primary_emotion", "neutral")
-                desc = emotion.get("emotion_description", "분석 중")
+            for i, (analysis, emotion) in enumerate(zip(analyses, emotions), 1):
+                voice_score = analysis.get("overall", {}).get("voice_score", 50)
+                speech = analysis.get("speech_rate", {})
+                filler = analysis.get("filler_analysis", {})
+                energy = analysis.get("energy_analysis", {})
+                structure = analysis.get("structure_analysis", {})
+                primary_emotion = emotion.get("primary_emotion", "neutral")
 
-                # 감정에 따른 아이콘
+                # 감정 아이콘
                 emotion_icons = {
                     "neutral": "😐", "confident": "💪", "nervous": "😰",
                     "calm": "😌", "excited": "🤩", "stressed": "😓",
                     "happy": "😊", "focused": "🎯", "enthusiastic": "🔥"
                 }
-                icon = emotion_icons.get(primary, "❓")
+                icon = emotion_icons.get(primary_emotion, "❓")
 
-                with st.expander(f"Q{i}: {icon} {primary.upper()} - {desc}", expanded=False):
-                    col1, col2 = st.columns(2)
+                with st.expander(f"Q{i}: {icon} 음성 점수 {voice_score:.0f}점 | {primary_emotion.upper()}", expanded=False):
+                    q_col1, q_col2, q_col3, q_col4 = st.columns(4)
 
-                    with col1:
-                        st.markdown(f"**자신감**: {emotion.get('confidence_score', 5.0):.1f}/10")
-                        st.progress(min(emotion.get('confidence_score', 5.0) / 10, 1.0))
-                        st.markdown(f"**스트레스**: {emotion.get('stress_level', 5.0):.1f}/10")
-                        st.progress(min(emotion.get('stress_level', 5.0) / 10, 1.0))
+                    with q_col1:
+                        st.metric("말 속도", f"{speech.get('wpm', 0):.0f} WPM", delta=speech.get('rating', ''))
+                    with q_col2:
+                        st.metric("필러 단어", f"{filler.get('total_count', 0)}회", delta=filler.get('rating', ''))
+                    with q_col3:
+                        st.metric("에너지", energy.get('energy_trend', '유지'))
+                    with q_col4:
+                        st.metric("STAR 점수", f"{structure.get('star_score', 0):.0f}점")
 
-                    with col2:
-                        st.markdown(f"**참여도**: {emotion.get('engagement_level', 5.0):.1f}/10")
-                        st.progress(min(emotion.get('engagement_level', 5.0) / 10, 1.0))
-                        st.markdown(f"**감정 안정성**: {emotion.get('emotion_stability', 5.0):.1f}/10")
-                        st.progress(min(emotion.get('emotion_stability', 5.0) / 10, 1.0))
-
-                    # 개선 제안
-                    suggestions = emotion.get("suggestions", [])
-                    if suggestions:
-                        st.markdown("**💡 개선 제안:**")
-                        for suggestion in suggestions[:3]:
-                            st.markdown(f"  • {suggestion}")
-
-            # 종합 피드백
-            st.divider()
-            st.subheader("💬 감정 분석 종합 피드백")
-
-            feedback_items = []
-            if avg_confidence >= 7:
-                feedback_items.append("✅ 전반적으로 자신감 있는 답변을 보여주셨습니다.")
-            elif avg_confidence < 5:
-                feedback_items.append("⚠️ 자신감이 다소 부족해 보입니다. '~것 같습니다' 대신 '~입니다'로 확신 있게 말해보세요.")
-
-            if avg_stress > 6:
-                feedback_items.append("⚠️ 스트레스 수준이 높습니다. 면접 전 심호흡과 이완 연습을 추천드립니다.")
-            elif avg_stress <= 4:
-                feedback_items.append("✅ 전반적으로 안정적인 상태를 유지하셨습니다.")
-
-            if avg_engagement >= 7:
-                feedback_items.append("✅ 질문에 대한 높은 관심과 열정이 느껴집니다.")
-            elif avg_engagement < 5:
-                feedback_items.append("⚠️ 더 적극적으로 답변에 참여해 보세요. 경험담을 활용하면 좋습니다.")
-
-            if avg_stability >= 7:
-                feedback_items.append("✅ 감정적으로 안정적인 상태를 유지하셨습니다.")
-            elif avg_stability < 5:
-                feedback_items.append("⚠️ 목소리 떨림이 감지됩니다. 충분한 연습으로 자신감을 키워보세요.")
-
-            for item in feedback_items:
-                st.markdown(item)
+                    # 피드백
+                    st.markdown("---")
+                    st.markdown("**💡 피드백:**")
+                    st.markdown(f"- 말 속도: {speech.get('feedback', '분석 중')}")
+                    st.markdown(f"- 필러: {filler.get('feedback', '분석 중')}")
+                    st.markdown(f"- 구조: {structure.get('feedback', '분석 중')}")
 
         else:
-            st.info("음성 모드로 면접을 진행하면 감정 분석 결과를 확인할 수 있습니다. 텍스트 모드에서는 감정 분석이 제공되지 않습니다.")
+            st.info("음성 모드로 면접을 진행하면 상세한 음성 분석 결과를 확인할 수 있습니다. 텍스트 모드에서는 음성 분석이 제공되지 않습니다.")
 
     with tab4:
         if st.session_state.mock_evaluation is None:

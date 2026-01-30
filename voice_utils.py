@@ -2378,6 +2378,611 @@ def analyze_interview_emotion(
 
 
 # =====================================================
+# 고도화된 음성 분석 (Phase 1 강화)
+# =====================================================
+
+# 필러 단어 목록 (한국어 + 영어)
+FILLER_WORDS_KO = [
+    "음", "어", "그", "저", "뭐", "이제", "그래서", "그러니까",
+    "아", "에", "으음", "저기", "그게", "뭐랄까", "어떻게",
+    "사실", "약간", "좀", "진짜", "막", "뭔가", "그냥",
+]
+FILLER_WORDS_EN = [
+    "um", "uh", "er", "ah", "like", "you know", "so", "well",
+    "basically", "actually", "literally", "I mean", "kind of",
+]
+
+# 자신감 키워드
+CONFIDENT_KEYWORDS = [
+    "확실히", "분명히", "반드시", "당연히", "물론", "절대",
+    "저는", "제가", "직접", "명확하게", "구체적으로",
+    "certainly", "definitely", "absolutely", "clearly",
+]
+
+# 불확실성 키워드
+UNCERTAIN_KEYWORDS = [
+    "아마", "어쩌면", "혹시", "글쎄", "모르겠", "같아요",
+    "것 같", "듯해요", "인 듯", "일수도", "maybe", "perhaps",
+    "probably", "might", "could be", "I think", "I guess",
+]
+
+
+def analyze_voice_advanced(
+    audio_bytes: bytes,
+    transcribed_text: str = "",
+    question_context: str = "",
+    audio_duration: float = 0.0,
+) -> Dict[str, Any]:
+    """
+    고도화된 음성 분석 (면접용)
+
+    Returns:
+        {
+            # 기본 감정 분석
+            "emotion": {...},
+
+            # 말 속도 분석
+            "speech_rate": {
+                "wpm": float,  # 분당 단어 수
+                "syllables_per_sec": float,  # 초당 음절 수
+                "rating": str,  # "느림", "적절", "빠름"
+                "feedback": str,
+            },
+
+            # 필러 단어 분석
+            "filler_analysis": {
+                "total_count": int,
+                "filler_ratio": float,  # 전체 단어 대비 비율
+                "details": [{"word": str, "count": int}],
+                "rating": str,
+                "feedback": str,
+            },
+
+            # 침묵/휴지 분석
+            "pause_analysis": {
+                "total_pauses": int,  # 총 휴지 횟수
+                "long_pauses": int,  # 3초 이상 침묵
+                "avg_pause_duration": float,
+                "pause_ratio": float,  # 전체 대비 침묵 비율
+                "rating": str,
+                "feedback": str,
+            },
+
+            # 에너지/톤 분석
+            "energy_analysis": {
+                "start_energy": float,  # 시작 구간 에너지
+                "mid_energy": float,  # 중간 구간 에너지
+                "end_energy": float,  # 종료 구간 에너지
+                "energy_trend": str,  # "상승", "유지", "하락"
+                "pitch_variation": float,  # 피치 변화량
+                "monotone_score": float,  # 단조로움 점수 (0-10, 낮을수록 좋음)
+                "feedback": str,
+            },
+
+            # 발음 명확도
+            "pronunciation": {
+                "clarity_score": float,  # 0-100
+                "feedback": str,
+            },
+
+            # 답변 구조 분석
+            "structure_analysis": {
+                "has_intro": bool,
+                "has_body": bool,
+                "has_conclusion": bool,
+                "star_score": float,  # STAR 구조 점수
+                "feedback": str,
+            },
+
+            # 종합 점수 및 피드백
+            "overall": {
+                "voice_score": float,  # 종합 음성 점수 (0-100)
+                "strengths": List[str],
+                "improvements": List[str],
+                "detailed_feedback": str,
+            },
+        }
+    """
+    result = {
+        "emotion": {},
+        "speech_rate": {},
+        "filler_analysis": {},
+        "pause_analysis": {},
+        "energy_analysis": {},
+        "pronunciation": {},
+        "structure_analysis": {},
+        "overall": {},
+    }
+
+    try:
+        # 기본 음성 특성 추출
+        voice_features = extract_voice_features_for_emotion(audio_bytes)
+
+        # 오디오 duration 계산 (없으면 추정)
+        if audio_duration <= 0:
+            audio_duration = voice_features.get("duration", 60.0)
+
+        # 1. 기존 감정 분석
+        emotion_result = analyze_interview_emotion(audio_bytes, transcribed_text, question_context)
+        result["emotion"] = emotion_result
+
+        # 2. 말 속도 분석
+        result["speech_rate"] = _analyze_speech_rate(transcribed_text, audio_duration)
+
+        # 3. 필러 단어 분석
+        result["filler_analysis"] = _analyze_filler_words(transcribed_text)
+
+        # 4. 침묵/휴지 분석
+        result["pause_analysis"] = _analyze_pauses(voice_features, audio_duration)
+
+        # 5. 에너지/톤 분석
+        result["energy_analysis"] = _analyze_energy_pattern(voice_features, audio_bytes)
+
+        # 6. 발음 명확도 (STT 신뢰도 기반)
+        result["pronunciation"] = _analyze_pronunciation(transcribed_text, voice_features)
+
+        # 7. 답변 구조 분석
+        result["structure_analysis"] = _analyze_answer_structure(transcribed_text)
+
+        # 8. 종합 점수 계산
+        result["overall"] = _calculate_overall_score(result)
+
+    except Exception as e:
+        logger.warning(f"고도화 음성 분석 실패: {e}")
+        import traceback
+        traceback.print_exc()
+        # 기본값 반환
+        result["overall"] = {
+            "voice_score": 50.0,
+            "strengths": [],
+            "improvements": ["분석 중 오류가 발생했습니다."],
+            "detailed_feedback": "음성 분석을 완료할 수 없습니다.",
+        }
+
+    return result
+
+
+def _analyze_speech_rate(text: str, duration: float) -> Dict[str, Any]:
+    """말 속도 분석"""
+    if not text or duration <= 0:
+        return {
+            "wpm": 0,
+            "syllables_per_sec": 0,
+            "rating": "분석불가",
+            "feedback": "텍스트 또는 오디오 정보가 부족합니다.",
+        }
+
+    words = text.split()
+    word_count = len(words)
+
+    # 한글 음절 수 계산
+    syllable_count = sum(1 for char in text if '가' <= char <= '힣')
+    syllable_count += len(re.findall(r'[a-zA-Z]+', text))  # 영어 단어도 대략 카운트
+
+    minutes = duration / 60.0
+    wpm = word_count / minutes if minutes > 0 else 0
+    sps = syllable_count / duration if duration > 0 else 0
+
+    # 면접 적정 말 속도: 분당 120-150 단어 (한국어 기준 초당 3-4 음절)
+    if wpm < 80 or sps < 2.5:
+        rating = "느림"
+        feedback = "말 속도가 다소 느립니다. 자연스러운 속도로 말해보세요."
+    elif wpm > 180 or sps > 5.0:
+        rating = "빠름"
+        feedback = "말 속도가 빠릅니다. 면접관이 이해하기 어려울 수 있으니 천천히 말해보세요."
+    else:
+        rating = "적절"
+        feedback = "말 속도가 적절합니다. 이 페이스를 유지하세요."
+
+    return {
+        "wpm": round(wpm, 1),
+        "syllables_per_sec": round(sps, 2),
+        "rating": rating,
+        "feedback": feedback,
+    }
+
+
+def _analyze_filler_words(text: str) -> Dict[str, Any]:
+    """필러 단어 분석"""
+    if not text:
+        return {
+            "total_count": 0,
+            "filler_ratio": 0,
+            "details": [],
+            "rating": "분석불가",
+            "feedback": "텍스트가 없습니다.",
+        }
+
+    text_lower = text.lower()
+    words = text.split()
+    total_words = len(words)
+
+    filler_counts = {}
+
+    # 한국어 필러
+    for filler in FILLER_WORDS_KO:
+        count = text_lower.count(filler)
+        if count > 0:
+            filler_counts[filler] = count
+
+    # 영어 필러
+    for filler in FILLER_WORDS_EN:
+        count = text_lower.count(filler)
+        if count > 0:
+            filler_counts[filler] = count
+
+    total_fillers = sum(filler_counts.values())
+    filler_ratio = total_fillers / total_words if total_words > 0 else 0
+
+    # 상세 목록 (빈도순 정렬)
+    details = [{"word": k, "count": v} for k, v in sorted(filler_counts.items(), key=lambda x: -x[1])]
+
+    # 평가
+    if filler_ratio < 0.03:
+        rating = "우수"
+        feedback = "필러 단어 사용이 적절합니다. 명확하게 말하고 있습니다."
+    elif filler_ratio < 0.08:
+        rating = "양호"
+        feedback = f"필러 단어가 {total_fillers}회 감지되었습니다. 조금만 줄이면 더 좋습니다."
+    else:
+        rating = "개선필요"
+        top_fillers = ", ".join([d["word"] for d in details[:3]])
+        feedback = f"필러 단어가 많습니다({total_fillers}회). 특히 '{top_fillers}'를 줄여보세요."
+
+    return {
+        "total_count": total_fillers,
+        "filler_ratio": round(filler_ratio, 3),
+        "details": details[:5],  # 상위 5개
+        "rating": rating,
+        "feedback": feedback,
+    }
+
+
+def _analyze_pauses(voice_features: Dict, duration: float) -> Dict[str, Any]:
+    """침묵/휴지 분석"""
+    pause_ratio = voice_features.get("pause_ratio", 0.2)
+
+    # 휴지 횟수 추정 (에너지 기반)
+    total_pauses = int(pause_ratio * duration / 2)  # 대략적 추정
+    long_pauses = max(0, int(total_pauses * 0.2))  # 긴 침묵 비율
+    avg_pause = 0.8 if pause_ratio > 0.3 else 0.5
+
+    if pause_ratio < 0.15:
+        rating = "적음"
+        feedback = "휴지가 너무 적습니다. 적절한 쉼으로 강조점을 만들어보세요."
+    elif pause_ratio < 0.35:
+        rating = "적절"
+        feedback = "휴지 사용이 적절합니다. 자연스러운 리듬감이 있습니다."
+    else:
+        rating = "많음"
+        if long_pauses > 2:
+            feedback = f"긴 침묵이 {long_pauses}회 감지되었습니다. 준비된 답변으로 자신감 있게 말해보세요."
+        else:
+            feedback = "휴지가 다소 많습니다. 생각을 정리한 후 말하되, 너무 오래 멈추지 마세요."
+
+    return {
+        "total_pauses": total_pauses,
+        "long_pauses": long_pauses,
+        "avg_pause_duration": round(avg_pause, 2),
+        "pause_ratio": round(pause_ratio, 3),
+        "rating": rating,
+        "feedback": feedback,
+    }
+
+
+def _analyze_energy_pattern(voice_features: Dict, audio_bytes: bytes) -> Dict[str, Any]:
+    """에너지/톤 변화 분석"""
+    try:
+        import numpy as np
+        import io
+        import wave
+
+        # 피치와 에너지 정보
+        pitch_std = voice_features.get("pitch_std", 30)
+        energy_mean = voice_features.get("energy_mean", 0.5)
+
+        # 간단한 에너지 분석 (librosa 있으면 더 정교하게)
+        try:
+            import librosa
+
+            # 오디오 로드
+            audio_io = io.BytesIO(audio_bytes)
+            y, sr = librosa.load(audio_io, sr=16000)
+
+            # 3구간으로 나누기
+            segment_len = len(y) // 3
+            if segment_len > 0:
+                start_energy = float(np.mean(np.abs(y[:segment_len])))
+                mid_energy = float(np.mean(np.abs(y[segment_len:2*segment_len])))
+                end_energy = float(np.mean(np.abs(y[2*segment_len:])))
+            else:
+                start_energy = mid_energy = end_energy = energy_mean
+
+        except:
+            # librosa 없으면 추정값
+            start_energy = energy_mean * 1.1
+            mid_energy = energy_mean
+            end_energy = energy_mean * 0.9
+
+        # 정규화
+        max_e = max(start_energy, mid_energy, end_energy, 0.001)
+        start_energy = start_energy / max_e
+        mid_energy = mid_energy / max_e
+        end_energy = end_energy / max_e
+
+        # 에너지 트렌드 판단
+        if end_energy > start_energy * 1.1:
+            energy_trend = "상승"
+            trend_feedback = "답변 마무리에 에너지가 높아져 좋은 인상을 줍니다."
+        elif end_energy < start_energy * 0.8:
+            energy_trend = "하락"
+            trend_feedback = "답변이 끝날수록 에너지가 떨어집니다. 마무리까지 힘을 유지하세요."
+        else:
+            energy_trend = "유지"
+            trend_feedback = "답변 전반에 걸쳐 일정한 에너지를 유지하고 있습니다."
+
+        # 피치 변화량 (단조로움 점수)
+        if pitch_std < 15:
+            monotone_score = 8.0
+            pitch_feedback = "목소리가 단조롭습니다. 강조점에서 톤을 높이거나 낮춰보세요."
+        elif pitch_std < 30:
+            monotone_score = 5.0
+            pitch_feedback = "적절한 톤 변화가 있습니다."
+        else:
+            monotone_score = 2.0
+            pitch_feedback = "다양한 톤으로 말하고 있어 생동감이 있습니다."
+
+        feedback = f"{trend_feedback} {pitch_feedback}"
+
+        # 에너지 점수 계산 (트렌드 + 단조로움 기반)
+        trend_score = 80 if energy_trend == "상승" else (70 if energy_trend == "유지" else 50)
+        monotone_penalty = monotone_score * 3  # 단조로움 점수가 높을수록 감점
+        energy_score = max(0, min(100, trend_score - monotone_penalty + 30))
+
+        return {
+            "start_energy": round(start_energy, 2),
+            "mid_energy": round(mid_energy, 2),
+            "end_energy": round(end_energy, 2),
+            "energy_trend": energy_trend,
+            "pitch_variation": round(pitch_std, 1),
+            "monotone_score": monotone_score,
+            "energy_score": round(energy_score, 1),
+            "feedback": feedback,
+        }
+
+    except Exception as e:
+        logger.warning(f"에너지 분석 오류: {e}")
+        return {
+            "start_energy": 0.5,
+            "mid_energy": 0.5,
+            "end_energy": 0.5,
+            "energy_trend": "유지",
+            "pitch_variation": 30,
+            "monotone_score": 5.0,
+            "energy_score": 70.0,
+            "feedback": "에너지 패턴 분석 중 오류가 발생했습니다.",
+        }
+
+
+def _analyze_pronunciation(text: str, voice_features: Dict) -> Dict[str, Any]:
+    """발음 명확도 분석"""
+    if not text:
+        return {
+            "clarity_score": 50.0,
+            "feedback": "텍스트가 인식되지 않았습니다.",
+        }
+
+    # 단어 수 기반 추정 (STT 인식 품질)
+    word_count = len(text.split())
+
+    # 짧은 문장이면 명확도 추정 어려움
+    if word_count < 5:
+        return {
+            "clarity_score": 60.0,
+            "feedback": "답변이 너무 짧아 발음 분석이 어렵습니다.",
+        }
+
+    # jitter/shimmer 기반 명확도 추정
+    jitter = voice_features.get("jitter", 0.02)
+    shimmer = voice_features.get("shimmer", 0.03)
+
+    # 떨림이 적을수록 명확
+    clarity = 100 - (jitter * 500 + shimmer * 200)
+    clarity = max(30, min(100, clarity))
+
+    if clarity >= 80:
+        feedback = "발음이 명확하고 또렷합니다."
+    elif clarity >= 60:
+        feedback = "발음이 대체로 좋습니다. 일부 단어를 더 또렷하게 발음하면 좋겠습니다."
+    else:
+        feedback = "발음이 불명확한 부분이 있습니다. 입을 더 크게 벌리고 천천히 말해보세요."
+
+    return {
+        "clarity_score": round(clarity, 1),
+        "feedback": feedback,
+    }
+
+
+def _analyze_answer_structure(text: str) -> Dict[str, Any]:
+    """답변 구조 분석 (STAR 기법)"""
+    if not text or len(text) < 50:
+        return {
+            "has_intro": False,
+            "has_body": False,
+            "has_conclusion": False,
+            "star_score": 0,
+            "feedback": "답변이 너무 짧아 구조 분석이 어렵습니다.",
+        }
+
+    text_lower = text.lower()
+
+    # 도입부 패턴
+    intro_patterns = ["저는", "제가", "먼저", "처음에", "~때", "경험", "있습니다", "있었습니다"]
+    has_intro = any(p in text_lower for p in intro_patterns)
+
+    # 본론 패턴 (구체적 행동/상황)
+    body_patterns = ["그래서", "따라서", "이때", "그 결과", "했습니다", "했고", "진행", "수행", "해결"]
+    has_body = any(p in text_lower for p in body_patterns)
+
+    # 결론 패턴
+    conclusion_patterns = ["결과적으로", "이를 통해", "배웠", "느꼈", "생각합니다", "것 같습니다", "앞으로", "계획"]
+    has_conclusion = any(p in text_lower for p in conclusion_patterns)
+
+    # STAR 점수 계산
+    star_elements = {
+        "situation": any(w in text_lower for w in ["상황", "때", "당시", "situation"]),
+        "task": any(w in text_lower for w in ["과제", "목표", "해야", "task", "역할"]),
+        "action": any(w in text_lower for w in ["했", "진행", "수행", "해결", "action", "노력"]),
+        "result": any(w in text_lower for w in ["결과", "성과", "달성", "배웠", "result", "이를 통해"]),
+    }
+
+    star_score = sum(star_elements.values()) * 25  # 각 요소 25점
+
+    # 피드백 생성
+    if star_score >= 75:
+        feedback = "STAR 구조가 잘 갖춰진 답변입니다. 구체적인 사례와 결과가 명확합니다."
+    elif star_score >= 50:
+        missing = [k for k, v in star_elements.items() if not v]
+        feedback = f"답변 구조가 좋습니다. {', '.join(missing)} 요소를 보강하면 더 좋겠습니다."
+    else:
+        feedback = "STAR 기법을 활용해보세요: 상황(S) → 과제(T) → 행동(A) → 결과(R) 순으로 구성하세요."
+
+    return {
+        "has_intro": has_intro,
+        "has_body": has_body,
+        "has_conclusion": has_conclusion,
+        "star_score": star_score,
+        "star_elements": star_elements,
+        "feedback": feedback,
+    }
+
+
+def _calculate_overall_score(result: Dict) -> Dict[str, Any]:
+    """종합 점수 및 피드백 계산"""
+    scores = []
+    strengths = []
+    improvements = []
+
+    # 감정 분석 점수
+    emotion = result.get("emotion", {})
+    confidence = emotion.get("confidence_score", 5)
+    stress = emotion.get("stress_level", 5)
+    engagement = emotion.get("engagement_level", 5)
+    stability = emotion.get("emotion_stability", 5)
+
+    emotion_score = (confidence * 10 + (10 - stress) * 10 + engagement * 5 + stability * 5) / 3
+    scores.append(("감정", emotion_score))
+
+    if confidence >= 7:
+        strengths.append("자신감 있는 목소리")
+    elif confidence < 4:
+        improvements.append("답변 시 더 확신 있게 말하기")
+
+    if stress > 7:
+        improvements.append("긴장을 풀고 편안하게 말하기")
+
+    # 말 속도 점수
+    speech = result.get("speech_rate", {})
+    if speech.get("rating") == "적절":
+        scores.append(("말속도", 90))
+        strengths.append("적절한 말 속도")
+    elif speech.get("rating") == "빠름":
+        scores.append(("말속도", 60))
+        improvements.append("말 속도 줄이기")
+    elif speech.get("rating") == "느림":
+        scores.append(("말속도", 65))
+        improvements.append("말 속도 높이기")
+    else:
+        scores.append(("말속도", 70))
+
+    # 필러 단어 점수
+    filler = result.get("filler_analysis", {})
+    if filler.get("rating") == "우수":
+        scores.append(("필러", 95))
+        strengths.append("명확한 화법")
+    elif filler.get("rating") == "양호":
+        scores.append(("필러", 75))
+    else:
+        filler_count = filler.get("total_count", 0)
+        scores.append(("필러", max(40, 80 - filler_count * 3)))
+        if filler_count > 5:
+            improvements.append(f"필러 단어 줄이기 ({filler_count}회 감지)")
+
+    # 휴지 분석 점수
+    pause = result.get("pause_analysis", {})
+    if pause.get("rating") == "적절":
+        scores.append(("휴지", 85))
+        strengths.append("자연스러운 리듬")
+    elif pause.get("rating") == "많음":
+        scores.append(("휴지", 60))
+        improvements.append("긴 침묵 줄이기")
+    else:
+        scores.append(("휴지", 70))
+
+    # 에너지 분석 점수
+    energy = result.get("energy_analysis", {})
+    monotone = energy.get("monotone_score", 5)
+    if monotone <= 3:
+        scores.append(("톤변화", 90))
+        strengths.append("생동감 있는 톤")
+    elif monotone >= 7:
+        scores.append(("톤변화", 55))
+        improvements.append("톤에 변화 주기")
+    else:
+        scores.append(("톤변화", 75))
+
+    if energy.get("energy_trend") == "하락":
+        improvements.append("마무리까지 에너지 유지하기")
+
+    # 발음 명확도
+    pron = result.get("pronunciation", {})
+    clarity = pron.get("clarity_score", 70)
+    scores.append(("발음", clarity))
+    if clarity >= 80:
+        strengths.append("또렷한 발음")
+    elif clarity < 60:
+        improvements.append("발음 명확하게 하기")
+
+    # 답변 구조 점수
+    structure = result.get("structure_analysis", {})
+    star = structure.get("star_score", 50)
+    scores.append(("구조", star))
+    if star >= 75:
+        strengths.append("체계적인 답변 구조")
+    elif star < 50:
+        improvements.append("STAR 기법 활용하기")
+
+    # 종합 점수 계산 (가중 평균)
+    weights = {"감정": 2.0, "말속도": 1.5, "필러": 1.5, "휴지": 1.0, "톤변화": 1.5, "발음": 1.5, "구조": 2.0}
+    total_weight = sum(weights.get(name, 1.0) for name, _ in scores)
+    weighted_sum = sum(score * weights.get(name, 1.0) for name, score in scores)
+    overall_score = weighted_sum / total_weight if total_weight > 0 else 50
+
+    # 상세 피드백 생성
+    if overall_score >= 85:
+        grade = "우수"
+        detailed = "전반적으로 훌륭한 음성 전달력입니다. 자신감 있고 명확한 화법이 인상적입니다."
+    elif overall_score >= 70:
+        grade = "양호"
+        detailed = "좋은 음성 전달력입니다. 일부 개선점을 보완하면 더욱 좋아질 것입니다."
+    elif overall_score >= 55:
+        grade = "보통"
+        detailed = "기본적인 전달력은 있으나 개선이 필요합니다. 연습을 통해 충분히 향상될 수 있습니다."
+    else:
+        grade = "개선필요"
+        detailed = "음성 전달력 향상이 필요합니다. 아래 개선점을 참고하여 연습해보세요."
+
+    return {
+        "voice_score": round(overall_score, 1),
+        "grade": grade,
+        "score_breakdown": {name: round(score, 1) for name, score in scores},
+        "strengths": strengths[:3] if strengths else ["분석 완료"],
+        "improvements": improvements[:4] if improvements else ["현재 상태 유지"],
+        "detailed_feedback": detailed,
+    }
+
+
+# =====================================================
 # TTS 테스트 함수
 # =====================================================
 def test_edge_tts():

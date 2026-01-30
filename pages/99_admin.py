@@ -143,11 +143,18 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# 관리자 인증 시스템
+# 관리자 인증 시스템 (보안 강화)
 # ============================================================
 
 BASE_DIR = Path(__file__).parent.parent
 CREDENTIALS_FILE = BASE_DIR / "data" / "admin" / "credentials.json"
+
+# 로그인 시도 제한 (무차별 대입 공격 방지)
+try:
+    from safe_api import LoginRateLimiter
+    login_limiter = LoginRateLimiter(max_attempts=5, lockout_minutes=15)
+except ImportError:
+    login_limiter = None
 
 def load_admin_credentials():
     """관리자 계정 정보 로드"""
@@ -155,19 +162,39 @@ def load_admin_credentials():
         try:
             with open(CREDENTIALS_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
-            pass
+        except Exception as e:
+            logger.error(f"관리자 계정 로드 실패: {e}")
     return {"admins": []}
 
-def verify_admin(username: str, password: str) -> bool:
-    """관리자 인증 확인"""
+def verify_admin(username: str, password: str) -> tuple:
+    """
+    관리자 인증 확인 (보안 강화)
+
+    Returns:
+        (success: bool, message: str)
+    """
+    # 로그인 시도 제한 확인
+    if login_limiter and login_limiter.is_locked(username):
+        remaining = login_limiter.get_remaining_lockout(username)
+        minutes = remaining // 60
+        return False, f"로그인 시도 횟수 초과. {minutes}분 후 다시 시도하세요."
+
     credentials = load_admin_credentials()
     password_hash = hashlib.sha256(password.encode()).hexdigest()
 
     for admin in credentials.get("admins", []):
         if admin.get("username") == username and admin.get("password_hash") == password_hash:
-            return True
-    return False
+            # 성공 기록
+            if login_limiter:
+                login_limiter.record_attempt(username, True)
+            logger.info(f"관리자 로그인 성공: {username}")
+            return True, "로그인 성공"
+
+    # 실패 기록
+    if login_limiter:
+        login_limiter.record_attempt(username, False)
+    logger.warning(f"관리자 로그인 실패: {username}")
+    return False, "아이디 또는 비밀번호가 올바르지 않습니다."
 
 def get_admin_info(username: str) -> dict:
     """관리자 정보 조회"""
@@ -229,7 +256,8 @@ def admin_login():
 
             if submit:
                 if username and password:
-                    if verify_admin(username, password):
+                    success, message = verify_admin(username, password)
+                    if success:
                         st.session_state.admin_authenticated = True
                         st.session_state.admin_username = username
                         if ADMIN_AVAILABLE:
@@ -237,7 +265,7 @@ def admin_login():
                             audit.log("admin_login", username, level="info")
                         st.rerun()
                     else:
-                        st.error("아이디 또는 비밀번호가 올바르지 않습니다.")
+                        st.error(message)
                 else:
                     st.warning("아이디와 비밀번호를 입력하세요.")
 

@@ -13,6 +13,18 @@ import requests
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# 안전한 API 호출 및 검증 유틸리티
+try:
+    from safe_api import (
+        safe_api_call, get_audio_hash, is_audio_processed,
+        validate_string, validate_int, validate_dict, validate_list,
+        validate_api_response, safe_get, safe_execute,
+        init_session_state, safe_session_get, escape_html
+    )
+    SAFE_API_AVAILABLE = True
+except ImportError:
+    SAFE_API_AVAILABLE = False
+
 from config import LLM_MODEL_NAME, LLM_API_URL, LLM_TIMEOUT_SEC, AIRLINES, AIRLINE_TYPE
 from env_config import OPENAI_API_KEY
 
@@ -193,7 +205,7 @@ defaults = {
     # 음성 분석용 추가 변수
     "mock_audio_bytes_list": [],  # 각 질문별 음성 데이터 저장
     "mock_combined_voice_analysis": None,  # 종합 음성 분석 결과
-    "mock_processed_audio_id": None,  # 오디오 중복 처리 방지
+    "mock_processed_audio_hash": None,  # 오디오 중복 처리 방지
     "mock_response_times": [],  # 각 질문별 응답 시간
     # Phase 1: 감정 분석용 변수
     "mock_emotion_analyses": [],  # 각 질문별 감정 분석 결과
@@ -445,7 +457,7 @@ if not st.session_state.mock_started:
         # 음성 분석용 변수 초기화
         st.session_state.mock_audio_bytes_list = []
         st.session_state.mock_combined_voice_analysis = None
-        st.session_state.mock_processed_audio_id = None
+        st.session_state.mock_processed_audio_hash = None
         st.session_state.mock_response_times = []
         # 감정/고도화 분석 초기화
         st.session_state.mock_emotion_analyses = []
@@ -542,20 +554,25 @@ elif not st.session_state.mock_completed:
 
         with col_rec1:
             try:
-                # 처리된 오디오 ID 추적 (중복 처리 방지)
-                if "mock_processed_audio_id" not in st.session_state:
-                    st.session_state.mock_processed_audio_id = None
+                # 처리된 오디오 해시 추적 (중복 처리 방지)
+                if "mock_processed_audio_hash" not in st.session_state:
+                    st.session_state.mock_processed_audio_hash = None
 
                 audio_data = st.audio_input("녹음 버튼을 클릭하고 답변하세요", key=f"voice_input_{current_idx}")
 
                 if audio_data:
-                    # 오디오 ID로 중복 체크
-                    audio_id = f"{audio_data.name}_{audio_data.size}"
+                    # 음성 데이터 먼저 읽기
+                    audio_bytes = audio_data.read()
 
-                    if audio_id != st.session_state.mock_processed_audio_id:
+                    # 해시 기반 중복 체크 (더 정확함)
+                    if SAFE_API_AVAILABLE:
+                        audio_hash = get_audio_hash(audio_bytes)
+                    else:
+                        import hashlib
+                        audio_hash = hashlib.md5(audio_bytes).hexdigest()
+
+                    if audio_hash != st.session_state.mock_processed_audio_hash:
                         with st.spinner("음성 인식 중..."):
-                            # 음성 데이터 읽기
-                            audio_bytes = audio_data.read()
 
                             # STT (음성 → 텍스트)
                             result = transcribe_audio(audio_bytes, language="ko")
@@ -624,8 +641,8 @@ elif not st.session_state.mock_completed:
                                 st.session_state.mock_voice_analyses.append(voice_analysis)
                                 st.session_state.mock_content_analyses.append(content_analysis)
 
-                                # 처리 완료 표시
-                                st.session_state.mock_processed_audio_id = audio_id
+                                # 처리 완료 표시 (해시 저장)
+                                st.session_state.mock_processed_audio_hash = audio_hash
                                 st.session_state.answer_start_time = None  # 타이머 리셋
 
                                 # 다음 질문으로
@@ -633,12 +650,12 @@ elif not st.session_state.mock_completed:
                                     st.session_state.mock_completed = True
                                 else:
                                     st.session_state.mock_current_idx += 1
-                                    st.session_state.mock_processed_audio_id = None  # 다음 질문용 리셋
+                                    st.session_state.mock_processed_audio_hash = None  # 다음 질문용 리셋
 
                                 st.rerun()
                             else:
                                 st.error("음성 인식 실패 - 다시 녹음하거나 아래 텍스트로 입력하세요")
-                                st.session_state.mock_processed_audio_id = audio_id
+                                st.session_state.mock_processed_audio_hash = audio_hash
             except Exception as e:
                 st.warning(f"음성 입력 기능을 사용할 수 없습니다: {e}")
 
@@ -1579,7 +1596,7 @@ else:
             # 음성 분석 변수도 초기화
             st.session_state.mock_audio_bytes_list = []
             st.session_state.mock_combined_voice_analysis = None
-            st.session_state.mock_processed_audio_id = None
+            st.session_state.mock_processed_audio_hash = None
             st.session_state.mock_response_times = []
             st.rerun()
 

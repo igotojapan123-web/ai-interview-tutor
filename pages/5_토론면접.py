@@ -2,6 +2,7 @@
 # 그룹 토론면접 시뮬레이션 - 아바타/음성 기능 추가
 
 import os
+import hashlib
 
 from logging_config import get_logger
 logger = get_logger(__name__)
@@ -12,6 +13,15 @@ import requests
 
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# 안전한 API 유틸리티
+try:
+    from safe_api import get_audio_hash, validate_dict, safe_execute
+    SAFE_API_AVAILABLE = True
+except ImportError:
+    SAFE_API_AVAILABLE = False
+    def get_audio_hash(data):
+        return hashlib.md5(data).hexdigest() if data else ""
 
 from config import LLM_MODEL_NAME, LLM_API_URL, LLM_TIMEOUT_SEC
 from env_config import OPENAI_API_KEY
@@ -336,7 +346,7 @@ defaults = {
     "debate_combined_voice_analysis": None,
     "debate_response_times": [],
     "debate_input_mode": "text",  # "text" or "voice"
-    "debate_processed_audio_id": None,
+    "debate_processed_audio_hash": None,
 }
 
 for key, value in defaults.items():
@@ -880,12 +890,16 @@ elif not st.session_state.debate_completed:
             )
 
             if audio_data:
-                audio_id = id(audio_data)
-                if st.session_state.debate_processed_audio_id != audio_id:
-                    st.session_state.debate_processed_audio_id = audio_id
+                # 오디오 바이트 먼저 읽기
+                audio_bytes = audio_data.read()
+
+                # 해시 기반 중복 체크 (id() 대신 - 더 정확함)
+                audio_hash = get_audio_hash(audio_bytes)
+
+                if st.session_state.debate_processed_audio_hash != audio_hash:
+                    st.session_state.debate_processed_audio_hash = audio_hash
 
                     with st.spinner("음성을 분석하고 있습니다..."):
-                        audio_bytes = audio_data.read()
 
                         # 음성 인식 (STT)
                         import time
@@ -990,7 +1004,7 @@ elif not st.session_state.debate_completed:
                     })
 
             st.session_state.debate_round += 1
-            st.session_state.debate_processed_audio_id = None  # 리셋
+            st.session_state.debate_processed_audio_hash = None  # 리셋
 
             if st.session_state.debate_round >= 4:
                 st.session_state.debate_completed = True

@@ -530,6 +530,219 @@ def safe_markdown(text: str, allow_html: bool = False) -> str:
 
 
 # ============================================================
+# 9. 사용자 입력 검증 (강화)
+# ============================================================
+
+def sanitize_user_input(
+    text: str,
+    max_length: int = 5000,
+    strip_html: bool = True,
+    allow_newlines: bool = True
+) -> str:
+    """
+    사용자 입력 정제 및 검증
+
+    Args:
+        text: 입력 텍스트
+        max_length: 최대 길이
+        strip_html: HTML 태그 제거 여부
+        allow_newlines: 줄바꿈 허용 여부
+    """
+    if not text:
+        return ""
+
+    result = str(text).strip()
+
+    # 길이 제한
+    if len(result) > max_length:
+        result = result[:max_length]
+
+    # HTML 태그 제거
+    if strip_html:
+        import re
+        result = re.sub(r'<[^>]+>', '', result)
+
+    # 줄바꿈 처리
+    if not allow_newlines:
+        result = result.replace('\n', ' ').replace('\r', '')
+
+    # 연속 공백 제거
+    result = ' '.join(result.split())
+
+    return result
+
+
+def validate_room_name(name: str) -> tuple:
+    """
+    방 이름 검증
+
+    Returns:
+        (is_valid, cleaned_name, error_message)
+    """
+    if not name:
+        return False, "", "방 이름을 입력해주세요"
+
+    cleaned = sanitize_user_input(name, max_length=30, allow_newlines=False)
+
+    if len(cleaned) < 2:
+        return False, cleaned, "방 이름은 2자 이상이어야 합니다"
+
+    if len(cleaned) > 30:
+        return False, cleaned[:30], "방 이름은 30자 이하여야 합니다"
+
+    return True, cleaned, ""
+
+
+def validate_chat_message(message: str) -> tuple:
+    """
+    채팅 메시지 검증
+
+    Returns:
+        (is_valid, cleaned_message, error_message)
+    """
+    if not message:
+        return False, "", "메시지를 입력해주세요"
+
+    cleaned = sanitize_user_input(message, max_length=500, allow_newlines=False)
+
+    if len(cleaned) < 1:
+        return False, cleaned, "메시지를 입력해주세요"
+
+    return True, cleaned, ""
+
+
+def validate_answer_text(answer: str, min_length: int = 10, max_length: int = 5000) -> tuple:
+    """
+    답변 텍스트 검증
+
+    Returns:
+        (is_valid, cleaned_answer, error_message)
+    """
+    if not answer:
+        return False, "", "답변을 입력해주세요"
+
+    cleaned = sanitize_user_input(answer, max_length=max_length, allow_newlines=True)
+
+    if len(cleaned) < min_length:
+        return False, cleaned, f"답변은 {min_length}자 이상이어야 합니다"
+
+    return True, cleaned, ""
+
+
+def validate_username(username: str) -> tuple:
+    """
+    사용자 이름 검증
+
+    Returns:
+        (is_valid, cleaned_name, error_message)
+    """
+    if not username:
+        return False, "", "이름을 입력해주세요"
+
+    cleaned = sanitize_user_input(username, max_length=20, allow_newlines=False)
+
+    if len(cleaned) < 2:
+        return False, cleaned, "이름은 2자 이상이어야 합니다"
+
+    if len(cleaned) > 20:
+        return False, cleaned[:20], "이름은 20자 이하여야 합니다"
+
+    # 특수문자 체크 (한글, 영문, 숫자, 기본 특수문자만 허용)
+    import re
+    if not re.match(r'^[가-힣a-zA-Z0-9_\- ]+$', cleaned):
+        return False, cleaned, "이름에 특수문자를 사용할 수 없습니다"
+
+    return True, cleaned, ""
+
+
+# ============================================================
+# 10. JSON 응답 안전 파싱
+# ============================================================
+
+def safe_json_parse(text: str, default: Any = None) -> Any:
+    """
+    JSON 문자열 안전 파싱
+
+    Args:
+        text: JSON 문자열 또는 JSON을 포함한 텍스트
+        default: 파싱 실패시 반환값
+    """
+    if not text:
+        return default
+
+    import re
+
+    # 이미 dict/list면 그대로 반환
+    if isinstance(text, (dict, list)):
+        return text
+
+    try:
+        # 직접 파싱 시도
+        return json.loads(text)
+    except:
+        pass
+
+    # JSON 블록 추출 시도
+    try:
+        # ```json ... ``` 블록 찾기
+        json_match = re.search(r'```json\s*([\s\S]*?)\s*```', text)
+        if json_match:
+            return json.loads(json_match.group(1))
+
+        # { ... } 또는 [ ... ] 찾기
+        brace_match = re.search(r'(\{[\s\S]*\}|\[[\s\S]*\])', text)
+        if brace_match:
+            return json.loads(brace_match.group(1))
+    except:
+        pass
+
+    return default
+
+
+def validate_json_response(
+    response: Any,
+    schema: Dict[str, type] = None,
+    required_fields: List[str] = None
+) -> tuple:
+    """
+    JSON 응답 스키마 검증
+
+    Args:
+        response: 검증할 응답
+        schema: 필드별 타입 정의 {'field': type}
+        required_fields: 필수 필드 목록
+
+    Returns:
+        (is_valid, response_or_default, errors)
+    """
+    errors = []
+
+    if response is None:
+        return False, {}, ["응답이 없습니다"]
+
+    if not isinstance(response, dict):
+        return False, {}, ["응답이 객체 형식이 아닙니다"]
+
+    # 필수 필드 체크
+    if required_fields:
+        for field in required_fields:
+            if field not in response:
+                errors.append(f"필수 필드 누락: {field}")
+
+    # 스키마 타입 체크
+    if schema:
+        for field, expected_type in schema.items():
+            if field in response:
+                if not isinstance(response[field], expected_type):
+                    errors.append(f"타입 불일치: {field} (기대: {expected_type.__name__})")
+
+    if errors:
+        return False, response, errors
+
+    return True, response, []
+
+
+# ============================================================
 # 초기화 확인
 # ============================================================
 

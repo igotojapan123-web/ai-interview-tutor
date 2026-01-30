@@ -216,9 +216,22 @@ defaults = {
     "mock_stress_timeline": [],  # 스트레스 변화 추이
 }
 
-for key, value in defaults.items():
-    if key not in st.session_state:
-        st.session_state[key] = value
+# 세션 상태 안전 초기화 (safe_api 사용 시)
+if SAFE_API_AVAILABLE:
+    init_session_state(st.session_state, defaults)
+else:
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+# 리스트 타입 세션 상태 None 체크 (안전성 강화)
+list_keys = ["mock_questions", "mock_answers", "mock_transcriptions", "mock_times",
+             "mock_voice_analyses", "mock_content_analyses", "mock_audio_bytes_list",
+             "mock_response_times", "mock_emotion_analyses", "mock_confidence_timeline",
+             "mock_advanced_analyses", "mock_stress_timeline"]
+for key in list_keys:
+    if st.session_state.get(key) is None:
+        st.session_state[key] = []
 
 
 # =====================

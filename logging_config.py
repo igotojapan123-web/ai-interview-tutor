@@ -103,5 +103,93 @@ class ConfigError(AppError):
         super().__init__(message, error_code="CONFIG", config_key=config_key, **kwargs)
 
 
+# ============================================================
+# 로깅 유틸리티 함수 (강화)
+# ============================================================
+
+def log_api_call(api_name: str, success: bool, duration_ms: float = None, error: str = None):
+    """
+    API 호출 결과 로깅
+
+    Args:
+        api_name: API 이름 (예: 'OpenAI', 'Whisper')
+        success: 성공 여부
+        duration_ms: 응답 시간 (밀리초)
+        error: 에러 메시지 (실패 시)
+    """
+    logger = get_logger("api")
+    duration_str = f" ({duration_ms:.0f}ms)" if duration_ms else ""
+
+    if success:
+        logger.info(f"[API] {api_name} 호출 성공{duration_str}")
+    else:
+        logger.error(f"[API] {api_name} 호출 실패{duration_str}: {error or 'Unknown error'}")
+
+
+def log_page_access(page_name: str, user_id: str = None):
+    """
+    페이지 접근 로깅
+
+    Args:
+        page_name: 페이지 이름
+        user_id: 사용자 ID (선택)
+    """
+    logger = get_logger("access")
+    user_str = f" (user: {user_id})" if user_id else ""
+    logger.info(f"[PAGE] {page_name} 접근{user_str}")
+
+
+def log_user_action(action: str, page: str = None, details: dict = None):
+    """
+    사용자 액션 로깅
+
+    Args:
+        action: 액션 이름 (예: 'start_interview', 'submit_answer')
+        page: 페이지 이름
+        details: 추가 정보
+    """
+    logger = get_logger("action")
+    page_str = f" [{page}]" if page else ""
+    details_str = f" - {details}" if details else ""
+    logger.info(f"[ACTION]{page_str} {action}{details_str}")
+
+
+def log_error_with_context(error: Exception, context: dict = None, page: str = None):
+    """
+    컨텍스트와 함께 에러 로깅
+
+    Args:
+        error: 발생한 예외
+        context: 추가 컨텍스트 정보
+        page: 페이지 이름
+    """
+    logger = get_logger("error")
+    page_str = f"[{page}] " if page else ""
+    context_str = f" | Context: {context}" if context else ""
+
+    logger.error(f"{page_str}{type(error).__name__}: {str(error)}{context_str}")
+
+    # 스택 트레이스도 기록 (DEBUG 레벨)
+    import traceback
+    logger.debug(f"Stack trace: {traceback.format_exc()}")
+
+
+def log_performance(operation: str, duration_ms: float, threshold_ms: float = 1000):
+    """
+    성능 로깅 (느린 작업 감지)
+
+    Args:
+        operation: 작업 이름
+        duration_ms: 소요 시간 (밀리초)
+        threshold_ms: 경고 임계값 (밀리초)
+    """
+    logger = get_logger("performance")
+
+    if duration_ms > threshold_ms:
+        logger.warning(f"[SLOW] {operation}: {duration_ms:.0f}ms (threshold: {threshold_ms}ms)")
+    else:
+        logger.debug(f"[PERF] {operation}: {duration_ms:.0f}ms")
+
+
 # 기본 로깅 설정 (import 시 자동 실행)
 _default_logger = setup_logging(level=logging.INFO, console=False)

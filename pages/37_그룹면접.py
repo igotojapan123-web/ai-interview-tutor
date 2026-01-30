@@ -29,7 +29,11 @@ except ImportError:
 
 # 안전한 실행 유틸리티
 try:
-    from safe_api import safe_execute, validate_dict, validate_list
+    from safe_api import (
+        safe_execute, validate_dict, validate_list,
+        validate_room_name, validate_chat_message, validate_username,
+        sanitize_user_input, escape_html
+    )
     SAFE_API_AVAILABLE = True
 except ImportError:
     SAFE_API_AVAILABLE = False
@@ -39,6 +43,16 @@ except ImportError:
         except Exception as e:
             logger.error(f"safe_execute 실패: {e}")
             return default
+    def validate_room_name(name):
+        return (bool(name and len(name) >= 2), str(name)[:30] if name else "", "")
+    def validate_chat_message(msg):
+        return (bool(msg), str(msg)[:500] if msg else "", "")
+    def validate_username(name):
+        return (bool(name and len(name) >= 2), str(name)[:20] if name else "", "")
+    def sanitize_user_input(text, **kwargs):
+        return str(text)[:5000] if text else ""
+    def escape_html(text):
+        return str(text).replace("<", "&lt;").replace(">", "&gt;") if text else ""
 
 # Phase 5 모듈 임포트 (에러 처리 포함)
 ROOM_MANAGER_AVAILABLE = False
@@ -646,8 +660,10 @@ def render_create_room_dialog():
 
     # 방 만들기 버튼
     if st.button("🚀 방 만들기", use_container_width=True, type="primary"):
-        if not room_name.strip():
-            st.error("방 이름을 입력해주세요")
+        # 입력값 검증
+        is_valid, cleaned_name, error_msg = validate_room_name(room_name)
+        if not is_valid:
+            st.error(error_msg or "방 이름을 입력해주세요")
             return
 
         try:
@@ -659,7 +675,7 @@ def render_create_room_dialog():
 
             room = create_room(
                 host_id=st.session_state.user_id,
-                room_name=room_name.strip(),
+                room_name=cleaned_name,  # 검증된 이름 사용
                 room_type=room_type,
                 max_participants=max_participants,
                 settings=settings
@@ -713,12 +729,14 @@ def render_join_dialog():
             st.error("6자리 방 코드를 입력해주세요")
             return
 
-        if not display_name.strip():
-            st.error("표시 이름을 입력해주세요")
+        # 이름 검증
+        is_valid, cleaned_name, error_msg = validate_username(display_name)
+        if not is_valid:
+            st.error(error_msg or "표시 이름을 입력해주세요")
             return
 
         try:
-            st.session_state.user_name = display_name.strip()
+            st.session_state.user_name = cleaned_name  # 검증된 이름 사용
 
             room = join_room(
                 room_code,
@@ -1566,8 +1584,8 @@ def render_chat_panel(room_id: str, compact: bool = False):
 
     for msg in messages[-20:]:  # 최근 20개만
         msg_type = msg.get('message_type', 'chat')
-        user_name = msg.get('user_name', '익명')
-        message = msg.get('message', '')
+        user_name = escape_html(msg.get('user_name', '익명'))  # XSS 방지
+        message = escape_html(msg.get('message', ''))  # XSS 방지
 
         if msg_type == 'system':
             chat_html += f'<div class="chat-message chat-system">{message}</div>'
@@ -1600,12 +1618,14 @@ def render_chat_panel(room_id: str, compact: bool = False):
 
     with col_send:
         if st.button("전송", key=f"send_{room_id}"):
-            if chat_input.strip():
+            # 채팅 메시지 검증
+            is_valid, cleaned_msg, error_msg = validate_chat_message(chat_input)
+            if is_valid:
                 try:
                     send_message(
                         room_id,
                         st.session_state.user_id,
-                        chat_input.strip()
+                        cleaned_msg  # 검증된 메시지 사용
                     )
                     st.rerun()
                 except Exception as e:

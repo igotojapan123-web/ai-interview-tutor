@@ -487,10 +487,13 @@ class ErrorAnalyzer:
 class APIUsageMonitor:
     """API 사용량 모니터링"""
 
+    # API 한도 - 유료 서비스이므로 사실상 무제한
+    # (모니터링 목적으로만 사용, 실제 차단 안함)
     API_LIMITS = {
-        "openai": {"daily": 10000, "warning_threshold": 0.8},
-        "d-id": {"daily": 100, "warning_threshold": 0.7},
-        "clova": {"daily": 5000, "warning_threshold": 0.8},
+        "openai": {"daily": 1000000, "warning_threshold": 0.95},   # 100만/일
+        "d-id": {"daily": 10000, "warning_threshold": 0.95},       # 1만/일
+        "clova": {"daily": 500000, "warning_threshold": 0.95},     # 50만/일
+        "google_tts": {"daily": 500000, "warning_threshold": 0.95}, # 50만/일
     }
 
     def __init__(self):

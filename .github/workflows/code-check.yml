@@ -1,0 +1,233 @@
+name: Code Quality Check
+
+on:
+  push:
+    branches: [main, beta]
+  pull_request:
+    branches: [main, beta]
+
+jobs:
+  syntax-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install streamlit openai requests python-dotenv
+
+      - name: Check Python syntax (all files)
+        id: syntax
+        run: |
+          echo "=== Python Syntax Check ==="
+          errors=""
+          for file in $(find . -name "*.py" -not -path "./.venv/*" -not -path "./venv/*"); do
+            if ! python -m py_compile "$file" 2>&1; then
+              errors="$errors\n$file"
+            fi
+          done
+          if [ -n "$errors" ]; then
+            echo "SYNTAX_ERRORS<<EOF" >> $GITHUB_OUTPUT
+            echo -e "$errors" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            echo "::error::Syntax errors found in:$errors"
+            exit 1
+          fi
+          echo "All files passed syntax check!"
+
+      - name: Check core module imports
+        id: imports
+        run: |
+          echo "=== Import Check ==="
+          cd $GITHUB_WORKSPACE
+          python << 'EOF'
+          import sys
+          import importlib.util
+
+          # 핵심 모듈 목록
+          core_modules = [
+              "config",
+              "env_config",
+              "api_utils",
+              "auth_utils",
+              "ui_config",
+              "sidebar_common",
+          ]
+
+          errors = []
+          for module in core_modules:
+              try:
+                  spec = importlib.util.spec_from_file_location(module, f"{module}.py")
+                  if spec and spec.loader:
+                      # 구문만 검사
+                      with open(f"{module}.py", 'r', encoding='utf-8') as f:
+                          source = f.read()
+                      compile(source, f"{module}.py", 'exec')
+                      print(f"✓ {module}")
+              except FileNotFoundError:
+                  print(f"⚠ {module} - 파일 없음 (무시)")
+              except SyntaxError as e:
+                  errors.append(f"{module}: Line {e.lineno} - {e.msg}")
+                  print(f"✗ {module}: {e.msg}")
+              except Exception as e:
+                  errors.append(f"{module}: {str(e)}")
+                  print(f"✗ {module}: {e}")
+
+          if errors:
+              print("\n=== ERRORS ===")
+              for err in errors:
+                  print(err)
+              sys.exit(1)
+
+          print("\nAll core modules OK!")
+          EOF
+
+      - name: Check page files
+        run: |
+          echo "=== Page Files Check ==="
+          cd $GITHUB_WORKSPACE
+          python << 'EOF'
+          import sys
+          from pathlib import Path
+
+          pages_dir = Path("pages")
+          if not pages_dir.exists():
+              print("pages/ directory not found")
+              sys.exit(0)
+
+          errors = []
+          for page_file in sorted(pages_dir.glob("*.py")):
+              if page_file.name.startswith("__"):
+                  continue
+              try:
+                  with open(page_file, 'r', encoding='utf-8') as f:
+                      source = f.read()
+                  compile(source, page_file, 'exec')
+                  print(f"✓ {page_file.name}")
+              except SyntaxError as e:
+                  errors.append(f"{page_file.name}: Line {e.lineno} - {e.msg}")
+                  print(f"✗ {page_file.name}: Line {e.lineno} - {e.msg}")
+
+          if errors:
+              print(f"\n=== {len(errors)} ERRORS FOUND ===")
+              sys.exit(1)
+
+          print(f"\nAll page files OK!")
+          EOF
+
+      - name: Check typing imports
+        run: |
+          echo "=== Typing Import Check ==="
+          python << 'EOF'
+          import re
+          from pathlib import Path
+
+          # typing 관련 패턴 찾기
+          typing_pattern = re.compile(r'\b(List|Dict|Tuple|Optional|Union|Set|Any|Callable)\[')
+          import_pattern = re.compile(r'from typing import (.+)')
+
+          issues = []
+
+          for py_file in Path(".").rglob("*.py"):
+              if ".venv" in str(py_file) or "venv" in str(py_file):
+                  continue
+
+              try:
+                  content = py_file.read_text(encoding='utf-8')
+
+                  # 사용된 typing 타입 찾기
+                  used_types = set(typing_pattern.findall(content))
+
+                  if used_types:
+                      # import 문에서 가져온 타입 찾기
+                      imports = import_pattern.findall(content)
+                      imported_types = set()
+                      for imp in imports:
+                          imported_types.update(t.strip() for t in imp.split(','))
+
+                      # 누락된 타입 확인
+                      missing = used_types - imported_types
+                      if missing:
+                          issues.append(f"{py_file}: Missing typing imports: {missing}")
+              except:
+                  pass
+
+          if issues:
+              print("=== TYPING IMPORT ISSUES ===")
+              for issue in issues:
+                  print(f"⚠ {issue}")
+              # 경고만 출력, 실패하지 않음
+          else:
+              print("No typing import issues found!")
+          EOF
+
+      - name: Send failure notification
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.SMTP_USER }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "⚠️ FlyReady Lab 코드 오류 - ${{ github.ref_name }} 브랜치"
+          body: |
+            🚨 코드 검사 실패!
+
+            브랜치: ${{ github.ref_name }}
+            커밋: ${{ github.sha }}
+            작성자: ${{ github.actor }}
+
+            커밋 메시지: ${{ github.event.head_commit.message }}
+
+            자세한 내용은 GitHub Actions에서 확인하세요:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            ---
+            Claude Code와 함께 오류를 수정하세요.
+          to: ${{ secrets.ADMIN_EMAIL }}
+          from: FlyReady Lab CI <${{ secrets.SMTP_USER }}>
+
+  json-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check JSON files
+        run: |
+          echo "=== JSON Validation ==="
+          python << 'EOF'
+          import json
+          import sys
+          from pathlib import Path
+
+          data_dir = Path("data")
+          if not data_dir.exists():
+              print("data/ directory not found")
+              sys.exit(0)
+
+          errors = []
+          for json_file in data_dir.rglob("*.json"):
+              try:
+                  with open(json_file, 'r', encoding='utf-8') as f:
+                      json.load(f)
+                  print(f"✓ {json_file}")
+              except json.JSONDecodeError as e:
+                  errors.append(f"{json_file}: {e.msg}")
+                  print(f"✗ {json_file}: {e.msg}")
+
+          if errors:
+              print(f"\n=== {len(errors)} JSON ERRORS ===")
+              sys.exit(1)
+
+          print("\nAll JSON files valid!")
+          EOF

@@ -444,7 +444,7 @@ header[data-testid="stHeader"] {{ display: none; }}
 }}
 .fr-footer p {{ margin: 4px 0; font-size: 0.85rem; }}
 
-/* 반응형 */
+/* 반응형 - 태블릿 */
 @media (max-width: 900px) {{
     .fr-stats-grid {{ grid-template-columns: repeat(2, 1fr); }}
     .fr-info-grid {{ grid-template-columns: 1fr; }}
@@ -453,11 +453,50 @@ header[data-testid="stHeader"] {{ display: none; }}
     .fr-header {{ padding: 12px 20px; }}
     .fr-hero {{ padding: 28px 20px; }}
     .fr-hero h1 {{ font-size: 1.4rem; }}
+    .fr-main {{ padding: 20px; }}
 }}
-@media (max-width: 500px) {{
-    .fr-stats-grid {{ grid-template-columns: 1fr 1fr; }}
-    .fr-card-grid {{ grid-template-columns: 1fr; }}
-    .fr-mini-grid {{ grid-template-columns: repeat(2, 1fr); }}
+
+/* 반응형 - 모바일 */
+@media (max-width: 600px) {{
+    .fr-stats-grid {{ grid-template-columns: 1fr 1fr; gap: 8px; }}
+    .fr-card-grid {{ grid-template-columns: 1fr; gap: 12px; }}
+    .fr-mini-grid {{ grid-template-columns: repeat(2, 1fr); gap: 8px; }}
+    .fr-header {{ padding: 10px 16px; }}
+    .fr-logo {{ font-size: 1rem; }}
+    .fr-logo img {{ height: 28px; }}
+    .fr-header-text {{ display: none; }}
+    .fr-hero {{ padding: 20px 16px; }}
+    .fr-hero h1 {{ font-size: 1.2rem; }}
+    .fr-hero p {{ font-size: 0.85rem; }}
+    .fr-hero-actions {{ flex-direction: column; gap: 8px; }}
+    .fr-btn {{ padding: 10px 20px; font-size: 0.85rem; text-align: center; }}
+    .fr-main {{ padding: 16px; }}
+    .fr-section {{ margin-bottom: 24px; }}
+    .fr-section-title {{ font-size: 1rem; }}
+    .fr-card {{ padding: 16px; }}
+    .fr-card-title {{ font-size: 0.95rem; }}
+    .fr-card-desc {{ font-size: 0.8rem; }}
+    .fr-stat-value {{ font-size: 1.5rem; }}
+    .fr-stat-label {{ font-size: 0.7rem; }}
+    .fr-info-box {{ padding: 12px; }}
+    .fr-info-title {{ font-size: 0.9rem; }}
+    .fr-footer {{ padding: 20px 16px; }}
+    .fr-footer h3 {{ font-size: 1rem; }}
+    .fr-footer p {{ font-size: 0.75rem; }}
+    /* Streamlit 기본 요소 모바일 최적화 */
+    .stButton > button {{ width: 100%; padding: 12px; font-size: 0.9rem; }}
+    .stTextInput > div > div > input {{ font-size: 16px !important; }}
+    .stTextArea > div > div > textarea {{ font-size: 16px !important; }}
+    .stSelectbox > div > div {{ font-size: 14px; }}
+    [data-testid="stExpander"] {{ font-size: 0.9rem; }}
+}}
+
+/* 반응형 - 소형 모바일 */
+@media (max-width: 400px) {{
+    .fr-stats-grid {{ grid-template-columns: 1fr; }}
+    .fr-mini-grid {{ grid-template-columns: 1fr 1fr; }}
+    .fr-hero h1 {{ font-size: 1.1rem; }}
+    .fr-card {{ padding: 12px; }}
 }}
 </style>
 """

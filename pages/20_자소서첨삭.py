@@ -10,12 +10,26 @@ from datetime import datetime
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from config import AIRLINES
+from config import AIRLINES_WITH_RESUME
 from sidebar_common import init_page, end_page
 from logging_config import get_logger
 
 # 로거 설정
 logger = get_logger(__name__)
+
+# Phase C1: 자소서 고도화 모듈
+try:
+    from resume_enhancer import (
+        analyze_resume_enhanced,
+        get_sentence_analysis,
+        get_keyword_density,
+        get_storytelling_score,
+        compare_with_passed_resume,
+        AIRLINE_KEYWORD_DATA,
+    )
+    RESUME_ENHANCER_AVAILABLE = True
+except ImportError:
+    RESUME_ENHANCER_AVAILABLE = False
 
 # Initialize page with new layout
 init_page(
@@ -38,18 +52,23 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ----------------------------
-# OpenAI API
+# OpenAI API (캐시된 싱글톤)
 # ----------------------------
-try:
-    from openai import OpenAI
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    API_AVAILABLE = True
-except ImportError as e:
-    logger.error(f"OpenAI 모듈 import 실패: {e}")
-    API_AVAILABLE = False
-except Exception as e:
-    logger.error(f"OpenAI 클라이언트 초기화 실패: {e}")
-    API_AVAILABLE = False
+@st.cache_resource
+def get_openai_client():
+    """OpenAI 클라이언트 싱글톤 (앱 재시작 전까지 재사용)"""
+    try:
+        from openai import OpenAI
+        return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    except ImportError as e:
+        logger.error(f"OpenAI 모듈 import 실패: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"OpenAI 클라이언트 초기화 실패: {e}")
+        return None
+
+client = get_openai_client()
+API_AVAILABLE = client is not None
 
 # ----------------------------
 # 데이터 경로
@@ -59,6 +78,7 @@ RESUME_FILE = os.path.join(DATA_DIR, "my_resumes.json")
 os.makedirs(DATA_DIR, exist_ok=True)
 
 
+@st.cache_data(ttl=60)
 def load_my_resumes():
     """저장된 자소서 목록 로드"""
     try:
@@ -75,66 +95,68 @@ def load_my_resumes():
 def save_my_resumes(resumes):
     with open(RESUME_FILE, "w", encoding="utf-8") as f:
         json.dump(resumes, f, ensure_ascii=False, indent=2)
+    load_my_resumes.clear()  # 캐시 무효화
 
 
 # ----------------------------
 # 항공사별 핵심 키워드
 # ----------------------------
+# 항공사 공식 자료 기반 핵심 키워드 (2025년 기준)
 AIRLINE_KEYWORDS = {
     "대한항공": {
-        "인재상": ["도전", "글로벌", "전문성", "소통", "신뢰"],
-        "가치": ["Excellence in Flight", "안전", "세계적 수준", "프리미엄 서비스"],
-        "추천키워드": ["글로벌 역량", "도전 정신", "전문성 개발", "팀워크", "안전 의식", "문화 이해", "소통 능력"],
+        "인재상": ["진취성", "국제감각", "서비스정신", "성실", "팀워크"],
+        "가치": ["Excellence in Flight", "KE Way", "Beyond Excellence", "Journey Together", "Better Tomorrow"],
+        "추천키워드": ["글로벌 역량", "도전 정신", "전문성", "팀워크", "안전 의식", "프리미엄 서비스", "신뢰"],
     },
     "아시아나항공": {
-        "인재상": ["창의", "열정", "신뢰", "도전", "글로벌"],
-        "가치": ["아름다운 사람들", "최상의 서비스", "안전 최우선"],
-        "추천키워드": ["고객 감동", "세심한 배려", "열정", "안전 문화", "팀 협업", "서비스 정신", "변화 적응"],
+        "인재상": ["고객중심", "안전의식", "서비스마인드", "글로벌역량"],
+        "가치": ["Beautiful People, Asiana", "안전", "서비스", "지속가능성", "ESG"],
+        "추천키워드": ["고객 감동", "세심한 배려", "안전 문화", "팀 협업", "서비스 정신", "Better flight, Better tomorrow"],
     },
     "진에어": {
-        "인재상": ["Fun", "젊음", "도전", "소통", "창의"],
-        "가치": ["즐거운 여행", "합리적 가격", "트렌디"],
-        "추천키워드": ["즐거움", "트렌드 감각", "유연한 사고", "밝은 에너지", "고객 친화", "도전", "창의적 서비스"],
+        "인재상": ["실용적", "고객친화", "유쾌함", "안전의식", "독창성"],
+        "가치": ["Fly, better fly", "Safety", "Practicality", "Customer Service", "Delight"],
+        "추천키워드": ["JINIABLE", "유쾌함", "실용성", "고객 친화", "안전", "트렌디", "창의적 서비스"],
     },
     "제주항공": {
-        "인재상": ["열정", "혁신", "동반성장", "고객중심"],
-        "가치": ["가성비", "안전", "고객 만족", "LCC 선두"],
-        "추천키워드": ["고객 중심", "효율", "열정", "혁신", "동반 성장", "긍정", "실행력"],
+        "인재상": ["안전의식", "고객지향", "팀워크", "도전정신", "비용의식"],
+        "가치": ["Fun & Fly", "7C", "안전", "저비용", "신뢰", "팀워크", "도전"],
+        "추천키워드": ["고객 중심", "효율", "도전", "팀워크", "신뢰", "긍정", "Confident"],
     },
     "티웨이항공": {
-        "인재상": ["소통", "도전", "전문성", "즐거움"],
-        "가치": ["합리적 여행", "따뜻한 서비스", "안전"],
-        "추천키워드": ["따뜻한 서비스", "소통", "도전 의식", "성장", "고객 배려", "긍정 에너지", "전문성"],
+        "인재상": ["안전최우선", "스마트함", "고객만족", "나눔", "지속가능"],
+        "가치": ["I want T'way", "5S: Safety, Smart, Satisfaction, Sharing, Sustainability"],
+        "추천키워드": ["안전", "스마트", "고객만족", "나눔", "지속가능", "친절", "사회공헌"],
     },
     "에어부산": {
-        "인재상": ["안전", "고객", "혁신", "소통"],
-        "가치": ["부산 대표", "친근한 서비스", "안전 운항"],
-        "추천키워드": ["친근함", "지역 사랑", "안전", "소통", "고객 감동", "혁신", "팀워크"],
+        "인재상": ["안전의식", "지역친화", "서비스마인드", "효율성"],
+        "가치": ["FLY SMART", "안전운항", "산업안전", "정보보안"],
+        "추천키워드": ["스마트", "지역 사랑", "안전", "효율", "고객 감동", "부산", "팀워크"],
     },
     "에어서울": {
-        "인재상": ["서비스", "안전", "도전", "협력"],
-        "가치": ["도심 연결", "편안한 여행"],
-        "추천키워드": ["편안한 서비스", "협력", "안전 의식", "도전", "성실", "고객 만족", "글로벌"],
+        "인재상": ["안전의식", "친절함", "신뢰성", "활력"],
+        "가치": ["It's mint time", "최고안전", "행복서비스", "신뢰"],
+        "추천키워드": ["민트", "상쾌함", "안전", "친절", "젊음", "신뢰", "아시아나계열"],
     },
     "이스타항공": {
-        "인재상": ["열정", "도전", "성장", "팀워크"],
-        "가치": ["새로운 시작", "안전", "고객 행복"],
-        "추천키워드": ["열정", "새로운 도전", "성장", "팀워크", "긍정", "고객 행복", "적응력"],
+        "인재상": ["고객지향", "도전정신", "사회공헌", "글로벌마인드"],
+        "가치": ["Fly with EASTAR", "항공여행 대중화", "사회공익", "글로벌 국민항공사"],
+        "추천키워드": ["도전", "재도약", "고객 행복", "대중화", "글로벌", "적응력", "열정"],
     },
     "에어프레미아": {
-        "인재상": ["프리미엄", "도전", "혁신", "전문성"],
-        "가치": ["하이브리드 항공", "합리적 프리미엄", "장거리 LCC"],
-        "추천키워드": ["프리미엄 마인드", "혁신", "도전", "전문성", "글로벌", "체력", "서비스 차별화"],
+        "인재상": ["프리미엄서비스", "글로벌역량", "전문성", "고객중심"],
+        "가치": ["Premium for all", "HSC (Hybrid Service Carrier)", "B787-9", "중장거리"],
+        "추천키워드": ["프리미엄", "하이브리드", "전문성", "글로벌", "장거리", "체력", "차별화"],
     },
     "에어로케이": {
-        "인재상": ["안전", "고객", "소통", "성장"],
-        "가치": ["안전 운항", "고객 중심"],
-        "추천키워드": ["안전", "고객 중심", "소통", "성장", "열정", "책임감", "팀워크"],
+        "인재상": ["도전정신", "유연성", "성장지향", "안전의식"],
+        "가치": ["새로운 하늘길", "청주기반", "A320 단일기종", "신생항공사"],
+        "추천키워드": ["도전", "성장", "유연성", "안전", "청주", "기회", "열정"],
     },
     "파라타항공": {
-        "인재상": ["도전", "열정", "체력", "서비스"],
-        "가치": ["신생 항공사", "새로운 기준"],
-        "추천키워드": ["도전 정신", "체력", "열정", "서비스 마인드", "적응력", "성장", "긍정"],
+        "인재상": ["신뢰 구축 역량", "변화 적응력", "새 기준 수용", "고객 가치 중심"],
+        "가치": ["Fly new", "안전과 정시성", "투명함", "쾌적함", "고객가치 최우선", "도전과 혁신"],
+        "추천키워드": ["신뢰", "투명함", "도전", "혁신", "적응력", "양양", "재출범"],
     },
 }
 
@@ -364,6 +386,35 @@ def analyze_text(content):
 # ----------------------------
 st.markdown("""
 <style>
+/* 모든 입력 필드에서 복사/붙여넣기 허용 - 강화된 선택자 */
+textarea, input, [contenteditable="true"],
+.stTextArea textarea, .stTextInput input,
+[data-testid="stTextArea"] textarea,
+[data-testid="stTextInput"] input,
+div[data-baseweb="textarea"] textarea,
+div[data-baseweb="input"] input {
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
+    -webkit-user-drag: none !important;
+    pointer-events: auto !important;
+}
+
+/* 전체 문서에서 텍스트 선택 허용 */
+* {
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
+}
+
+/* 버튼과 특수 요소는 제외 */
+button, .stButton, [role="button"] {
+    -webkit-user-select: none !important;
+    user-select: none !important;
+}
+
 /* 폰트 및 기본 스타일 */
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
 * {
@@ -424,13 +475,17 @@ st.markdown("""
 # UI 메인
 # ----------------------------
 
-# Page title handled by init_page
+st.markdown("---")
 
 if not API_AVAILABLE:
     st.error("OpenAI API를 사용할 수 없습니다. .env 파일에 OPENAI_API_KEY를 설정해주세요.")
 
-# 탭 구성
-tab1, tab2, tab3, tab4 = st.tabs(["️ 첨삭받기", " 합격 예시", " 작성 가이드", " 내 자소서"])
+# 탭 구성 (고도화 분석 탭 추가)
+if RESUME_ENHANCER_AVAILABLE:
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["️ 첨삭받기", " 고급 분석", " 합격 예시", " 작성 가이드", " 내 자소서"])
+else:
+    tab1, tab2, tab3, tab4 = st.tabs(["️ 첨삭받기", " 합격 예시", " 작성 가이드", " 내 자소서"])
+    tab5 = None
 
 
 # ========================================
@@ -439,8 +494,7 @@ tab1, tab2, tab3, tab4 = st.tabs(["️ 첨삭받기", " 합격 예시", " 작성
 with tab1:
     st.subheader("️ 자소서 첨삭받기")
 
-    # 항공사 선택
-    selected_airline = st.selectbox("지원 항공사", AIRLINES, key="airline_select")
+    selected_airline = st.selectbox("지원 항공사", AIRLINES_WITH_RESUME)
 
     # 항공사 키워드 표시
     keywords = AIRLINE_KEYWORDS.get(selected_airline, {})
@@ -468,7 +522,7 @@ with tab1:
     st.markdown("---")
 
     # 문항 개수 선택
-    num_items = st.slider("문항 수 (1~5개)", min_value=1, max_value=5, value=1, key="num_items")
+    num_items = st.slider("문항 수 (1~5개)", min_value=1, max_value=5, value=1)
 
     # 각 문항별 질문 + 답변 입력
     questions = []
@@ -477,6 +531,7 @@ with tab1:
 
     for i in range(num_items):
         st.markdown(f"####  문항 {i+1}")
+
         q = st.text_input(
             f"질문 {i+1}",
             placeholder="예: 지원동기를 작성하세요 (500자 이내)",
@@ -486,7 +541,6 @@ with tab1:
         a = st.text_area(
             f"답변 {i+1}",
             height=200,
-            max_chars=800,
             placeholder="위 질문에 대한 답변을 작성하세요...",
             key=f"answer_{i}"
         )
@@ -586,11 +640,231 @@ with tab1:
 
             st.success("모든 문항 첨삭 완료! 결과가 자동 저장되었습니다.")
 
+            # 자동 저장
+            save_draft(
+                selected_airline,
+                "review",
+                {
+                    "questions": questions,
+                    "answers": answers,
+                }
+            )
+
+            # 다음 단계 버튼
+            render_next_step_button("review", {
+                "airline": selected_airline,
+                "questions": questions,
+                "answers": answers,
+            })
+
 
 # ========================================
-# 탭2: 합격 예시
+# 탭2: 고급 분석 (Phase C1)
 # ========================================
-with tab2:
+if RESUME_ENHANCER_AVAILABLE and tab5 is not None:
+    with tab2:
+        st.subheader(" 고급 자소서 분석")
+        st.info("문장별 분석, 키워드 밀도, 스토리텔링 점수, 합격 자소서 비교 등 심층 분석을 받아보세요.")
+
+        # 분석용 입력
+        adv_airline = st.selectbox("지원 항공사", AIRLINES_WITH_RESUME, key="adv_airline_select")
+
+        # 자소서 항목: 기본 옵션 + 직접 입력
+        col_item1, col_item2 = st.columns([2, 1])
+        with col_item1:
+            item_options = list(RESUME_ITEMS.keys()) + ["직접 입력"]
+            adv_item_select = st.selectbox("자소서 항목", item_options, key="adv_item_select")
+        with col_item2:
+            adv_question_count = st.number_input(
+                "문항 수 (글자수 제한용)",
+                min_value=1, max_value=10, value=1,
+                help="같은 항목이 여러 문항인 경우 (예: 지원동기 500자 x 2문항)",
+                key="adv_question_count"
+            )
+
+        # 직접 입력 선택시 텍스트 입력창 표시
+        if adv_item_select == "직접 입력":
+            adv_item_type = st.text_input(
+                "항목명 직접 입력",
+                placeholder="예: 입사 후 포부, 직무 관련 경험 등",
+                key="adv_item_custom"
+            )
+            if not adv_item_type:
+                adv_item_type = "기타"
+        else:
+            adv_item_type = adv_item_select
+
+        adv_content = st.text_area(
+            "자소서 내용",
+            height=250,
+            placeholder="분석할 자소서 내용을 입력하세요...",
+            key="adv_content"
+        )
+
+        # 문항 수 표시
+        if adv_question_count > 1:
+            st.caption(f"  {adv_item_type} 항목 {adv_question_count}개 문항 분석")
+
+        if st.button("고급 분석 시작", type="primary", use_container_width=True, disabled=len(adv_content) < 100):
+            if len(adv_content) >= 100:
+                with st.spinner("심층 분석 중..."):
+                    analysis = analyze_resume_enhanced(adv_content, adv_airline, adv_item_type)
+
+                # 등급 및 점수 표시
+                grade = analysis.get("grade", "N/A")
+                total_score = analysis.get("total_score", 0)
+                grade_colors = {"S": "#FFD700", "A": "#4CAF50", "B": "#2196F3", "C": "#FF9800", "D": "#f44336"}
+                grade_color = grade_colors.get(grade, "#6b7280")
+
+                st.markdown(f"""
+                <div style="text-align: center; padding: 25px; background: {grade_color}15; border-radius: 15px; margin: 20px 0;">
+                    <div style="font-size: 60px; font-weight: bold; color: {grade_color};">{grade}</div>
+                    <div style="font-size: 14px; color: #666;">종합 등급</div>
+                    <div style="font-size: 28px; color: #333; margin-top: 8px;">{total_score}점</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # 세부 점수
+                col1, col2, col3 = st.columns(3)
+                sentence_data = analysis.get("sentence_analysis", {})
+                story_data = analysis.get("storytelling_analysis", {})
+                comp_data = analysis.get("comparison_analysis", {})
+
+                with col1:
+                    st.metric("문장 평균 점수", f"{sentence_data.get('avg_score', 0)}점")
+                with col2:
+                    st.metric("스토리텔링 점수", f"{story_data.get('total_score', 0)}점")
+                with col3:
+                    st.metric("합격기준 대비", f"{comp_data.get('comparison_score', 0)}점")
+
+                st.divider()
+
+                # 문장별 분석
+                st.markdown("### 문장별 분석")
+                issues = sentence_data.get("issues", [])
+                if issues:
+                    for issue in issues:
+                        with st.expander(f"문장 {issue.get('index', 0)+1}: {issue.get('sentence', '')}", expanded=False):
+                            for prob in issue.get("issues", []):
+                                st.warning(f" {prob}")
+                            for sug in issue.get("suggestions", []):
+                                st.info(f" {sug}")
+                else:
+                    st.success("문장에서 특별한 문제가 발견되지 않았습니다!")
+
+                st.divider()
+
+                # 키워드 분석
+                st.markdown("### 키워드 밀도 분석")
+                kw_data = analysis.get("keyword_analysis", {})
+                included_kw = kw_data.get("included", [])
+                missing_kw = kw_data.get("missing", [])
+                avoid_kw = kw_data.get("should_avoid", [])
+
+                if included_kw:
+                    included_html = " ".join([f'<span class="keyword-tag keyword-found"> {k}</span>' for k in included_kw])
+                    st.markdown(f"**포함된 핵심 키워드:** {included_html}", unsafe_allow_html=True)
+
+                if missing_kw:
+                    missing_html = " ".join([f'<span class="keyword-tag">{k}</span>' for k in missing_kw])
+                    st.markdown(f"**추가 권장 키워드:** {missing_html}", unsafe_allow_html=True)
+
+                if avoid_kw:
+                    st.warning(f" 피해야 할 키워드가 포함됨: {', '.join(avoid_kw)}")
+
+                # 키워드 밀도 테이블
+                density_results = kw_data.get("density_results", [])
+                if density_results:
+                    with st.expander("키워드 밀도 상세", expanded=False):
+                        for d in density_results:
+                            if d.get("count", 0) > 0:
+                                status = " 과다" if d.get("is_overused") else ""
+                                st.markdown(f"- **{d.get('keyword')}**: {d.get('count')}회 ({d.get('density', 0)}%) {status}")
+
+                st.divider()
+
+                # 스토리텔링 분석
+                st.markdown("### 스토리텔링 구조 분석")
+                story_col1, story_col2 = st.columns(2)
+
+                with story_col1:
+                    st.metric("흐름 점수", f"{story_data.get('flow_score', 0)}점")
+                    present = story_data.get("present_elements", [])
+                    element_kr = {
+                        "hook": "도입 훅",
+                        "conflict": "갈등/문제",
+                        "action": "행동",
+                        "resolution": "해결/결과",
+                        "lesson": "깨달음",
+                        "connection": "직무연결"
+                    }
+                    if present:
+                        st.markdown("**포함된 요소:**")
+                        for p in present:
+                            st.markdown(f"- {element_kr.get(p, p)}")
+
+                with story_col2:
+                    st.metric("몰입도 점수", f"{story_data.get('engagement_score', 0)}점")
+                    missing = story_data.get("missing_elements", [])
+                    if missing:
+                        st.markdown("**부족한 요소:**")
+                        for m in missing[:3]:
+                            st.markdown(f"- {element_kr.get(m, m)}")
+
+                # 스토리텔링 피드백
+                story_feedback = story_data.get("feedback", [])
+                if story_feedback:
+                    st.markdown("**개선 제안:**")
+                    for fb in story_feedback:
+                        st.info(f" {fb}")
+
+                st.divider()
+
+                # 합격 자소서 비교
+                st.markdown("### 합격 자소서 비교")
+                length_data = comp_data.get("length", {})
+                kw_comp = comp_data.get("keywords", {})
+
+                comp_col1, comp_col2 = st.columns(2)
+                with comp_col1:
+                    current_len = length_data.get("current", 0)
+                    ideal_range = length_data.get("ideal_range", (400, 500))
+                    len_status = length_data.get("status", "")
+                    st.metric("현재 글자수", f"{current_len}자", delta=f"{len_status} (권장: {ideal_range[0]}-{ideal_range[1]})")
+
+                with comp_col2:
+                    kw_count = kw_comp.get("current_count", 0)
+                    kw_range = kw_comp.get("ideal_range", (3, 5))
+                    kw_status = kw_comp.get("status", "")
+                    st.metric("핵심 키워드", f"{kw_count}개", delta=f"{kw_status} (권장: {kw_range[0]}-{kw_range[1]})")
+
+                # 종합 피드백
+                overall_fb = comp_data.get("overall_feedback", [])
+                if overall_fb:
+                    for fb in overall_fb:
+                        st.info(f" {fb}")
+
+                st.divider()
+
+                # 개선 우선순위
+                st.markdown("### 개선 우선순위")
+                priorities = analysis.get("improvement_priorities", [])
+                for i, p in enumerate(priorities):
+                    st.markdown(f"**{i+1}.** {p}")
+
+        if len(adv_content) > 0 and len(adv_content) < 100:
+            st.caption(" 최소 100자 이상 입력해주세요.")
+
+
+# ========================================
+# 탭3: 합격 예시
+# ========================================
+# 조건부 탭 변수 설정
+tab_examples = tab3 if RESUME_ENHANCER_AVAILABLE else tab2
+tab_guide = tab4 if RESUME_ENHANCER_AVAILABLE else tab3
+tab_my_resume = tab5 if RESUME_ENHANCER_AVAILABLE else tab4
+
+with tab_examples:
     st.subheader(" 합격 자소서 예시")
     st.info("항목별 좋은 자소서 예시를 참고하세요. 그대로 베끼면 안 되지만, 구조와 방식을 배울 수 있습니다!")
 
@@ -618,9 +892,9 @@ with tab2:
 
 
 # ========================================
-# 탭3: 작성 가이드
+# 탭: 작성 가이드
 # ========================================
-with tab3:
+with tab_guide:
     st.subheader(" 항목별 작성 가이드")
 
     for item_name, info in RESUME_ITEMS.items():
@@ -671,7 +945,7 @@ with tab3:
 # ========================================
 # 탭4: 내 자소서 (버전 비교 포함)
 # ========================================
-with tab4:
+with tab_my_resume:
     st.subheader(" 저장된 자소서")
 
     resumes = load_my_resumes()

@@ -47,6 +47,7 @@ FITNESS_HISTORY_FILE = os.path.join(DATA_DIR, "fitness_history.json")
 FITNESS_DDAY_FILE = os.path.join(DATA_DIR, "fitness_dday.json")
 
 
+@st.cache_data(ttl=300)
 def load_json(filepath):
     try:
         os.makedirs(DATA_DIR, exist_ok=True)
@@ -63,10 +64,12 @@ def save_json(filepath, data):
         os.makedirs(DATA_DIR, exist_ok=True)
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+        load_json.clear()  # 캐시 무효화
     except Exception:
         pass
 
 
+@st.cache_data(ttl=60)
 def load_dday():
     try:
         os.makedirs(DATA_DIR, exist_ok=True)
@@ -83,6 +86,7 @@ def save_dday(data):
         os.makedirs(DATA_DIR, exist_ok=True)
         with open(FITNESS_DDAY_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+        load_dday.clear()  # 캐시 무효화
     except Exception:
         pass
 

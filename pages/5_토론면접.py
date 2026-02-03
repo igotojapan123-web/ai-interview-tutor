@@ -77,6 +77,17 @@ try:
 except ImportError:
     DEBATE_REPORT_AVAILABLE = False
 
+# 토론 고도화 모듈 (Phase B4)
+try:
+    from debate_enhancer import (
+        EnhancedDebateAnalyzer,
+        analyze_debate_answer,
+        get_argument_feedback,
+        get_debate_analysis_complete,
+    )
+    DEBATE_ENHANCER_AVAILABLE = True
+except ImportError:
+    DEBATE_ENHANCER_AVAILABLE = False
 
 from sidebar_common import init_page, end_page
 
@@ -347,6 +358,9 @@ defaults = {
     "debate_response_times": [],
     "debate_input_mode": "text",  # "text" or "voice"
     "debate_processed_audio_hash": None,
+    # Phase B4 고도화: 논리력 분석
+    "debate_enhanced_analysis": None,
+    "debate_realtime_feedback": [],
 }
 
 for key, value in defaults.items():
@@ -1053,19 +1067,204 @@ else:
                         detailed_scores=parsed.get("detailed"),
                         scenario=st.session_state.debate_topic.get("topic", "")
                     )
+
+            # Phase B4: 고도화된 논리력 분석
+            if DEBATE_ENHANCER_AVAILABLE and st.session_state.debate_enhanced_analysis is None:
+                user_statements = [
+                    h['content'] for h in st.session_state.debate_history if h.get('is_user')
+                ]
+                if user_statements:
+                    enhanced = get_debate_analysis_complete(
+                        user_statements=user_statements,
+                        all_history=st.session_state.debate_history,
+                        topic=st.session_state.debate_topic.get('topic', ''),
+                        user_position=st.session_state.debate_position
+                    )
+                    st.session_state.debate_enhanced_analysis = enhanced
+
         st.rerun()
     else:
         # 결과 탭
-        result_tabs = st.tabs([" 종합 평가", " 음성 분석", " 토론 내용"])
+        tab_labels = [" 종합 평가", " 음성 분석", " 토론 내용"]
+        if DEBATE_ENHANCER_AVAILABLE:
+            tab_labels.insert(1, " 논리력 분석")
+        result_tabs = st.tabs(tab_labels)
 
-        with result_tabs[0]:
+        # 탭 인덱스 동적 관리
+        tab_idx = {"eval": 0}
+        if DEBATE_ENHANCER_AVAILABLE:
+            tab_idx["logic"] = 1
+            tab_idx["voice"] = 2
+            tab_idx["content"] = 3
+        else:
+            tab_idx["voice"] = 1
+            tab_idx["content"] = 2
+
+        with result_tabs[tab_idx["eval"]]:
             eval_result = st.session_state.debate_evaluation
             if "error" in eval_result:
                 st.error(f"평가 오류: {eval_result['error']}")
             else:
                 st.markdown(eval_result.get("result", ""))
 
-        with result_tabs[1]:
+        # Phase B4: 논리력 분석 탭
+        if DEBATE_ENHANCER_AVAILABLE and "logic" in tab_idx:
+            with result_tabs[tab_idx["logic"]]:
+                enhanced = st.session_state.debate_enhanced_analysis
+                if enhanced:
+                    # 등급 및 종합 점수 표시
+                    grade = enhanced.get('grade', 'N/A')
+                    total_score = enhanced.get('total_score', 0)
+                    grade_colors = {"S": "#FFD700", "A": "#4CAF50", "B": "#2196F3", "C": "#FF9800", "D": "#f44336"}
+                    grade_color = grade_colors.get(grade, "#6b7280")
+
+                    st.markdown(f"""
+                    <div style="text-align: center; padding: 20px; background: {grade_color}15; border-radius: 15px; margin-bottom: 20px;">
+                        <div style="font-size: 60px; font-weight: bold; color: {grade_color};">{grade}</div>
+                        <div style="color: #666; font-size: 14px;">논리력 종합 등급</div>
+                        <div style="font-size: 24px; color: #333; margin-top: 5px;">{total_score}점</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    # 세부 점수
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        logic_score = enhanced.get('logic_score', 0)
+                        st.metric("논리력", f"{logic_score}점", help="논증 구조, 논리적 오류, 반박 효과성")
+                    with col2:
+                        persuasion_score = enhanced.get('persuasion_score', 0)
+                        st.metric("설득력", f"{persuasion_score}점", help="PREP 구조, 전략 일관성")
+                    with col3:
+                        contrib_score = enhanced.get('contribution_score', 0)
+                        st.metric("기여도", f"{contrib_score}점", help="참여율, 주제 연관성, 새 논점")
+
+                    st.divider()
+
+                    # 논증 구조 분석
+                    st.markdown("### 논증 구조 분석")
+                    arg_analyses = enhanced.get('argument_analyses', [])
+                    if arg_analyses:
+                        for i, arg in enumerate(arg_analyses):
+                            structure_type = arg.get('structure_type', '불명')
+                            strength = arg.get('strength', 0)
+                            has_claim = "O" if arg.get('has_claim') else "X"
+                            has_reason = "O" if arg.get('has_reason') else "X"
+                            has_example = "O" if arg.get('has_example') else "X"
+
+                            color = "#4CAF50" if strength >= 70 else "#FF9800" if strength >= 50 else "#f44336"
+
+                            with st.expander(f"발언 {i+1}: {arg.get('statement', '')}", expanded=(i==0)):
+                                st.markdown(f"""
+                                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                                    <div style="background: {color}15; padding: 10px 15px; border-radius: 8px; text-align: center;">
+                                        <div style="font-size: 12px; color: #666;">구조 유형</div>
+                                        <div style="font-weight: bold; color: {color};">{structure_type}</div>
+                                    </div>
+                                    <div style="background: #f0f0f0; padding: 10px 15px; border-radius: 8px; text-align: center;">
+                                        <div style="font-size: 12px; color: #666;">논증 강도</div>
+                                        <div style="font-weight: bold;">{strength}점</div>
+                                    </div>
+                                    <div style="background: #f0f0f0; padding: 10px 15px; border-radius: 8px; text-align: center;">
+                                        <div style="font-size: 12px; color: #666;">주장</div>
+                                        <div style="font-weight: bold;">{has_claim}</div>
+                                    </div>
+                                    <div style="background: #f0f0f0; padding: 10px 15px; border-radius: 8px; text-align: center;">
+                                        <div style="font-size: 12px; color: #666;">근거</div>
+                                        <div style="font-weight: bold;">{has_reason}</div>
+                                    </div>
+                                    <div style="background: #f0f0f0; padding: 10px 15px; border-radius: 8px; text-align: center;">
+                                        <div style="font-size: 12px; color: #666;">예시</div>
+                                        <div style="font-weight: bold;">{has_example}</div>
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+
+                        avg_strength = enhanced.get('avg_argument_strength', 0)
+                        st.info(f"평균 논증 강도: **{avg_strength}점** / 100")
+
+                    # 논리적 오류 감지
+                    st.markdown("### 논리적 오류 감지")
+                    fallacies = enhanced.get('fallacies', [])
+                    if fallacies:
+                        for f in fallacies:
+                            severity_color = {"high": "#f44336", "medium": "#FF9800", "low": "#4CAF50"}.get(f.get('severity'), "#6b7280")
+                            severity_kr = {"high": "심각", "medium": "주의", "low": "경미"}.get(f.get('severity'), "")
+                            st.markdown(f"""
+                            <div style="background: {severity_color}10; border-left: 4px solid {severity_color}; padding: 12px 15px; border-radius: 8px; margin: 10px 0;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-weight: bold; color: {severity_color};">{f.get('type', '').replace('_', ' ').title()}</span>
+                                    <span style="font-size: 11px; background: {severity_color}20; color: {severity_color}; padding: 2px 8px; border-radius: 10px;">{severity_kr}</span>
+                                </div>
+                                <div style="font-size: 13px; color: #666; margin-top: 5px;">{f.get('description', '')}</div>
+                                <div style="font-size: 13px; color: #333; margin-top: 5px;"><b>개선 제안:</b> {f.get('suggestion', '')}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    else:
+                        st.success("논리적 오류가 감지되지 않았습니다!")
+
+                    # 반박 효과성
+                    st.markdown("### 반박 효과성")
+                    rebuttals = enhanced.get('rebuttal_analyses', [])
+                    if rebuttals:
+                        for r in rebuttals:
+                            eff = r.get('effectiveness', 0)
+                            eff_color = "#4CAF50" if eff >= 70 else "#FF9800" if eff >= 50 else "#f44336"
+                            addr = "O" if r.get('addresses_opponent') else "X"
+                            counter = "O" if r.get('provides_counter') else "X"
+                            respect = "O" if r.get('maintains_respect') else "X"
+
+                            st.markdown(f"""
+                            <div style="background: #f8f9fa; padding: 12px 15px; border-radius: 8px; margin: 8px 0;">
+                                <div style="font-weight: bold; margin-bottom: 8px;">발언 {r.get('statement_index', 0)}</div>
+                                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                    <span style="font-size: 12px;">효과성: <b style="color: {eff_color};">{eff}점</b></span>
+                                    <span style="font-size: 12px;">상대 언급: <b>{addr}</b></span>
+                                    <span style="font-size: 12px;">반론 제시: <b>{counter}</b></span>
+                                    <span style="font-size: 12px;">존중 유지: <b>{respect}</b></span>
+                                </div>
+                                <div style="font-size: 12px; color: #666; margin-top: 5px;">{r.get('feedback', '')}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                        avg_rebuttal = enhanced.get('avg_rebuttal_score', 0)
+                        st.info(f"평균 반박 효과성: **{avg_rebuttal}점** / 100")
+                    else:
+                        st.info("반박 분석 데이터가 없습니다.")
+
+                    # 토론 전략
+                    st.markdown("### 토론 전략 분석")
+                    strategy = enhanced.get('strategy', {})
+                    dominant = strategy.get('dominant', 'balanced')
+                    strategy_kr = {
+                        'logical': '논리적 접근',
+                        'emotional': '감성적 접근',
+                        'data_driven': '데이터 중심',
+                        'example_based': '사례 중심',
+                        'balanced': '균형 잡힌 접근'
+                    }.get(dominant, dominant)
+
+                    st.markdown(f"""
+                    <div style="background: #e3f2fd; padding: 15px; border-radius: 10px;">
+                        <div style="font-weight: bold; color: #1976d2; font-size: 16px;">주요 전략: {strategy_kr}</div>
+                        <div style="color: #666; margin-top: 8px;">{strategy.get('recommendation', '')}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    # 개선 우선순위
+                    st.markdown("### 개선 우선순위")
+                    priorities = enhanced.get('improvement_priorities', [])
+                    for i, p in enumerate(priorities):
+                        st.markdown(f"**{i+1}.** {p}")
+
+                    # 종합 피드백
+                    st.divider()
+                    st.markdown("### 종합 피드백")
+                    st.info(enhanced.get('overall_feedback', ''))
+
+                else:
+                    st.info("논리력 분석 데이터를 불러오는 중...")
+
+        with result_tabs[tab_idx["voice"]]:
             if st.session_state.debate_voice_analyses:
                 st.subheader(" 음성 전달력 분석")
 
@@ -1132,7 +1331,7 @@ else:
             else:
                 st.info("음성 입력을 사용하지 않아 음성 분석 데이터가 없습니다.")
 
-        with result_tabs[2]:
+        with result_tabs[tab_idx["content"]]:
             for h in st.session_state.debate_history:
                 if h.get("is_user"):
                     st.markdown(get_user_debate_html(h['content'], st.session_state.debate_position), unsafe_allow_html=True)
@@ -1186,6 +1385,8 @@ else:
             st.session_state.debate_voice_analyses = []
             st.session_state.debate_combined_voice_analysis = None
             st.session_state.debate_response_times = []
+            st.session_state.debate_enhanced_analysis = None
+            st.session_state.debate_realtime_feedback = []
             st.rerun()
 
     with col2:
@@ -1199,4 +1400,6 @@ else:
             st.session_state.debate_voice_analyses = []
             st.session_state.debate_combined_voice_analysis = None
             st.session_state.debate_response_times = []
+            st.session_state.debate_enhanced_analysis = None
+            st.session_state.debate_realtime_feedback = []
             st.rerun()

@@ -29,6 +29,7 @@ DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 CALENDAR_FILE = os.path.join(DATA_DIR, "my_calendar.json")
 
 
+@st.cache_data(ttl=60)
 def load_calendar():
     try:
         os.makedirs(DATA_DIR, exist_ok=True)
@@ -45,6 +46,7 @@ def save_calendar(data):
         os.makedirs(DATA_DIR, exist_ok=True)
         with open(CALENDAR_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+        load_calendar.clear()  # 캐시 무효화
     except Exception:
         pass
 

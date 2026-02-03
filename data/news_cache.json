@@ -1,0 +1,108 @@
+{
+  "news": [
+    {
+      "id": "sample001",
+      "title": "대한항공, 2026년 신입 객실승무원 채용 시작",
+      "summary": "대한항공이 통합 항공사 출범을 앞두고 2026년 공개 채용을 시작했습니다. 신입 객실승무원 접수 마감은 10월 13일(월) 오후 6시까지입니다.",
+      "category": "recruitment",
+      "source": "news.koreanair.com",
+      "url": "https://news.koreanair.com/",
+      "published_at": "2025-09-22",
+      "airline_codes": [
+        "KE"
+      ],
+      "is_recruitment": true
+    },
+    {
+      "id": "sample002",
+      "title": "아시아나항공, 2025년 신입 인턴 객실승무원 채용",
+      "summary": "아시아나항공이 2025년 신입 인턴 객실승무원 채용을 진행합니다. 2026년 2월 이내 졸업예정자 지원 가능합니다.",
+      "category": "recruitment",
+      "source": "linkareer.com",
+      "url": "https://linkareer.com/activity/237868",
+      "published_at": "2025-08-15",
+      "airline_codes": [
+        "OZ"
+      ],
+      "is_recruitment": true
+    },
+    {
+      "id": "sample003",
+      "title": "대한항공-아시아나 통합, 2026년 메가 캐리어 시대 개막",
+      "summary": "조원태 한진그룹 회장이 2026년 신년사에서 아시아나항공과의 통합 시너지 극대화를 강조했습니다. 통합 후 매출 23조원, 120개 도시 취항 예상.",
+      "category": "airline",
+      "source": "economidaily.com",
+      "url": "https://www.economidaily.com/view/20251229144805983",
+      "published_at": "2025-12-29",
+      "airline_codes": [
+        "KE",
+        "OZ"
+      ],
+      "is_recruitment": false
+    },
+    {
+      "id": "sample004",
+      "title": "에어프레미아, 신입 객실승무원 40명 채용",
+      "summary": "에어프레미아가 40여 명 규모의 신입 객실승무원을 선발합니다. 전형은 서류전형, 상황판단검사, 컬처핏 면접, 체력측정 순으로 진행됩니다.",
+      "category": "recruitment",
+      "source": "ebn.co.kr",
+      "url": "https://www.ebn.co.kr/news/articleView.html?idxno=1695713",
+      "published_at": "2025-06-01",
+      "airline_codes": [
+        "YP"
+      ],
+      "is_recruitment": true
+    },
+    {
+      "id": "sample005",
+      "title": "진에어, 통합 LCC 출범 대비 대규모 채용",
+      "summary": "진에어가 서울과 부산에서 각각 두 자릿수 규모의 신입 객실승무원을 모집합니다. 2027년 초 예정된 통합 LCC 출범을 대비한 전략적 인력 확보입니다.",
+      "category": "recruitment",
+      "source": "ebn.co.kr",
+      "url": "https://www.ebn.co.kr/news/articleView.html?idxno=1695713",
+      "published_at": "2025-07-15",
+      "airline_codes": [
+        "LJ"
+      ],
+      "is_recruitment": true
+    },
+    {
+      "id": "sample006",
+      "title": "IATA: 2026년 전 세계 항공사 순이익 410억 달러 전망",
+      "summary": "IATA가 2026년 전 세계 항공사 순이익이 410억 달러에 달할 것으로 전망했습니다. 총 매출은 1조 530억 달러로 4.5% 성장 예상.",
+      "category": "economy",
+      "source": "iata.org",
+      "url": "https://www.iata.org/en/pressroom/2025-releases/2025-12-09-01",
+      "published_at": "2025-12-09",
+      "airline_codes": [],
+      "is_recruitment": false
+    },
+    {
+      "id": "sample007",
+      "title": "싱가포르항공, 한국 승무원 채용 오픈",
+      "summary": "싱가포르항공이 한국 승무원 채용을 시작했습니다. 작년에는 32살까지 합격자가 나왔을 정도로 나이에 관대해졌습니다.",
+      "category": "recruitment",
+      "source": "cafe.daum.net",
+      "url": "https://m.cafe.daum.net/cabincrew/JrQn/13",
+      "published_at": "2025-05-20",
+      "airline_codes": [
+        "SQ"
+      ],
+      "is_recruitment": true
+    },
+    {
+      "id": "sample008",
+      "title": "이스타항공, 2025년 3차 승무원 채용 확정",
+      "summary": "이스타항공이 올해 벌써 2번의 승무원 채용을 진행했으며, 하반기에만 항공기 5대 도입 예정으로 3차 채용도 확정되었습니다.",
+      "category": "recruitment",
+      "source": "wingsky.co.kr",
+      "url": "http://wingsky.co.kr/NOTICE/88769",
+      "published_at": "2025-08-01",
+      "airline_codes": [
+        "ZE"
+      ],
+      "is_recruitment": true
+    }
+  ],
+  "last_update": "2026-01-30T17:16:19.571386"
+}

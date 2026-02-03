@@ -55,6 +55,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 ASSESSMENT_FILE = os.path.join(DATA_DIR, "interview_assessment.json")
 
+@st.cache_data(ttl=60)
 def load_assessment():
     if os.path.exists(ASSESSMENT_FILE):
         try:
@@ -69,6 +70,7 @@ def save_assessment(data):
     os.makedirs(DATA_DIR, exist_ok=True)
     with open(ASSESSMENT_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+    load_assessment.clear()  # 캐시 무효화
 
 # 오늘의 팁 데이터 (매일 다른 팁 표시)
 DAILY_TIPS = [

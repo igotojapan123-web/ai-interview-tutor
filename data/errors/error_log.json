@@ -1,0 +1,59 @@
+{
+  "errors": [
+    {
+      "id": "19bb6eb1ac86",
+      "timestamp": "2026-01-30T14:50:13.578187",
+      "level": "error",
+      "type": "ValueError",
+      "message": "테스트 에러: 사용자 입력값이 잘못되었습니다",
+      "file": "<string>",
+      "line": 14,
+      "function": "test_function",
+      "code": "",
+      "traceback": "Traceback (most recent call last):\n  File \"<string>\", line 15, in <module>\n    test_function()\n    ~~~~~~~~~~~~~^^\n  File \"<string>\", line 14, in test_function\n    raise ValueError('테스트 에러: 사용자 입력값이 잘못되었습니다')\nValueError: 테스트 에러: 사용자 입력값이 잘못되었습니다\n",
+      "page": "테스트페이지",
+      "user_id": "",
+      "context": {
+        "user": "test_user"
+      },
+      "resolved": false
+    },
+    {
+      "id": "548665b9efe9",
+      "timestamp": "2026-01-30T14:59:15.088379",
+      "level": "warning",
+      "type": "ConnectionError",
+      "message": "Test error for notification",
+      "file": "",
+      "line": "",
+      "function": "",
+      "code": "",
+      "traceback": "NoneType: None\n",
+      "page": "test_notification",
+      "user_id": "",
+      "context": {
+        "retries": 1,
+        "auto_recovery": true
+      },
+      "resolved": false
+    },
+    {
+      "id": "b35b424ed4f2",
+      "timestamp": "2026-01-30T15:15:41.280949",
+      "level": "error",
+      "type": "ValueError",
+      "message": "테스트 에러: 이메일 알림 테스트입니다",
+      "file": "<string>",
+      "line": 15,
+      "function": "<module>",
+      "code": "",
+      "traceback": "Traceback (most recent call last):\n  File \"<string>\", line 15, in <module>\n    raise ValueError('테스트 에러: 이메일 알림 테스트입니다')\nValueError: 테스트 에러: 이메일 알림 테스트입니다\n",
+      "page": "테스트페이지",
+      "user_id": "",
+      "context": {
+        "test": true
+      },
+      "resolved": false
+    }
+  ]
+}

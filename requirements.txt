@@ -94,3 +94,4 @@ isort>=5.12.0
 # Security
 # ======================
 bandit>=1.7.0
+cryptography>=41.0.0

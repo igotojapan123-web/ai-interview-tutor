@@ -88,6 +88,7 @@ PROOF_DIR = os.path.join(DATA_DIR, "proofs")
 LIKES_FILE = os.path.join(DATA_DIR, "story_likes.json")
 COMMENTS_FILE = os.path.join(DATA_DIR, "story_comments.json")
 
+@st.cache_data(ttl=60)
 def load_stories():
     if os.path.exists(SUCCESS_STORIES_FILE):
         try:
@@ -102,6 +103,7 @@ def save_stories(stories):
     os.makedirs(DATA_DIR, exist_ok=True)
     with open(SUCCESS_STORIES_FILE, "w", encoding="utf-8") as f:
         json.dump(stories, f, ensure_ascii=False, indent=2)
+    load_stories.clear()  # 캐시 무효화
 
 def save_proof_image(image_data, story_id):
     os.makedirs(PROOF_DIR, exist_ok=True)
@@ -118,6 +120,7 @@ def get_proof_image(story_id):
     return None
 
 # 좋아요 데이터
+@st.cache_data(ttl=30)
 def load_likes():
     if os.path.exists(LIKES_FILE):
         try:
@@ -132,6 +135,7 @@ def save_likes(likes):
     os.makedirs(DATA_DIR, exist_ok=True)
     with open(LIKES_FILE, "w", encoding="utf-8") as f:
         json.dump(likes, f, ensure_ascii=False, indent=2)
+    load_likes.clear()  # 캐시 무효화
 
 def get_like_count(story_id, likes_data):
     return likes_data.get(story_id, {}).get("count", 0)
@@ -157,6 +161,7 @@ def has_liked(story_id, user_id, likes_data):
     return user_id in likes_data.get(story_id, {}).get("users", [])
 
 # 댓글 데이터
+@st.cache_data(ttl=30)
 def load_comments():
     if os.path.exists(COMMENTS_FILE):
         try:
@@ -171,6 +176,7 @@ def save_comments(comments):
     os.makedirs(DATA_DIR, exist_ok=True)
     with open(COMMENTS_FILE, "w", encoding="utf-8") as f:
         json.dump(comments, f, ensure_ascii=False, indent=2)
+    load_comments.clear()  # 캐시 무효화
 
 def add_comment(story_id, nickname, content):
     comments = load_comments()

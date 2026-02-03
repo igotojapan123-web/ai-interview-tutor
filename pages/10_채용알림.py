@@ -354,6 +354,7 @@ DATA_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HIRING_DATA_FILE = os.path.join(DATA_DIR, "hiring_data.json")
 
 
+@st.cache_data(ttl=300)
 def load_hiring_data():
     """hiring_data.json에서 채용 데이터 로드"""
     if os.path.exists(HIRING_DATA_FILE):
@@ -555,6 +556,7 @@ st.markdown("---")
 # ----------------------------
 SUBSCRIBERS_FILE = os.path.join(DATA_DIR, "data", "subscribers.json")
 
+@st.cache_data(ttl=60)
 def load_subscribers():
     """구독자 데이터 로드"""
     if os.path.exists(SUBSCRIBERS_FILE):
@@ -570,6 +572,7 @@ def save_subscribers(data):
     os.makedirs(os.path.dirname(SUBSCRIBERS_FILE), exist_ok=True)
     with open(SUBSCRIBERS_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+    load_subscribers.clear()  # 캐시 무효화
 
 def add_subscriber(name, email, phone="", airlines=None):
     """새 구독자 추가"""
@@ -615,6 +618,7 @@ def get_subscriber_count():
 # ----------------------------
 APPLICATION_FILE = os.path.join(DATA_DIR, "data", "my_applications.json")
 
+@st.cache_data(ttl=60)
 def load_applications():
     if os.path.exists(APPLICATION_FILE):
         try:
@@ -628,6 +632,7 @@ def save_applications(data):
     os.makedirs(os.path.dirname(APPLICATION_FILE), exist_ok=True)
     with open(APPLICATION_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+    load_applications.clear()  # 캐시 무효화
 
 # 채용 시즌 패턴 데이터 (과거 실적 기반)
 HIRING_PATTERNS = {

@@ -49,5 +49,56 @@
     "backup_path": "C:\\Users\\ADMIN\\ai_tutor\\backups\\backup_20260127_224230_data_only.tar.gz",
     "error_message": "",
     "compression": true
+  },
+  {
+    "id": "backup_20260130_165356",
+    "backup_type": "data_only",
+    "status": "completed",
+    "created_at": "2026-01-30T16:53:56.277305",
+    "completed_at": "2026-01-30T16:53:56.286679",
+    "size_bytes": 250,
+    "size_formatted": "250.00 B",
+    "file_count": 1,
+    "checksum": "4ff3a59ee2cb64ad8529743bceb8492d",
+    "source_paths": [
+      "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\pytest-of-ADMIN\\pytest-8\\test_backup_creates_valid_arch0\\data"
+    ],
+    "backup_path": "C:\\Users\\ADMIN\\ai_tutor\\backups\\backup_20260130_165356_data_only.tar.gz",
+    "error_message": "",
+    "compression": true
+  },
+  {
+    "id": "backup_20260130_165432",
+    "backup_type": "data_only",
+    "status": "completed",
+    "created_at": "2026-01-30T16:54:32.055213",
+    "completed_at": "2026-01-30T16:54:32.067702",
+    "size_bytes": 247,
+    "size_formatted": "247.00 B",
+    "file_count": 1,
+    "checksum": "a79c425817450b60ac0f2ff5cd8af830",
+    "source_paths": [
+      "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\pytest-of-ADMIN\\pytest-9\\test_backup_creates_valid_arch0\\data"
+    ],
+    "backup_path": "C:\\Users\\ADMIN\\ai_tutor\\backups\\backup_20260130_165432_data_only.tar.gz",
+    "error_message": "",
+    "compression": true
+  },
+  {
+    "id": "backup_20260130_165611",
+    "backup_type": "data_only",
+    "status": "completed",
+    "created_at": "2026-01-30T16:56:11.236318",
+    "completed_at": "2026-01-30T16:56:11.253307",
+    "size_bytes": 242,
+    "size_formatted": "242.00 B",
+    "file_count": 1,
+    "checksum": "898467d5447d40f98c4035d132261aa4",
+    "source_paths": [
+      "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\pytest-of-ADMIN\\pytest-10\\test_backup_creates_valid_arch0\\data"
+    ],
+    "backup_path": "C:\\Users\\ADMIN\\ai_tutor\\backups\\backup_20260130_165611_data_only.tar.gz",
+    "error_message": "",
+    "compression": true
   }
 ]

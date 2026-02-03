@@ -75,6 +75,7 @@ PASS_STAGES = {
 # ----------------------------
 # 채용 데이터 함수
 # ----------------------------
+@st.cache_data(ttl=300)
 def load_hiring_data():
     if os.path.exists(HIRING_DATA_FILE):
         try:
@@ -89,6 +90,7 @@ def save_hiring_data(data):
     data["last_updated"] = datetime.now().strftime("%Y-%m-%d")
     with open(HIRING_DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+    load_hiring_data.clear()  # 캐시 무효화
 
 
 def get_status(start_date_str, end_date_str):
@@ -127,6 +129,7 @@ def get_dday(end_date_str):
 # ----------------------------
 # 구독자 데이터 함수
 # ----------------------------
+@st.cache_data(ttl=60)
 def load_subscribers():
     """구독자 데이터 로드"""
     if os.path.exists(SUBSCRIBERS_FILE):
@@ -143,6 +146,7 @@ def save_subscribers(data):
     os.makedirs(os.path.dirname(SUBSCRIBERS_FILE), exist_ok=True)
     with open(SUBSCRIBERS_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+    load_subscribers.clear()  # 캐시 무효화
 
 
 def get_active_subscribers(airline=None):
@@ -160,6 +164,7 @@ def get_active_subscribers(airline=None):
 # ----------------------------
 # 합격자 데이터 함수
 # ----------------------------
+@st.cache_data(ttl=60)
 def load_stories():
     if os.path.exists(SUCCESS_STORIES_FILE):
         try:
@@ -174,6 +179,7 @@ def save_stories(stories):
     os.makedirs(os.path.dirname(SUCCESS_STORIES_FILE), exist_ok=True)
     with open(SUCCESS_STORIES_FILE, "w", encoding="utf-8") as f:
         json.dump(stories, f, ensure_ascii=False, indent=2)
+    load_stories.clear()  # 캐시 무효화
 
 
 def get_proof_image(story_id):

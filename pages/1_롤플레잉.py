@@ -69,6 +69,26 @@ try:
 except ImportError:
     REPORT_AVAILABLE = False
 
+# Phase B2: 롤플레잉 강화 모듈
+try:
+    from roleplay_enhancer import (
+        DifficultyLevel,
+        DIFFICULTY_PRESETS,
+        get_difficulty_settings,
+        get_difficulty_info,
+        AdaptiveDifficultyManager,
+        EnhancedPassengerBehavior,
+        calculate_final_score,
+        get_performance_feedback,
+        get_all_chained_scenarios,
+        get_chained_scenario,
+        MULTI_PASSENGER_SCENARIOS,
+        generate_dynamic_scenario,
+    )
+    ROLEPLAY_ENHANCER_AVAILABLE = True
+except ImportError:
+    ROLEPLAY_ENHANCER_AVAILABLE = False
+
 
 # Use new layout system
 from sidebar_common import init_page, end_page
@@ -149,6 +169,7 @@ def increment_usage():
 # =====================
 PROGRESS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "roleplay_progress.json")
 
+@st.cache_data(ttl=60)
 def load_progress():
     """진행률 로드"""
     if os.path.exists(PROGRESS_FILE):
@@ -165,6 +186,7 @@ def save_progress(progress):
     try:
         with open(PROGRESS_FILE, "w", encoding="utf-8") as f:
             json.dump(progress, f, ensure_ascii=False, indent=2)
+        load_progress.clear()  # 캐시 무효화
     except Exception as e:
         logger.warning(f"진행률 저장 실패: {e}")
 
@@ -491,6 +513,13 @@ defaults = {
     "rp_audio_bytes_list": [],  # 각 응답별 음성 데이터 저장
     "rp_voice_analysis": None,  # 음성 분석 결과
     "rp_processed_audio_hash": None,  # 처리된 오디오 해시 (중복 방지)
+    # Phase B2: 롤플레잉 강화 기능
+    "rp_difficulty_level": 2,  # 난이도 (1-4)
+    "rp_adaptive_mode": True,  # 적응형 난이도 사용
+    "rp_performance_history": [],  # 성과 기록
+    "rp_passenger_personality": "diplomatic",  # 승객 성격
+    "rp_escalation_prevented": False,  # 에스컬레이션 방지 여부
+    "rp_response_qualities": [],  # 응답 품질 기록
 }
 
 for key, value in defaults.items():
@@ -947,6 +976,46 @@ elif not st.session_state.rp_ready:
             help="응답에 도움이 되는 힌트를 보여줍니다"
         )
 
+    # Phase B2: 난이도 조절 설정
+    if ROLEPLAY_ENHANCER_AVAILABLE:
+        st.divider()
+        st.markdown("##### 난이도 설정")
+
+        col_diff1, col_diff2 = st.columns(2)
+
+        with col_diff1:
+            difficulty_options = {
+                1: "입문 - 인내심 있는 승객",
+                2: "중급 - 기대치 높은 승객",
+                3: "고급 - 감정적인 승객",
+                4: "전문가 - 다중 문제 상황",
+            }
+
+            selected_diff = st.selectbox(
+                "난이도 선택",
+                options=list(difficulty_options.keys()),
+                format_func=lambda x: difficulty_options[x],
+                index=st.session_state.get("rp_difficulty_level", 2) - 1,
+                help="난이도에 따라 타이머 시간과 승객 반응이 달라집니다"
+            )
+            st.session_state.rp_difficulty_level = selected_diff
+
+        with col_diff2:
+            diff_info = get_difficulty_info(selected_diff)
+            st.info(f"""
+            **{diff_info['name']}** 모드
+            - 응답 시간: {diff_info['timer']}초
+            - 힌트: {'사용 가능' if diff_info['hints_available'] else '사용 불가'}
+            - 점수 보너스: x{diff_info['bonus']}
+            """)
+
+        # 적응형 난이도 옵션
+        st.session_state.rp_adaptive_mode = st.checkbox(
+            "적응형 난이도 (실력에 맞게 자동 조절)",
+            value=st.session_state.get("rp_adaptive_mode", True),
+            help="연습 성과에 따라 난이도가 자동 조절됩니다"
+        )
+
     st.divider()
 
     # 남은 사용량 표시
@@ -978,6 +1047,22 @@ elif not st.session_state.rp_ready:
             st.session_state.rp_audio_bytes_list = []  # 음성 데이터 초기화
             st.session_state.rp_voice_analysis = None  # 음성 분석 결과 초기화
             st.session_state.rp_processed_audio_hash = None  # 오디오 중복 방지 초기화
+            # Phase B2: 강화 기능 초기화
+            st.session_state.rp_escalation_prevented = False
+            st.session_state.rp_response_qualities = []
+            if ROLEPLAY_ENHANCER_AVAILABLE:
+                # 승객 성격 랜덤 할당 (난이도 기반)
+                difficulty = st.session_state.get("rp_difficulty_level", 2)
+                personalities = {
+                    1: ["diplomatic", "diplomatic", "emotional"],
+                    2: ["diplomatic", "emotional", "logical"],
+                    3: ["demanding", "emotional", "vip"],
+                    4: ["demanding", "vip", "demanding"],
+                }
+                import random
+                st.session_state.rp_passenger_personality = random.choice(
+                    personalities.get(difficulty, ["diplomatic"])
+                )
 
             with st.spinner("승객이 다가옵니다..."):
                 first_msg = generate_passenger_response(

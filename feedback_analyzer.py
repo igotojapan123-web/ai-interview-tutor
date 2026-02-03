@@ -324,7 +324,14 @@ def _build_analysis_prompt_set_a(
   "next_question_preview": "다음 질문에서 검증될 가능성이 큰 포인트 (예: 이 기준이 압박 상황에서도 유지되는지)",
   "airline_sensitive_point": "이 항공사 기준에서 특히 민감한 지점 (Q4/Q5 전용, 예: 팀워크보다 규정 판단이 더 중요하게 해석될 수 있음)",
   "answer_density": "high/medium/low - 설명 대비 판단 정보의 비율",
-  "completion_stage": "초안 단계/구조 안정 단계/실전 가능 단계/압박 질문 대비 필요 중 하나"
+  "completion_stage": "초안 단계/구조 안정 단계/실전 가능 단계/압박 질문 대비 필요 중 하나",
+  "deployment_judgment": {{
+    "can_deploy": true/false,
+    "reason": "투입 가능/불가 근거 (예: 안전 우선 사고가 확인되나, 팀 갈등 상황 대처력은 미확인)",
+    "risk_factors": ["위험 요소1", "위험 요소2"],
+    "missing_evidence": ["확인 필요한 근거1", "확인 필요한 근거2"]
+  }},
+  "data_based_facts": ["답변에서 확인된 구체적 사실1", "사실2", "사실3"]
 }}
 ```
 
@@ -417,13 +424,21 @@ def _build_analysis_prompt_set_b(
   "risky_modification": "잘못 고치면 위험해지는 수정 방향",
   "next_question_preview": "다음 질문(꼬리질문)에서 검증될 가능성이 큰 포인트",
   "answer_density": "high/medium/low - 설명 대비 판단 정보의 비율",
-  "completion_stage": "초안 단계/구조 안정 단계/실전 가능 단계/압박 질문 대비 필요 중 하나"
+  "completion_stage": "초안 단계/구조 안정 단계/실전 가능 단계/압박 질문 대비 필요 중 하나",
+  "deployment_judgment": {{
+    "can_deploy": true/false,
+    "reason": "투입 가능/불가 근거 (예: 자소서 경험과 일관된 판단력이 보이나, 압박 상황 대응력은 미확인)",
+    "risk_factors": ["위험 요소1", "위험 요소2"],
+    "missing_evidence": ["확인 필요한 근거1", "확인 필요한 근거2"]
+  }},
+  "data_based_facts": ["답변에서 확인된 구체적 사실1", "사실2", "사실3"]
 }}
 ```
 
 중요:
 - JSON만 출력하세요.
-- 단정/평가 금지, 해석형 표현만 사용"""
+- 단정/평가 금지, 해석형 표현만 사용
+- "이 사람을 실제 비행에 투입해도 되는가?" 관점에서 분석"""
 
     return prompt
 
@@ -624,6 +639,42 @@ def _format_feedback_output(
             lines.append("[면접관 시점]")
             lines.append(f"  이 답변만 놓고 보면,")
             lines.append(f"  면접관은 당신을 [{perception}] 유형으로 인식할 가능성이 있습니다.")
+            lines.append("")
+
+        # 10. 투입 판단 (FlyReady Lab 핵심 - "이 사람을 실제 비행에 투입해도 되는가?")
+        deployment = llm_analysis.get("deployment_judgment", {})
+        if deployment:
+            lines.append("[투입 가능성 판단]")
+            can_deploy = deployment.get("can_deploy", False)
+            reason = deployment.get("reason", "")
+            risk_factors = deployment.get("risk_factors", [])
+            missing = deployment.get("missing_evidence", [])
+
+            if can_deploy:
+                lines.append("  현재 답변 기준: 투입 검토 가능")
+            else:
+                lines.append("  현재 답변 기준: 추가 확인 필요")
+
+            if reason:
+                lines.append(f"  판단 근거: {reason}")
+
+            if risk_factors:
+                lines.append("  주의 요소:")
+                for rf in risk_factors[:2]:
+                    lines.append(f"    - {rf}")
+
+            if missing:
+                lines.append("  확인 필요 사항:")
+                for m in missing[:2]:
+                    lines.append(f"    - {m}")
+            lines.append("")
+
+        # 11. 데이터 기반 사실 (구체적인 근거만)
+        data_facts = llm_analysis.get("data_based_facts", [])
+        if data_facts:
+            lines.append("[답변에서 확인된 사실]")
+            for fact in data_facts[:3]:
+                lines.append(f"  • {fact}")
             lines.append("")
 
     else:

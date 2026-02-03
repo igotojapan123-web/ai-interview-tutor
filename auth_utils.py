@@ -2,7 +2,28 @@
 # 공통 인증/비밀번호 체크 모듈
 
 import streamlit as st
-from env_config import TESTER_PASSWORD, ADMIN_PASSWORD
+
+
+def _get_password(key: str) -> str:
+    """비밀번호를 Streamlit secrets 또는 env_config에서 가져옴"""
+    # 1. Streamlit secrets 먼저 확인 (Streamlit Cloud)
+    try:
+        if hasattr(st, 'secrets') and key in st.secrets:
+            return str(st.secrets[key])
+    except:
+        pass
+    
+    # 2. env_config에서 가져오기 (로컬)
+    try:
+        from env_config import TESTER_PASSWORD, ADMIN_PASSWORD
+        if key == "TESTER_PASSWORD":
+            return TESTER_PASSWORD
+        elif key == "ADMIN_PASSWORD":
+            return ADMIN_PASSWORD
+    except:
+        pass
+    
+    return ""
 
 
 def is_authenticated() -> bool:
@@ -20,7 +41,8 @@ def require_auth(title: str = "FlyReady Lab") -> bool:
         password = st.text_input("비밀번호를 입력하세요", type="password", key="auth_pw")
 
         if password:
-            if password == TESTER_PASSWORD:
+            tester_pw = _get_password("TESTER_PASSWORD")
+            if password == tester_pw:
                 st.session_state.authenticated = True
                 st.rerun()
             else:
@@ -40,7 +62,8 @@ def check_tester_password(title: str = "AI 면접 코칭") -> bool:
         password = st.text_input("비밀번호를 입력하세요", type="password", key="tester_pw")
 
         if password:
-            if password == TESTER_PASSWORD:
+            tester_pw = _get_password("TESTER_PASSWORD")
+            if password == tester_pw:
                 st.session_state.authenticated = True
                 st.rerun()
             else:
@@ -60,7 +83,8 @@ def check_admin_password(title: str = "관리자 모드") -> bool:
         password = st.text_input("관리자 비밀번호를 입력하세요", type="password", key="admin_pw")
 
         if password:
-            if password == ADMIN_PASSWORD:
+            admin_pw = _get_password("ADMIN_PASSWORD")
+            if password == admin_pw:
                 st.session_state.admin_authenticated = True
                 st.rerun()
             else:

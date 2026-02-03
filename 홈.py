@@ -79,10 +79,8 @@ st.set_page_config(
 )
 
 # 비밀번호 인증 (Beta 웹)
-try:
-    require_auth("FlyReady Lab - Beta")
-except NameError:
-    pass  # auth_utils import 실패 시 인증 없이 진행
+from auth_utils import require_auth
+require_auth("FlyReady Lab - Beta")
 
 # 세션 시간 초기화
 try:

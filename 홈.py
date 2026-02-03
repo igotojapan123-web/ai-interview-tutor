@@ -78,6 +78,12 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# 비밀번호 인증 (Beta 웹)
+try:
+    require_auth("FlyReady Lab - Beta")
+except NameError:
+    pass  # auth_utils import 실패 시 인증 없이 진행
+
 # 세션 시간 초기화
 try:
     from motivation import init_session_time, check_and_show_motivation

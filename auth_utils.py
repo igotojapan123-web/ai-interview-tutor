@@ -4,6 +4,32 @@
 import streamlit as st
 from env_config import TESTER_PASSWORD, ADMIN_PASSWORD
 
+
+def is_authenticated() -> bool:
+    """현재 인증 상태 확인"""
+    return st.session_state.get("authenticated", False)
+
+
+def require_auth(title: str = "FlyReady Lab") -> bool:
+    """인증 필요 - 미인증시 비밀번호 입력 화면 표시"""
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
+
+    if not st.session_state.authenticated:
+        st.title(title)
+        password = st.text_input("비밀번호를 입력하세요", type="password", key="auth_pw")
+
+        if password:
+            if password == TESTER_PASSWORD:
+                st.session_state.authenticated = True
+                st.rerun()
+            else:
+                st.error("비밀번호가 틀렸습니다")
+        st.stop()
+
+    return True
+
+
 def check_tester_password(title: str = "AI 면접 코칭") -> bool:
     """테스터 비밀번호 확인 (일반 사용자용)"""
     if "authenticated" not in st.session_state:
@@ -22,6 +48,7 @@ def check_tester_password(title: str = "AI 면접 코칭") -> bool:
         st.stop()
 
     return True
+
 
 def check_admin_password(title: str = "관리자 모드") -> bool:
     """관리자 비밀번호 확인"""

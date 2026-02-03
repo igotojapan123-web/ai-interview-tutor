@@ -29,22 +29,35 @@ ALERT_CONFIG_FILE = ALERT_DIR / "config.json"
 ALERT_HISTORY_FILE = ALERT_DIR / "history.json"
 
 # ============================================================
-# 환경 변수
+# 환경 변수 (Streamlit secrets + 환경변수 지원)
 # ============================================================
 
+def _get_secret(key: str, default: str = "") -> str:
+    """Streamlit secrets 또는 환경변수에서 값 가져오기"""
+    try:
+        import streamlit as st
+        if hasattr(st, 'secrets'):
+            if key in st.secrets:
+                return str(st.secrets[key])
+            if "alerts" in st.secrets and key in st.secrets["alerts"]:
+                return str(st.secrets["alerts"][key])
+    except:
+        pass
+    return os.getenv(key, os.getenv(f"NOTIFICATION_{key}", default))
+
 # 텔레그램
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+TELEGRAM_BOT_TOKEN = _get_secret("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = _get_secret("TELEGRAM_CHAT_ID", "")
 
 # 슬랙
-SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL", "")
+SLACK_WEBHOOK_URL = _get_secret("SLACK_WEBHOOK_URL", "")
 
 # 이메일 (SMTP)
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "")
+SMTP_HOST = _get_secret("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(_get_secret("SMTP_PORT", "587"))
+SMTP_USER = _get_secret("SMTP_USER", "")
+SMTP_PASSWORD = _get_secret("SMTP_PASSWORD", "")
+ADMIN_EMAIL = _get_secret("ADMIN_EMAIL", "")
 
 # ============================================================
 # 알림 타입

@@ -7,7 +7,7 @@ import re
 import logging
 from pathlib import Path
 from dotenv import load_dotenv
-from typing import Optional, Tuple, Dict
+from typing import Optional, Tuple, Dict, List
 
 # 로거 설정
 logger = logging.getLogger(__name__)

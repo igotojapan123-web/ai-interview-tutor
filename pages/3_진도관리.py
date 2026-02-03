@@ -72,6 +72,7 @@ SCORES_FILE = os.path.join(BASE_DIR, "user_scores.json")
 # 데이터 저장/로드
 # =====================
 
+@st.cache_data(ttl=60)
 def load_progress_data():
     if os.path.exists(DATA_FILE):
         try:
@@ -88,10 +89,12 @@ def save_progress_data(data):
     try:
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+        load_progress_data.clear()  # 캐시 무효화
     except Exception as e:
         logger.warning(f"진도 데이터 저장 실패: {e}")
 
 
+@st.cache_data(ttl=60)
 def load_roleplay_progress():
     if os.path.exists(RP_PROGRESS_FILE):
         try:
@@ -714,6 +717,55 @@ with col_left:
 
 
 with col_right:
+    # ===== 자유로운 학습 가이드 =====
+    st.markdown("### 자유롭게 학습하기")
+    st.caption("아래는 추천일 뿐, 원하는 순서로 연습해도 됩니다.")
+
+    with st.expander("내 상황에 맞는 추천", expanded=True):
+        situation = st.radio(
+            "현재 상황을 선택하세요",
+            ["처음 시작", "자소서 완성", "면접 경험 있음", "특정 약점 개선"],
+            label_visibility="collapsed"
+        )
+
+        if situation == "처음 시작":
+            st.markdown("""
+            **추천 순서** (강제 아님)
+            1. 모의면접 1회 체험
+            2. 피드백 읽고 패턴 파악
+            3. 자유롭게 연습
+            """)
+            if st.button("모의면접 시작", use_container_width=True, key="start_mock"):
+                st.switch_page("pages/4_모의면접.py")
+
+        elif situation == "자소서 완성":
+            st.markdown("""
+            **추천 순서** (강제 아님)
+            1. 자소서 분석으로 예상 질문 확인
+            2. 자소서 기반 면접 연습
+            3. 약점 부분 반복
+            """)
+            if st.button("자소서 분석", use_container_width=True, key="start_resume"):
+                st.switch_page("pages/20_자소서첨삭.py")
+
+        elif situation == "면접 경험 있음":
+            st.markdown("""
+            **추천 순서** (강제 아님)
+            1. 아래 AI 추천 확인
+            2. 약점 집중 연습
+            3. 실전 모의면접
+            """)
+
+        else:  # 특정 약점 개선
+            st.markdown("""
+            **방법**
+            - 같은 질문 3회 반복
+            - 매번 다른 경험으로 답변
+            - 피드백 패턴 비교
+            """)
+
+    st.markdown("---")
+
     # ===== AI 맞춤 추천 =====
     st.markdown("### 오늘의 추천")
 

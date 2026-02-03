@@ -1,0 +1,18 @@
+{
+  "alerts": [
+    {
+      "title": "[자동복구실패] test_notification",
+      "type": "warning",
+      "channels": [],
+      "sent_at": "2026-01-30T14:59:15.091326"
+    },
+    {
+      "title": "[FlyReady] 에러: ValueError",
+      "type": "error",
+      "channels": [
+        "email"
+      ],
+      "sent_at": "2026-01-30T15:15:43.874162"
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 # 홈.py
 # FlyReady Lab - 종합 대시보드 메인 페이지
 # 전문적인 디자인 (이모지 없는 버전)
+# A-G 개선사항 통합 버전
 
 import streamlit as st
 import base64
@@ -27,6 +28,10 @@ except ImportError:
     pass
 
 from logging_config import get_logger
+
+# A-G 개선사항 통합 모듈 - 안정성 문제로 비활성화
+ENHANCEMENT_AVAILABLE = False
+MODULES_AVAILABLE = {}
 
 # 로거 설정
 logger = get_logger(__name__)
@@ -256,7 +261,7 @@ def get_recommendations(data):
         if low_categories:
             recommendations.append({
                 "text": "약한 분야 재연습 추천: 최근 점수가 낮아요",
-                "link": "/실전연습",
+                "link": "/모의면접",
                 "urgency": "medium"
             })
     broadcast = data["broadcast"].get("records", [])
@@ -1244,8 +1249,9 @@ st.markdown(f'''
 # =====================
 # 히어로 섹션
 # =====================
-st.markdown('''
+st.markdown(f'''
 <div class="fr-hero">
+    <p style="font-size: 0.95rem; opacity: 0.9; margin-bottom: 8px;">{greeting}</p>
     <h1>AI와 함께하는 승무원 면접 준비</h1>
     <p>실전 모의면접 | 자소서 첨삭 | 기내 롤플레잉 | 체력/이미지 관리</p>
     <div class="fr-hero-actions">
@@ -1300,6 +1306,36 @@ if today_total > 0:
     ''', unsafe_allow_html=True)
 
 # =====================
+# 스트릭 & 일일 미션 (A-G 개선사항)
+# =====================
+streak_html = ""
+missions_html = ""
+if ENHANCEMENT_AVAILABLE:
+    # 연습 날짜 기록 (scores에서 추출)
+    practice_dates = []
+    for score in dashboard_data["scores"].get("scores", []):
+        try:
+            date_str = score.get("date", "")[:10]
+            if date_str:
+                practice_dates.append(datetime.strptime(date_str, "%Y-%m-%d"))
+        except (ValueError, TypeError):
+            pass
+
+    # 스트릭 HTML
+    streak_html = get_streak_display_html(practice_dates)
+
+    # 일일 미션 HTML
+    missions_html = get_daily_missions_html()
+
+# 스트릭 배지 표시 (히어로 섹션 아래)
+if streak_html:
+    st.markdown(f'''
+    <div style="display: flex; justify-content: center; margin-top: -16px; margin-bottom: 16px;">
+        {streak_html}
+    </div>
+    ''', unsafe_allow_html=True)
+
+# =====================
 # D-Day + 추천 영역
 # =====================
 dday_items_html = ""
@@ -1320,20 +1356,33 @@ if upcoming_events:
         date_str = ev.get("date", "")
         dday_items_html += f'<div class="fr-dday-item {urgency_class}"><div><div class="fr-dday-name">{title}</div><div class="fr-dday-date">{date_str}</div></div><div class="fr-dday-badge {badge_class}">{dday_text}</div></div>'
 else:
-    dday_items_html = '<div style="text-align:center;padding:20px;color:#94a3b8;font-size:0.85rem;">등록된 일정이 없습니다<br><span style="color:#3b82f6;">D-Day캘린더에서 추가하세요</span></div>'
+    dday_items_html = '<div style="text-align:center;padding:20px;color:#64748b;font-size:0.85rem;">첫 일정을 등록하고<br><a href="/D-Day캘린더" style="color:#3b82f6;font-weight:600;">D-Day 관리 시작하기</a></div>'
 
 recommend_items_html = ""
 for rec in recommendations:
     urgency_class = rec.get("urgency", "low")
     recommend_items_html += f'<div class="fr-recommend-item {urgency_class}"><span class="fr-recommend-text">{rec["text"]}</span></div>'
 
-col_dday, col_rec = st.columns(2)
+# 일일 미션이 있으면 3컬럼, 없으면 2컬럼
+if missions_html:
+    col_dday, col_mission, col_rec = st.columns(3)
 
-with col_dday:
-    st.markdown(f'<div class="fr-info-box"><div class="fr-info-title">다가오는 일정</div>{dday_items_html}</div>', unsafe_allow_html=True)
+    with col_dday:
+        st.markdown(f'<div class="fr-info-box"><div class="fr-info-title">다가오는 일정</div>{dday_items_html}</div>', unsafe_allow_html=True)
 
-with col_rec:
-    st.markdown(f'<div class="fr-info-box"><div class="fr-info-title">오늘의 추천</div>{recommend_items_html}</div>', unsafe_allow_html=True)
+    with col_mission:
+        st.markdown(missions_html, unsafe_allow_html=True)
+
+    with col_rec:
+        st.markdown(f'<div class="fr-info-box"><div class="fr-info-title">오늘의 추천</div>{recommend_items_html}</div>', unsafe_allow_html=True)
+else:
+    col_dday, col_rec = st.columns(2)
+
+    with col_dday:
+        st.markdown(f'<div class="fr-info-box"><div class="fr-info-title">다가오는 일정</div>{dday_items_html}</div>', unsafe_allow_html=True)
+
+    with col_rec:
+        st.markdown(f'<div class="fr-info-box"><div class="fr-info-title">오늘의 추천</div>{recommend_items_html}</div>', unsafe_allow_html=True)
 
 # =====================
 # 섹션 1: 면접 연습 (핵심)
@@ -1369,6 +1418,10 @@ st.markdown('''
 <div class="fr-section">
     <div class="fr-section-title">서류 준비</div>
     <div class="fr-card-grid" style="grid-template-columns: repeat(2, 1fr);">
+        <a target="_self" href="/자소서작성" class="fr-card" style="border: 2px solid #2563eb;">
+            <div class="fr-card-title">자소서 작성 도우미</div>
+            <div class="fr-card-desc">문항 의도 분석 +<br>AI 챗봇 컨설팅</div>
+        </a>
         <a target="_self" href="/자소서첨삭" class="fr-card">
             <div class="fr-card-title">자소서 AI 첨삭</div>
             <div class="fr-card-desc">AI가 자소서 분석 및<br>피드백 제공</div>
@@ -1376,6 +1429,10 @@ st.markdown('''
         <a target="_self" href="/자소서기반질문" class="fr-card">
             <div class="fr-card-title">자소서 기반 질문</div>
             <div class="fr-card-desc">내 자소서에서<br>예상 질문 생성</div>
+        </a>
+        <a target="_self" href="/에어로케이" class="fr-card" style="border: 2px solid #10b981; background: linear-gradient(135deg, #ecfdf5, #d1fae5);">
+            <div class="fr-card-title">에어로케이 가이드</div>
+            <div class="fr-card-desc">경험 포트폴리오<br>컨설팅 (자소서 폐지)</div>
         </a>
     </div>
 </div>
@@ -1387,11 +1444,7 @@ st.markdown('''
 st.markdown('''
 <div class="fr-section">
     <div class="fr-section-title">실전 훈련</div>
-    <div class="fr-card-grid" style="grid-template-columns: repeat(3, 1fr);">
-        <a target="_self" href="/실전연습" class="fr-card">
-            <div class="fr-card-title">실전 연습</div>
-            <div class="fr-card-desc">영상/음성 종합<br>분석 연습</div>
-        </a>
+    <div class="fr-card-grid" style="grid-template-columns: repeat(2, 1fr);">
         <a target="_self" href="/표정연습" class="fr-card">
             <div class="fr-card-title">표정 연습</div>
             <div class="fr-card-desc">면접 표정<br>훈련하기</div>
@@ -1500,6 +1553,18 @@ st.markdown('''
 
 # 메인 컨텐츠 종료
 st.markdown('</div>', unsafe_allow_html=True)
+
+# =====================
+# 격려 메시지 토스트 (A-G 개선사항)
+# =====================
+if ENHANCEMENT_AVAILABLE and recent_avg > 0:
+    encouragement_html = show_encouragement_toast(
+        score=recent_avg,
+        streak=study_streak,
+        previous_score=recent_avg - 5 if recent_avg > 5 else 0
+    )
+    if encouragement_html:
+        st.markdown(encouragement_html, unsafe_allow_html=True)
 
 # =====================
 # 푸터

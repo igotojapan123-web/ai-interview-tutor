@@ -895,6 +895,50 @@ COMMON_QUESTIONS = {
         "본인의 서비스 철학은 무엇인가요?",
         "최근 항공업계 이슈 중 관심 있는 것이 있나요?",
     ],
+    # =====================================================
+    # FlyReady Lab 핵심 질문 (방향성.txt 기반)
+    # 핵심: "잘 말했는가?" ❌ → "이 사람을 실제 비행에 투입해도 되는가?" ⭕
+    # =====================================================
+    "self_awareness": [
+        # 성격·자기인식 - 자기 통제력 + 자기 인식 능력 확인
+        "본인의 MBTI를 말해보세요. 그리고 그 성향이 실제 비행 중 '위험해질 수 있는 순간'은 언제라고 생각합니까?",
+        "본인의 성격 중, 승무원 업무에서 '가장 관리가 필요하다고 느끼는 부분'은 무엇인가요?",
+        "동료 입장에서 볼 때 본인과 장시간 비행을 하면 가장 힘들 수 있는 점은 무엇일까요?",
+    ],
+    "judgment": [
+        # 실제 상황 기반 판단 - 규정 + 팀워크 + 감정 조율
+        "비행 중, 본인이 옳다고 생각하는 판단과 팀의 판단이 다를 때 어떻게 행동하겠습니까?",
+        "승객의 요구가 규정에는 어긋나지만 감정적으로는 충분히 이해되는 상황입니다. 지금 이 자리에서 가장 먼저 고려할 것은 무엇입니까?",
+        "동료 승무원이 명백히 실수했지만 승객 앞에서 바로 잡아야 할 상황이라면 어떻게 하시겠습니까?",
+    ],
+    "conflict": [
+        # Air Rage / 갈등 대응 - 감정 완충 능력 + 안전 우선 사고
+        "승객이 감정적으로 격앙되어 논리적인 설명이 전혀 통하지 않을 때 본인은 어떤 역할을 먼저 선택하겠습니까?",
+        "사과를 해도 화가 가라앉지 않는 승객에게 '사과 외에' 어떤 행동이 필요하다고 생각합니까?",
+        "승객의 불만이 본인이 아닌 '항공사 전체'를 향하고 있을 때 승무원은 어떤 태도를 유지해야 한다고 생각합니까?",
+    ],
+    "resilience": [
+        # 체력·정신력·회복력 - 팬데믹 이후 항공사들이 실제로 보는 포인트
+        "체력적으로 가장 힘들었던 경험은 무엇이며 그 상황에서 본인이 무너지지 않기 위해 사용한 방법은 무엇이었습니까?",
+        "연속된 일정과 수면 부족 상황에서 본인만의 '업무 안정 루틴'이 있습니까?",
+        "실수를 했을 때 본인은 스스로를 빠르게 회복하는 편입니까, 아니면 오래 끌고 가는 편입니까?",
+    ],
+    "crew_mindset": [
+        # '승무원으로 살아본 사람' 같은 질문 - 지원자 ↔ 현직 마인드 구분
+        "아직 승무원이 아닌데도 '이건 이미 승무원처럼 행동했다'고 느꼈던 순간이 있습니까?",
+        "승무원이 된 이후에도 가장 어려울 것 같다고 느끼는 장면은 무엇입니까?",
+        "본인은 '평가받는 사람'과 '책임지는 사람' 중 언제 더 긴장감을 느끼는 편입니까?",
+    ],
+    "resume_deep": [
+        # 자소서 기반 심층 질문 - 경험 → 판단의 질 확인
+        "이 경험을 '승객 안전' 관점에서 다시 설명해 주실 수 있습니까?",
+        "이 경험에서의 본인 행동이 동료 승무원에게는 어떤 영향을 줬을 것 같습니까?",
+        "지금 다시 같은 상황이 온다면 당시와 다르게 행동하고 싶은 부분이 있습니까?",
+    ],
+    "final": [
+        # FlyReady Lab 핵심 마무리 질문 - 자가 평가 + 메타인지 + 태도 수준
+        "이 비행에 이 지원자를 투입해도 괜찮겠습니까? 스스로에게 이유와 함께 답해보세요.",
+    ],
 }
 
 
@@ -904,18 +948,23 @@ COMMON_QUESTIONS = {
 
 def get_airline_questions(airline: str, count: int = 6) -> list:
     """
-    항공사별 맞춤 질문 생성
+    항공사별 맞춤 질문 생성 (FlyReady Lab 핵심 질문 포함)
+
+    핵심 원칙: "잘 말했는가?" ❌ → "이 사람을 실제 비행에 투입해도 되는가?" ⭕
 
     Args:
         airline: 항공사 이름
         count: 질문 개수 (4-8)
 
     Returns:
-        질문 리스트
+        질문 리스트 (기존 질문 + FlyReady Lab 핵심 질문 혼합)
     """
     import random
 
     questions = []
+
+    # FlyReady Lab 핵심 질문 카테고리들
+    flyready_categories = ["self_awareness", "judgment", "conflict", "resilience", "crew_mindset"]
 
     # 해당 항공사 질문이 있으면 사용
     if airline in AIRLINE_SPECIFIC_QUESTIONS:
@@ -923,41 +972,75 @@ def get_airline_questions(airline: str, count: int = 6) -> list:
 
         # 질문 수에 따라 각 카테고리에서 선택
         if count <= 4:
-            # 4개: common 2, values 1, situational 1
-            questions.extend(random.sample(airline_qs.get("common", []), min(2, len(airline_qs.get("common", [])))))
+            # 4개: common 1, values 1, flyready 1, situational 1
+            questions.extend(random.sample(airline_qs.get("common", []), min(1, len(airline_qs.get("common", [])))))
             questions.extend(random.sample(airline_qs.get("values", []), min(1, len(airline_qs.get("values", [])))))
+            # FlyReady Lab 핵심 질문 1개 추가
+            flyready_cat = random.choice(flyready_categories)
+            questions.extend(random.sample(COMMON_QUESTIONS[flyready_cat], 1))
             questions.extend(random.sample(airline_qs.get("situational", []), min(1, len(airline_qs.get("situational", [])))))
         elif count <= 6:
-            # 5-6개: common 2, values 2, situational 1, personality 1
-            questions.extend(random.sample(airline_qs.get("common", []), min(2, len(airline_qs.get("common", [])))))
+            # 6개: common 1, values 2, flyready 2, situational 1
+            questions.extend(random.sample(airline_qs.get("common", []), min(1, len(airline_qs.get("common", [])))))
             questions.extend(random.sample(airline_qs.get("values", []), min(2, len(airline_qs.get("values", [])))))
+            # FlyReady Lab 핵심 질문 2개 추가 (다른 카테고리에서)
+            selected_cats = random.sample(flyready_categories, 2)
+            for cat in selected_cats:
+                questions.extend(random.sample(COMMON_QUESTIONS[cat], 1))
             questions.extend(random.sample(airline_qs.get("situational", []), min(1, len(airline_qs.get("situational", [])))))
-            questions.extend(random.sample(airline_qs.get("personality", []), min(1, len(airline_qs.get("personality", [])))))
         else:
-            # 7-8개: common 2, values 3, situational 2, personality 1
-            questions.extend(random.sample(airline_qs.get("common", []), min(2, len(airline_qs.get("common", [])))))
-            questions.extend(random.sample(airline_qs.get("values", []), min(3, len(airline_qs.get("values", [])))))
-            questions.extend(random.sample(airline_qs.get("situational", []), min(2, len(airline_qs.get("situational", [])))))
-            questions.extend(random.sample(airline_qs.get("personality", []), min(1, len(airline_qs.get("personality", [])))))
+            # 8개: common 1, values 2, flyready 3, situational 1, final 1
+            questions.extend(random.sample(airline_qs.get("common", []), min(1, len(airline_qs.get("common", [])))))
+            questions.extend(random.sample(airline_qs.get("values", []), min(2, len(airline_qs.get("values", [])))))
+            # FlyReady Lab 핵심 질문 3개 추가
+            selected_cats = random.sample(flyready_categories, 3)
+            for cat in selected_cats:
+                questions.extend(random.sample(COMMON_QUESTIONS[cat], 1))
+            questions.extend(random.sample(airline_qs.get("situational", []), min(1, len(airline_qs.get("situational", [])))))
+            # 마지막에 핵심 마무리 질문 추가
+            questions.extend(COMMON_QUESTIONS["final"])
     else:
-        # 없으면 공통 질문 사용
+        # 없으면 공통 질문 + FlyReady Lab 질문 사용
         if count <= 4:
-            questions.extend(random.sample(COMMON_QUESTIONS["basic"], 2))
+            questions.extend(random.sample(COMMON_QUESTIONS["basic"], 1))
             questions.extend(random.sample(COMMON_QUESTIONS["experience"], 1))
+            # FlyReady Lab 핵심 질문 1개
+            flyready_cat = random.choice(flyready_categories)
+            questions.extend(random.sample(COMMON_QUESTIONS[flyready_cat], 1))
             questions.extend(random.sample(COMMON_QUESTIONS["situational"], 1))
         elif count <= 6:
-            questions.extend(random.sample(COMMON_QUESTIONS["basic"], 2))
+            questions.extend(random.sample(COMMON_QUESTIONS["basic"], 1))
             questions.extend(random.sample(COMMON_QUESTIONS["experience"], 1))
-            questions.extend(random.sample(COMMON_QUESTIONS["situational"], 2))
+            # FlyReady Lab 핵심 질문 2개
+            selected_cats = random.sample(flyready_categories, 2)
+            for cat in selected_cats:
+                questions.extend(random.sample(COMMON_QUESTIONS[cat], 1))
+            questions.extend(random.sample(COMMON_QUESTIONS["situational"], 1))
             questions.extend(random.sample(COMMON_QUESTIONS["personality"], 1))
         else:
-            questions.extend(random.sample(COMMON_QUESTIONS["basic"], 2))
-            questions.extend(random.sample(COMMON_QUESTIONS["experience"], 2))
+            questions.extend(random.sample(COMMON_QUESTIONS["basic"], 1))
+            questions.extend(random.sample(COMMON_QUESTIONS["experience"], 1))
+            # FlyReady Lab 핵심 질문 3개
+            selected_cats = random.sample(flyready_categories, 3)
+            for cat in selected_cats:
+                questions.extend(random.sample(COMMON_QUESTIONS[cat], 1))
             questions.extend(random.sample(COMMON_QUESTIONS["situational"], 2))
-            questions.extend(random.sample(COMMON_QUESTIONS["personality"], 2))
+            # 마지막에 핵심 마무리 질문
+            questions.extend(COMMON_QUESTIONS["final"])
 
-    # 순서 섞기
+    # 마무리 질문은 항상 마지막에 배치
+    final_q = None
+    if COMMON_QUESTIONS["final"][0] in questions:
+        final_q = COMMON_QUESTIONS["final"][0]
+        questions.remove(final_q)
+
+    # 나머지 질문 섞기
     random.shuffle(questions)
+
+    # 마무리 질문 다시 추가 (마지막에)
+    if final_q:
+        questions.append(final_q)
+
     return questions[:count]
 
 

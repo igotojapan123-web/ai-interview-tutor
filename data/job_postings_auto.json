@@ -1,0 +1,92 @@
+{
+  "jobs": [
+    {
+      "id": "job001",
+      "airline_code": "KE",
+      "airline_name": "대한항공",
+      "title": "2026년 신입 객실승무원 채용",
+      "description": "대한항공이 통합 항공사 출범을 앞두고 우수 인력 확보를 위해 신입 객실승무원을 모집합니다.",
+      "requirements": [
+        "2026년 8월 이전 졸업(예정)자",
+        "교정시력 1.0 이상",
+        "어학 성적 보유자"
+      ],
+      "start_date": "2025-09-22",
+      "end_date": "2025-10-13",
+      "url": "https://koreanair.recruiter.co.kr/career/jobs/84246",
+      "source": "대한항공 채용사이트",
+      "created_at": "2026-01-30T17:16:19.566230",
+      "is_active": true
+    },
+    {
+      "id": "job002",
+      "airline_code": "OZ",
+      "airline_name": "아시아나항공",
+      "title": "2025년 신입 인턴 객실승무원 채용",
+      "description": "아시아나항공 신입 인턴 객실승무원을 모집합니다. 2025년 8월부터 근무 가능한 분을 찾습니다.",
+      "requirements": [
+        "기졸업자 또는 2026년 2월 이내 졸업예정자",
+        "해외여행 결격사유 없는 자"
+      ],
+      "start_date": "2025-07-01",
+      "end_date": "2025-08-15",
+      "url": "https://linkareer.com/activity/237868",
+      "source": "링커리어",
+      "created_at": "2026-01-30T17:16:19.566240",
+      "is_active": true
+    },
+    {
+      "id": "job003",
+      "airline_code": "YP",
+      "airline_name": "에어프레미아",
+      "title": "신입 객실승무원 채용 (40명)",
+      "description": "에어프레미아에서 40여 명 규모의 신입 객실승무원을 선발합니다.",
+      "requirements": [
+        "서류전형 통과자",
+        "체력측정 가능자"
+      ],
+      "start_date": "2025-05-15",
+      "end_date": "2025-06-30",
+      "url": "https://www.ebn.co.kr/news/articleView.html?idxno=1695713",
+      "source": "EBN뉴스",
+      "created_at": "2026-01-30T17:16:19.566245",
+      "is_active": true
+    },
+    {
+      "id": "job004",
+      "airline_code": "LJ",
+      "airline_name": "진에어",
+      "title": "신입 객실승무원 채용 (서울/부산)",
+      "description": "2027년 통합 LCC 출범을 대비하여 서울과 부산에서 신입 객실승무원을 모집합니다.",
+      "requirements": [
+        "해당 지역 거주 가능자",
+        "기졸업자 또는 졸업예정자"
+      ],
+      "start_date": "2025-07-01",
+      "end_date": "2025-08-31",
+      "url": "https://www.ebn.co.kr/news/articleView.html?idxno=1695713",
+      "source": "EBN뉴스",
+      "created_at": "2026-01-30T17:16:19.566248",
+      "is_active": true
+    },
+    {
+      "id": "job005",
+      "airline_code": "SQ",
+      "airline_name": "싱가포르항공",
+      "title": "Singapore Airlines 한국 승무원 채용",
+      "description": "싱가포르항공에서 한국 승무원을 채용합니다. 나이 제한이 완화되어 30대도 지원 가능합니다.",
+      "requirements": [
+        "영어 능통자",
+        "키 158cm 이상",
+        "싱가포르 거주 가능자"
+      ],
+      "start_date": "2025-05-01",
+      "end_date": "2025-12-31",
+      "url": "https://m.cafe.daum.net/cabincrew/JrQn/13",
+      "source": "다음카페",
+      "created_at": "2026-01-30T17:16:19.566251",
+      "is_active": true
+    }
+  ],
+  "last_update": "2026-01-30T17:16:19.571878"
+}

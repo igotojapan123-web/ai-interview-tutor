@@ -56,6 +56,7 @@ AIRLINES = [
 # ========================================
 # 메타데이터 및 기록 관리
 # ========================================
+@st.cache_data(ttl=300)
 def load_metadata():
     try:
         if os.path.exists(META_FILE):
@@ -70,10 +71,12 @@ def save_metadata(data):
     try:
         with open(META_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+        load_metadata.clear()  # 캐시 무효화
     except Exception as e:
         logger.debug(f"메타데이터 저장 실패: {e}")
 
 
+@st.cache_data(ttl=60)
 def load_read_history():
     try:
         if os.path.exists(READ_HISTORY_FILE):
@@ -88,6 +91,7 @@ def save_read_history(data):
     try:
         with open(READ_HISTORY_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+        load_read_history.clear()  # 캐시 무효화
     except Exception as e:
         logger.debug(f"읽기 기록 저장 실패: {e}")
 

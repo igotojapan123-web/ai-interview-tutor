@@ -1,0 +1,15 @@
+{
+  "total": 3,
+  "by_level": {
+    "error": 2,
+    "warning": 1
+  },
+  "by_type": {
+    "ValueError": 2,
+    "ConnectionError": 1
+  },
+  "by_page": {
+    "테스트페이지": 2,
+    "test_notification": 1
+  }
+}

@@ -18,13 +18,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 페이지 초기화 (Stage 2 통합)
 from sidebar_common import init_page, end_page
+
 init_page(
     title="자소서 기반 질문",
     current_page="자소서기반질문",
     wide_layout=True
 )
 
-# 구글 번역 방지
+# 구글 번역 방지 + 복사/붙여넣기 허용
 st.markdown("""
 <meta name="google" content="notranslate">
 <meta http-equiv="Content-Language" content="ko">
@@ -35,13 +36,42 @@ html, body, .stApp, .main, [data-testid="stAppViewContainer"] {
 .notranslate, [translate="no"] {
     translate: no !important;
 }
+
+/* 모든 입력 필드에서 복사/붙여넣기 허용 - 강화된 선택자 */
+textarea, input, [contenteditable="true"],
+.stTextArea textarea, .stTextInput input,
+[data-testid="stTextArea"] textarea,
+[data-testid="stTextInput"] input,
+div[data-baseweb="textarea"] textarea,
+div[data-baseweb="input"] input {
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
+    -webkit-user-drag: none !important;
+    pointer-events: auto !important;
+}
+
+/* 전체 문서에서 텍스트 선택 허용 */
+* {
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
+}
+
+/* 버튼과 특수 요소는 제외 */
+button, .stButton, [role="button"] {
+    -webkit-user-select: none !important;
+    user-select: none !important;
+}
 </style>
 """, unsafe_allow_html=True)
 st.markdown('<div translate="no" class="notranslate" lang="ko">', unsafe_allow_html=True)
 
 # 내부 모듈 import
 from config import (
-    AIRLINES, AIRLINE_VALUES, VALUES_DEFAULT,
+    AIRLINES_WITH_RESUME, AIRLINE_VALUES, VALUES_DEFAULT,
     _canonical_airline_name, _raw_airline_key, airline_profile,
     SOFT_TIMEOUT_SEC,
     FSC_VALUE_DATA, LCC_VALUE_DATA, HSC_VALUE_DATA,
@@ -130,6 +160,20 @@ from flyready_question_data import (
     get_followup_patterns, get_random_followup,
     get_airline_type, get_mixed_questions,
 )
+
+# Phase C2: 자소서 기반 질문 고도화 모듈
+try:
+    from resume_question_enhancer import (
+        analyze_from_interviewer,
+        generate_trap_questions,
+        get_answer_guide,
+        simulate_followup,
+        generate_dynamic_followup,
+        analyze_resume_question_enhanced,
+    )
+    QUESTION_ENHANCER_AVAILABLE = True
+except ImportError:
+    QUESTION_ENHANCER_AVAILABLE = False
 
 
 # ----------------------------
@@ -2190,14 +2234,17 @@ if "qa_sets" not in st.session_state:
 
 st.title("승무원 AI 면접 코칭")
 st.caption("자소서 기반 면접 질문 생성 및 답변 연습")
+
+st.markdown("---")
+
 colL, colR = st.columns([1, 1])
 
 with colL:
     st.subheader("STEP 1) 기본 설정")
+
     airline_raw = st.selectbox(
         "지원 항공사",
-        AIRLINES,
-        index=AIRLINES.index("에어로케이") if "에어로케이" in AIRLINES else 0,
+        AIRLINES_WITH_RESUME,
         format_func=_canonical_airline_name,
     )
     airline = _canonical_airline_name(airline_raw)
@@ -2438,6 +2485,90 @@ if essay.strip():
     with st.expander("[DEV] CLOVA 파이프라인 상태", expanded=False):
         st.caption(f"CLOVA 준비={clova_pipeline_ready}")
 
+    # ========================================
+    # Phase C2: 면접관 관점 고급 분석
+    # ========================================
+    if QUESTION_ENHANCER_AVAILABLE and essay.strip():
+        with st.expander("면접관 관점 고급 분석", expanded=False):
+            # 분석 실행
+            try:
+                # 첫 번째 QA 세트의 항목 유형 추출
+                first_qa = st.session_state.qa_sets[0] if st.session_state.qa_sets else {}
+                item_type = first_qa.get("prompt", "지원동기")[:20] if first_qa else "지원동기"
+
+                enhanced_result = analyze_resume_question_enhanced(
+                    essay, airline, item_type
+                )
+
+                # 면접관 관점
+                perspective = enhanced_result.get("interviewer_perspective", {})
+
+                st.markdown("#### 면접관이 주목하는 포인트")
+                attention_col, concern_col = st.columns(2)
+
+                with attention_col:
+                    st.markdown("**주목 포인트**")
+                    for point in perspective.get("attention_points", []):
+                        st.markdown(f"- {point}")
+
+                    st.markdown("**긍정 신호**")
+                    for signal in perspective.get("positive_signals", []):
+                        st.markdown(f"- {signal}")
+
+                with concern_col:
+                    st.markdown("**검증이 필요한 부분**")
+                    for need in perspective.get("verification_needs", []):
+                        st.markdown(f"- {need}")
+
+                    st.markdown("**잠재적 우려 사항**")
+                    for concern in perspective.get("potential_concerns", []):
+                        st.markdown(f"- {concern}")
+
+                st.info(f"**면접 전략**: {perspective.get('interview_strategy', '')}")
+
+                st.markdown("---")
+
+                # 함정 질문
+                st.markdown("#### 예상 함정 질문")
+                trap_questions = enhanced_result.get("trap_questions", [])[:4]
+
+                for i, tq in enumerate(trap_questions, 1):
+                    with st.container():
+                        st.markdown(f"**함정 {i}: {tq.get('trap_type', '')}**")
+                        st.markdown(f"> {tq.get('question', '')}")
+
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.markdown(f"_약한 답변_: {tq.get('weak_answer', '')}")
+                        with col2:
+                            st.markdown(f"_대응 전략_: {tq.get('strategy', '')}")
+
+                st.markdown("---")
+
+                # 꼬리질문 시뮬레이션
+                st.markdown("#### 꼬리질문 시뮬레이션")
+                followup_sim = enhanced_result.get("followup_simulation", {})
+
+                st.markdown(f"**시작 질문**: {followup_sim.get('initial_question', '')}")
+
+                chain = followup_sim.get("chain", [])
+                difficulty = followup_sim.get("difficulty", [])
+
+                for i, step in enumerate(chain):
+                    diff = difficulty[i] if i < len(difficulty) else "보통"
+                    diff_color = {"쉬움": "green", "보통": "orange", "어려움": "red", "매우 어려움": "darkred"}.get(diff, "gray")
+
+                    st.markdown(f"""
+                    <div style='padding:10px;margin:5px 0;border-left:4px solid {diff_color};background:#f8f9fa;'>
+                        <b>Depth {step.get('depth', i+1)}</b> [{diff}]<br/>
+                        Q: {step.get('question', '')}<br/>
+                        <small style='color:gray;'>기대 답변: {step.get('expected_response', '')}</small>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+            except Exception as e:
+                st.warning(f"고급 분석 중 오류: {e}")
+
 st.divider()
 
 # STEP 4~5 헤더와 질문생성 버튼을 나란히 배치
@@ -2532,6 +2663,17 @@ if st.session_state.questions:
                     else:
                         st.warning("Q2 답변을 먼저 입력하세요. 답변을 기반으로 맞춤형 꼬리질문을 생성합니다.")
 
+                # Phase C2: 동적 꼬리질문 추천 (Q2 답변이 있을 때)
+                if QUESTION_ENHANCER_AVAILABLE and q2_answer and len(q2_answer) >= 30:
+                    with st.expander("예상 추가 꼬리질문", expanded=False):
+                        try:
+                            dynamic_followups = generate_dynamic_followup(q2_answer, q2_question)
+                            st.caption("면접관이 추가로 물어볼 수 있는 질문들")
+                            for i, fq in enumerate(dynamic_followups, 1):
+                                st.markdown(f"{i}. {fq}")
+                        except Exception:
+                            pass
+
             st.markdown(f"**질문**\n\n{qtext}")
             if basis:
                 st.markdown(f"**생성 근거**\n\n- {basis}")
@@ -2544,6 +2686,30 @@ if st.session_state.questions:
                 height=120,
                 key=f"ans_{key}",
             )
+
+            # Phase C2: 질문별 답변 가이드
+            if QUESTION_ENHANCER_AVAILABLE and qtext:
+                with st.expander("답변 가이드", expanded=False):
+                    try:
+                        guide = get_answer_guide(qtext, essay, qtype)
+                        st.markdown("**답변 구조**")
+                        st.markdown(guide.get("model_answer", ""))
+
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.markdown("**핵심 포인트**")
+                            for point in guide.get("key_points", []):
+                                st.markdown(f"- {point}")
+                        with col2:
+                            st.markdown("**흔한 실수**")
+                            for mistake in guide.get("common_mistakes", []):
+                                st.markdown(f"- {mistake}")
+
+                        st.markdown("**평가 기준**")
+                        criteria_html = " ".join([f"<span style='background:#e8f4f8;padding:3px 8px;border-radius:10px;margin:2px;font-size:12px;'>{c}</span>" for c in guide.get("scoring_criteria", [])])
+                        st.markdown(criteria_html, unsafe_allow_html=True)
+                    except Exception:
+                        pass
 
     # 이력서 기반 질문 표시 (Basic/Pro 요금제)
     resume_questions = st.session_state.get("resume_questions", [])

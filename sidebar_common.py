@@ -10,6 +10,10 @@ try:
 except ImportError:
     ADMIN_PASSWORD = "admin123"
 
+# Enhancement modules - 비활성화 (안정성 문제)
+ENHANCEMENT_AVAILABLE = False
+MODULES_AVAILABLE = {}
+
 
 def get_simple_css():
     """Simple, reliable CSS without complex f-string issues."""
@@ -201,14 +205,26 @@ def get_simple_css():
         transition: all 0.2s ease !important;
     }
 
-    .stButton > button[kind="primary"] {
+    .stButton > button[kind="primary"],
+    .stButton > button[data-testid="baseButton-primary"] {
         background: linear-gradient(135deg, #2563EB, #1D4ED8) !important;
         border: none !important;
+        color: #FFFFFF !important;
     }
 
-    .stButton > button[kind="primary"]:hover {
+    .stButton > button[kind="primary"]:hover,
+    .stButton > button[data-testid="baseButton-primary"]:hover {
         transform: translateY(-1px);
         box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
+        color: #FFFFFF !important;
+    }
+
+    /* Primary 버튼 내부 텍스트 - 강제 흰색 */
+    .stButton > button[kind="primary"] p,
+    .stButton > button[kind="primary"] span,
+    .stButton > button[data-testid="baseButton-primary"] p,
+    .stButton > button[data-testid="baseButton-primary"] span {
+        color: #FFFFFF !important;
     }
 
     /* Tabs */
@@ -263,10 +279,10 @@ def render_navbar(current_page: str = ""):
 
     nav_items = [
         ("홈", "/", "home"),
+        ("튜토리얼", "/시작하기", "시작하기"),
         ("면접연습", "/모의면접", "모의면접"),
-        ("자소서", "/자소서첨삭", "자소서첨삭"),
+        ("자소서", "/자소서작성", "자소서작성"),
         ("퀴즈", "/항공사퀴즈", "항공사퀴즈"),
-        ("채용정보", "/채용정보", "채용정보"),
         ("학습관리", "/진도관리", "진도관리"),
     ]
 

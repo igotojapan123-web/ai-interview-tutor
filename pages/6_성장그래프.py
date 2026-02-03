@@ -80,6 +80,7 @@ RP_FILE = os.path.join(DATA_DIR, "roleplay_progress.json")
 GOALS_FILE = os.path.join(DATA_DIR, "user_goals.json")
 
 
+@st.cache_data(ttl=300)
 def load_json(filepath, default):
     if os.path.exists(filepath):
         try:
@@ -94,6 +95,7 @@ def save_json(filepath, data):
     try:
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+        load_json.clear()  # 캐시 무효화
         return True
     except Exception as e:
         logger.warning(f"JSON 저장 실패 ({filepath}): {e}")

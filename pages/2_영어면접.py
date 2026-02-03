@@ -56,6 +56,20 @@ try:
 except ImportError:
     SCORE_UTILS_AVAILABLE = False
 
+# Phase B3: 영어면접 강화 모듈
+try:
+    from english_interview_enhancer import (
+        analyze_english_answer,
+        get_filler_analysis,
+        get_pronunciation_analysis,
+        get_grammar_analysis,
+        get_pace_analysis,
+        EnhancedEnglishAnalyzer,
+    )
+    ENGLISH_ENHANCER_AVAILABLE = True
+except ImportError:
+    ENGLISH_ENHANCER_AVAILABLE = False
+
 from sidebar_common import init_page, end_page
 
 # 공용 유틸리티 (Stage 2)
@@ -93,6 +107,11 @@ defaults = {
     "eng_processed_audio_hash": None,
     "eng_response_times": [],
     "eng_question_start_time": None,
+    # Phase B3: 강화된 분석
+    "eng_enhanced_analyses": {},  # 질문별 강화 분석 결과
+    "eng_filler_totals": [],  # 필러워드 총계
+    "eng_grammar_scores": [],  # 문법 점수
+    "eng_pronunciation_scores": [],  # 발음 점수
 }
 
 for key, value in defaults.items():
@@ -555,6 +574,42 @@ elif st.session_state.eng_mode == "practice":
                     st.markdown("---")
                     st.markdown("#### 피드백")
                     st.markdown(fb.get("result", ""))
+
+                    # Phase B3: 강화된 분석 표시
+                    if ENGLISH_ENHANCER_AVAILABLE and answer and answer.strip():
+                        with st.expander("상세 분석 (필러워드, 문법, 발음)", expanded=False):
+                            enhanced = analyze_english_answer(answer, q["question"], 45.0)
+                            st.session_state.eng_enhanced_analyses[answer_key] = enhanced
+
+                            col_e1, col_e2, col_e3 = st.columns(3)
+
+                            with col_e1:
+                                st.metric(
+                                    "필러워드",
+                                    f"{enhanced['filler_analysis']['total_filler_count']}회",
+                                    delta=f"유창성 {enhanced['scores']['fluency']}점"
+                                )
+
+                            with col_e2:
+                                st.metric(
+                                    "문법",
+                                    f"{enhanced['grammar_analysis']['error_count']}개 오류",
+                                    delta=f"문법 {enhanced['scores']['grammar']}점"
+                                )
+
+                            with col_e3:
+                                st.metric(
+                                    "발음",
+                                    f"{enhanced['pronunciation_analysis']['total_issues']}개 이슈",
+                                    delta=f"발음 {enhanced['scores']['pronunciation']}점"
+                                )
+
+                            st.markdown(f"**종합 등급:** {enhanced['grade']} ({enhanced['grade_text']})")
+
+                            if enhanced['improvements']:
+                                st.markdown("**개선 포인트:**")
+                                for imp in enhanced['improvements']:
+                                    st.markdown(f"- {imp}")
 
             if show_sample:
                 st.markdown("---")

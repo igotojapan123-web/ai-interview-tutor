@@ -20,15 +20,19 @@ init_page(
 
 
 # ========================================
-# OpenAI API
+# OpenAI API (캐시된 싱글톤)
 # ========================================
-try:
-    from openai import OpenAI
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    API_AVAILABLE = True
-except Exception:
-    API_AVAILABLE = False
-    client = None
+@st.cache_resource
+def get_openai_client():
+    """OpenAI 클라이언트 싱글톤 (앱 재시작 전까지 재사용)"""
+    try:
+        from openai import OpenAI
+        return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    except Exception:
+        return None
+
+client = get_openai_client()
+API_AVAILABLE = client is not None
 
 # ========================================
 # 데이터 관리
@@ -37,6 +41,7 @@ DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 PRACTICE_FILE = os.path.join(DATA_DIR, "announcement_practice.json")
 
 
+@st.cache_data(ttl=60)
 def load_practice():
     try:
         os.makedirs(DATA_DIR, exist_ok=True)
@@ -53,6 +58,7 @@ def save_practice(data):
         os.makedirs(DATA_DIR, exist_ok=True)
         with open(PRACTICE_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+        load_practice.clear()  # 캐시 무효화
     except Exception:
         pass
 
@@ -1037,14 +1043,22 @@ with tab4:
     st.markdown("---")
     st.markdown("#### 음성 설정")
 
+    # 음성 스타일 (세련된 한국어 이름)
+    voice_options = {
+        "서연 (여성, 따뜻한 톤)": "nova",
+        "민지 (여성, 차분한 톤)": "alloy",
+        "하늘 (여성, 밝은 톤)": "shimmer",
+        "준혁 (남성, 중후한 톤)": "onyx",
+    }
+
     col1, col2 = st.columns(2)
     with col1:
         voice_option = st.selectbox(
             "목소리 스타일",
-            ["nova (여성, 따뜻)", "alloy (여성, 차분)", "shimmer (여성, 밝음)", "onyx (남성, 낮음)"],
+            list(voice_options.keys()),
             key="voice_style"
         )
-        voice_name = voice_option.split(" ")[0]
+        voice_name = voice_options[voice_option]
     with col2:
         target_time = ann["target_time_kr"] if tts_lang == "한국어" else ann["target_time_en"]
         st.info(f"⏱️ 이 방송의 목표 시간: **{target_time}초**")

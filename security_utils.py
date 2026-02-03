@@ -1,6 +1,7 @@
 # security_utils.py
 # 대기업 수준 보안 유틸리티
 # FlyReady Lab - Enterprise Security Module
+# Phase A1: 보안 500% 강화
 
 import streamlit as st
 import html
@@ -15,6 +16,50 @@ from functools import wraps
 import logging
 
 logger = logging.getLogger(__name__)
+
+# =============================================================================
+# Enhanced Security 모듈 통합
+# =============================================================================
+
+_enhanced_security_loaded = False
+_audit_logger = None
+_sql_injection_checker = None
+_path_traversal_checker = None
+
+def _load_enhanced_security():
+    """enhanced_security 모듈 지연 로딩"""
+    global _enhanced_security_loaded, _audit_logger, _sql_injection_checker, _path_traversal_checker
+
+    if _enhanced_security_loaded:
+        return
+
+    try:
+        from enhanced_security import (
+            audit_logger,
+            SQLInjectionPrevention,
+            PathTraversalPrevention,
+            init_security
+        )
+        _audit_logger = audit_logger
+        _sql_injection_checker = SQLInjectionPrevention
+        _path_traversal_checker = PathTraversalPrevention
+        _enhanced_security_loaded = True
+        logger.info("enhanced_security 모듈 로드 성공")
+    except ImportError as e:
+        logger.warning(f"enhanced_security 모듈 로드 실패: {e}")
+        _enhanced_security_loaded = False
+
+
+def audit_log(event_type: str, action: str, user: str = None, details: Dict = None, severity: str = 'INFO'):
+    """감사 로그 기록 (enhanced_security 연동)"""
+    _load_enhanced_security()
+
+    if _audit_logger:
+        _audit_logger.log(event_type, action, user, details, severity)
+    else:
+        # 폴백: 표준 로거 사용
+        log_func = getattr(logger, severity.lower(), logger.info)
+        log_func(f"[AUDIT] {event_type}: {action} - {details}")
 
 # =============================================================================
 # XSS 방지 - 안전한 HTML 이스케이프
@@ -783,3 +828,194 @@ def secure_json_response(data: Dict[str, Any]) -> Dict[str, Any]:
         return result
 
     return mask_dict(data)
+
+
+# =============================================================================
+# Enhanced Security 통합 함수
+# =============================================================================
+
+def check_sql_injection(text: str) -> tuple[bool, List[str]]:
+    """SQL Injection 공격 패턴 검사
+
+    Args:
+        text: 검사할 텍스트
+
+    Returns:
+        (is_safe, detected_patterns)
+    """
+    _load_enhanced_security()
+
+    if _sql_injection_checker:
+        return _sql_injection_checker.check_sql_injection(text)
+
+    # 폴백: 기본 패턴 검사
+    dangerous_patterns = [
+        r"(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE)\b)",
+        r"(--|;|/\*|\*/)",
+        r"(\bOR\b\s+1\s*=\s*1)",
+    ]
+
+    detected = []
+    for pattern in dangerous_patterns:
+        if re.search(pattern, text, re.IGNORECASE):
+            detected.append(pattern)
+
+    return len(detected) == 0, detected
+
+
+def check_path_traversal(path: str, base_dir: str = None) -> tuple[bool, str]:
+    """경로 탐색 공격 검사
+
+    Args:
+        path: 검사할 경로
+        base_dir: 허용된 기본 디렉토리
+
+    Returns:
+        (is_safe, reason)
+    """
+    _load_enhanced_security()
+
+    if _path_traversal_checker:
+        return _path_traversal_checker.is_safe_path(path, base_dir)
+
+    # 폴백: 기본 검사
+    if '..' in path or '%2e' in path.lower():
+        return False, "경로 탐색 패턴 감지"
+
+    return True, "안전"
+
+
+def sanitize_filename(filename: str) -> str:
+    """파일명 살균"""
+    _load_enhanced_security()
+
+    if _path_traversal_checker:
+        return _path_traversal_checker.sanitize_filename(filename)
+
+    # 폴백: 기본 살균
+    dangerous_chars = ['/', '\\', '..', ':', '*', '?', '"', '<', '>', '|']
+    result = str(filename)
+    for char in dangerous_chars:
+        result = result.replace(char, '_')
+    return result.strip(' .')
+
+
+def validate_secure_input(
+    text: str,
+    max_length: int = 5000,
+    check_sql: bool = True,
+    check_xss: bool = True,
+    check_path: bool = False
+) -> tuple[bool, str, List[str]]:
+    """통합 보안 입력 검증
+
+    Args:
+        text: 입력 텍스트
+        max_length: 최대 길이
+        check_sql: SQL Injection 검사
+        check_xss: XSS 검사
+        check_path: 경로 탐색 검사
+
+    Returns:
+        (is_safe, sanitized_text, warnings)
+    """
+    warnings = []
+
+    if not text:
+        return True, '', warnings
+
+    # 길이 제한
+    text = str(text)
+    if len(text) > max_length:
+        text = text[:max_length]
+        warnings.append(f"입력이 {max_length}자로 잘렸습니다.")
+
+    # SQL Injection 검사
+    if check_sql:
+        is_safe, patterns = check_sql_injection(text)
+        if not is_safe:
+            warnings.append("SQL Injection 패턴 감지")
+            audit_log('SECURITY', 'sql_injection_attempt', details={'patterns': patterns}, severity='WARNING')
+
+    # XSS 검사
+    if check_xss:
+        text = sanitize_html(text, allow_tags=False)
+
+    # 경로 탐색 검사
+    if check_path:
+        is_safe, reason = check_path_traversal(text)
+        if not is_safe:
+            warnings.append(f"경로 탐색 패턴 감지: {reason}")
+            audit_log('SECURITY', 'path_traversal_attempt', details={'reason': reason}, severity='WARNING')
+
+    return len(warnings) == 0, text, warnings
+
+
+def init_enhanced_security():
+    """Enhanced Security 시스템 초기화"""
+    _load_enhanced_security()
+
+    try:
+        from enhanced_security import init_security
+        return init_security()
+    except ImportError:
+        logger.warning("enhanced_security 모듈을 초기화할 수 없습니다.")
+        return False
+
+
+# =============================================================================
+# 보안 미들웨어 데코레이터
+# =============================================================================
+
+def secure_endpoint(
+    require_auth: bool = False,
+    required_role: str = None,
+    rate_limit: bool = True,
+    log_access: bool = True
+):
+    """보안 엔드포인트 데코레이터
+
+    Args:
+        require_auth: 인증 필요 여부
+        required_role: 필요한 역할
+        rate_limit: 레이트 리밋 적용
+        log_access: 접근 로깅
+
+    Usage:
+        @secure_endpoint(require_auth=True, required_role='admin')
+        def admin_function():
+            pass
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # 인증 확인
+            if require_auth:
+                if not SecureAuth.is_authenticated():
+                    audit_log('ACCESS', 'unauthorized_access', details={'function': func.__name__}, severity='WARNING')
+                    st.error("이 기능을 사용하려면 로그인이 필요합니다.")
+                    return None
+
+            # 역할 확인
+            if required_role:
+                if not SecureAuth.has_role(required_role):
+                    audit_log('ACCESS', 'insufficient_role', details={'function': func.__name__, 'required': required_role}, severity='WARNING')
+                    st.error("접근 권한이 없습니다.")
+                    return None
+
+            # 레이트 리밋
+            if rate_limit:
+                allowed, remaining = api_rate_limiter.is_allowed("global")
+                if not allowed:
+                    audit_log('SECURITY', 'rate_limit_exceeded', details={'function': func.__name__}, severity='WARNING')
+                    st.warning("요청 한도를 초과했습니다. 잠시 후 다시 시도하세요.")
+                    return None
+
+            # 접근 로깅
+            if log_access:
+                user = st.session_state.get('auth_user', 'anonymous')
+                audit_log('ACCESS', 'function_call', user=user, details={'function': func.__name__})
+
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator

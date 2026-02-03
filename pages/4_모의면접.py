@@ -25,7 +25,7 @@ try:
 except ImportError:
     SAFE_API_AVAILABLE = False
 
-from config import LLM_MODEL_NAME, LLM_API_URL, LLM_TIMEOUT_SEC, AIRLINES, AIRLINE_TYPE
+from config import LLM_MODEL_NAME, LLM_API_URL, LLM_TIMEOUT_SEC, AIRLINES_WITH_RESUME, AIRLINE_TYPE
 from env_config import OPENAI_API_KEY
 
 # 음성/영상 유틸리티 import
@@ -51,6 +51,34 @@ try:
     VIDEO_UTILS_AVAILABLE = True
 except ImportError:
     VIDEO_UTILS_AVAILABLE = False
+
+# Phase D1: 음성 분석 고도화 모듈
+try:
+    from voice_analysis_enhancer import (
+        analyze_voice_enhanced,
+        get_speech_speed_graph_data,
+        get_tone_graph_data,
+        get_volume_graph_data,
+        get_silence_analysis,
+        SpeechSpeedLevel, VolumeLevel, TonePattern
+    )
+    VOICE_ENHANCER_AVAILABLE = True
+except ImportError:
+    VOICE_ENHANCER_AVAILABLE = False
+
+# Phase D2: 감정 분석 고도화 모듈
+try:
+    from emotion_analysis_enhancer import (
+        analyze_emotion_enhanced,
+        get_confidence_timeline,
+        get_stress_timeline,
+        get_engagement_timeline,
+        get_segment_analysis,
+        ConfidenceLevel, StressLevel, EmotionType
+    )
+    EMOTION_ENHANCER_AVAILABLE = True
+except ImportError:
+    EMOTION_ENHANCER_AVAILABLE = False
 
 # 점수 자동 저장 유틸리티
 try:
@@ -89,6 +117,23 @@ try:
 except ImportError:
     REPORT_AVAILABLE = False
 
+# Phase B1: 면접 강화 모듈 import
+try:
+    from interview_enhancer import (
+        InterviewerType,
+        INTERVIEWER_CHARACTERS,
+        get_interviewer_character,
+        get_interviewer_prompt,
+        analyze_interview_answer,
+        generate_follow_up_question,
+        get_keyword_feedback,
+        get_time_feedback,
+        EnhancedInterviewEngine,
+    )
+    INTERVIEW_ENHANCER_AVAILABLE = True
+except ImportError:
+    INTERVIEW_ENHANCER_AVAILABLE = False
+
 # Phase 2: 웹캠 분석 제거됨 (표정연습 페이지에서 별도 제공)
 WEBCAM_AVAILABLE = False
 
@@ -111,7 +156,7 @@ init_page(
 
 
 
-# 구글 번역 방지
+# 구글 번역 방지 + 복사/붙여넣기 허용
 st.markdown("""
 <meta name="google" content="notranslate">
 <meta http-equiv="Content-Language" content="ko">
@@ -122,6 +167,35 @@ html, body, .stApp, .main, [data-testid="stAppViewContainer"] {
 .notranslate, [translate="no"] {
     translate: no !important;
 }
+
+/* 모든 입력 필드에서 복사/붙여넣기 허용 - 강화된 선택자 */
+textarea, input, [contenteditable="true"],
+.stTextArea textarea, .stTextInput input,
+[data-testid="stTextArea"] textarea,
+[data-testid="stTextInput"] input,
+div[data-baseweb="textarea"] textarea,
+div[data-baseweb="input"] input {
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
+    -webkit-user-drag: none !important;
+    pointer-events: auto !important;
+}
+
+/* 전체 문서에서 텍스트 선택 허용 */
+* {
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
+}
+
+/* 버튼과 특수 요소는 제외 */
+button, .stButton, [role="button"] {
+    -webkit-user-select: none !important;
+    user-select: none !important;
+}
 </style>
 """, unsafe_allow_html=True)
 st.markdown('<div translate="no" class="notranslate" lang="ko">', unsafe_allow_html=True)
@@ -131,7 +205,7 @@ st.markdown('<div translate="no" class="notranslate" lang="ko">', unsafe_allow_h
 # ----------------------------
 
 # =====================
-# 면접 질문 풀 (폴백용 기본 질문)
+# 면접 질문 풀 (통합: 기본 + 실전연습 + STAR 기법)
 # =====================
 
 INTERVIEW_QUESTIONS = {
@@ -141,6 +215,9 @@ INTERVIEW_QUESTIONS = {
         "저희 항공사에 왜 지원하셨나요?",
         "본인의 강점과 약점을 말씀해주세요.",
         "승무원에게 가장 중요한 자질은 무엇이라고 생각하시나요?",
+        "지원 전 어떤 준비를 하셨나요?",
+        "본인만의 서비스 철학이 있다면 말씀해주세요.",
+        "이 직업을 통해 이루고 싶은 목표는 무엇인가요?",
     ],
     "experience": [
         "팀워크를 발휘했던 경험을 말씀해주세요.",
@@ -148,6 +225,11 @@ INTERVIEW_QUESTIONS = {
         "갈등을 해결했던 경험을 말씀해주세요.",
         "실패했던 경험과 그로부터 배운 점은 무엇인가요?",
         "리더십을 발휘한 경험을 말씀해주세요.",
+        "서비스업에서 감동을 받았던 경험이 있나요?",
+        "예상치 못한 상황에 대처한 경험을 말씀해주세요.",
+        "다문화 환경에서 소통한 경험이 있나요?",
+        "창의적으로 문제를 해결한 경험을 말씀해주세요.",
+        "규정을 지키면서 고객을 만족시킨 경험이 있나요?",
     ],
     "situational": [
         "기내에서 승객이 쓰러지면 어떻게 하시겠습니까?",
@@ -155,6 +237,10 @@ INTERVIEW_QUESTIONS = {
         "동료와 의견 충돌이 생기면 어떻게 하시겠습니까?",
         "비행 중 공황 상태의 승객을 어떻게 도우시겠습니까?",
         "안전규정을 거부하는 승객을 어떻게 설득하시겠습니까?",
+        "비행 중 난기류가 발생하면 어떻게 승객을 안심시키겠습니까?",
+        "만취 승객이 다른 승객에게 불쾌감을 주면 어떻게 하시겠습니까?",
+        "기내에서 승객 간 다툼이 발생하면 어떻게 중재하시겠습니까?",
+        "갓난아이를 동반한 승객이 도움을 요청하면 어떻게 하시겠습니까?",
     ],
     "personality": [
         "스트레스를 어떻게 관리하시나요?",
@@ -162,7 +248,117 @@ INTERVIEW_QUESTIONS = {
         "10년 후 본인의 모습은 어떨 것 같나요?",
         "왜 다른 직업이 아닌 승무원인가요?",
         "이 직업의 어려운 점은 무엇이라고 생각하시나요?",
+        "본인이 가장 소중하게 생각하는 가치는 무엇인가요?",
+        "체력 관리는 어떻게 하고 계신가요?",
+        "외국어 능력은 어느 정도이며, 어떻게 준비하셨나요?",
+        "불규칙한 근무에 대해 어떻게 생각하시나요?",
     ],
+}
+
+# =====================
+# STAR 기법 힌트 (연습모드용)
+# PDF 기반 + 면접관 질문 의도 포함
+# =====================
+STAR_HINTS = {
+    # 기본 질문
+    "간단하게 자기소개 해주세요.": {
+        "intent": "첫인상 + 핵심역량 파악",
+        "star_focus": "S+T 40%, A 30%, R 30%",
+        "tip": "30초 내로 핵심만! 이름-학력-경험-지원동기 순서",
+        "example_star": "S: 서비스업 3년 경험 / T: 고객 만족 극대화 목표 / A: 매일 10명+ 응대 / R: 단골 50% 증가"
+    },
+    "왜 승무원이 되고 싶으신가요?": {
+        "intent": "진정성 + 항공사 이해도",
+        "star_focus": "S+T 40%, A 30%, R 30%",
+        "tip": "구체적 경험 → 항공사 가치 연결",
+        "example_star": "S: 해외여행 중 승무원 서비스에 감동 / T: 그 감동을 전하고 싶음 / A: 서비스 경험 쌓기 / R: 승무원 꿈 확신"
+    },
+    "저희 항공사에 왜 지원하셨나요?": {
+        "intent": "회사 연구 + 지원 진정성",
+        "star_focus": "S 30%, T 30%, A+R 40%",
+        "tip": "해당 항공사만의 차별점 + 본인 가치관 연결",
+        "example_star": "S: 항공사 서비스 직접 경험 / T: 그 가치에 공감 / A: 인재상 연구 / R: 나와 맞는 회사 확신"
+    },
+    # 팀워크 질문
+    "팀워크를 발휘했던 경험을 말씀해주세요.": {
+        "intent": "협업 능력 + 문제해결",
+        "star_focus": "A (행동) 65%, R (결과) 25%",
+        "tip": "갈등 해결 과정을 3단계로 쪼개서 설명",
+        "example_star": "S: 5명 팀, 3개월 프로젝트 / T: 의견충돌로 2주 지체 / A: 강점분석→역할재분배→매일 30분 미팅 / R: A+ 학점, 최고 팀워크 평가"
+    },
+    # 고객응대 질문
+    "어려운 고객을 응대한 경험이 있나요?": {
+        "intent": "감정 조절 + 서비스 마인드",
+        "star_focus": "A (행동) 60%, R (결과) 30%",
+        "tip": "경청→공감→해결의 3단계",
+        "example_star": "S: 카페 아르바이트, 주문 실수로 15분 지연 / T: 환불 요구 고객 진정 / A: 진심 사과→즉시 재제조→쿠폰 제공 / R: 5점 리뷰, 단골 됨"
+    },
+    # 실패 경험
+    "실패했던 경험과 그로부터 배운 점은 무엇인가요?": {
+        "intent": "자기 성찰 + 성장 가능성",
+        "star_focus": "R (결과/배움) 50%, A 40%",
+        "tip": "배운 점을 명확히 + 이후 적용 사례",
+        "example_star": "S: 토익 목표 100점 미달 / T: 3개월 내 달성 필요 / A: 매일 2시간+약점 집중+스터디 / R: 2개월 만에 달성, 체계적 학습법 습득"
+    },
+    # 갈등 해결
+    "갈등을 해결했던 경험을 말씀해주세요.": {
+        "intent": "갈등 관리 + 소통 능력",
+        "star_focus": "A (행동) 65%, R (결과) 25%",
+        "tip": "1:1 대화 + 공통점 찾기 강조",
+        "example_star": "S: 세대 다른 팀원 / T: 의견 차이 해소 / A: 1:1 대화→공통점 찾기 / R: 팀 화합, 프로젝트 성공"
+    },
+    # 리더십
+    "리더십을 발휘한 경험을 말씀해주세요.": {
+        "intent": "리더십 + 책임감",
+        "star_focus": "A (행동) 60%, R (결과) 30%",
+        "tip": "역할 분담과 동기 부여 과정 강조",
+        "example_star": "S: 동아리 회장, 20명 관리 / T: 행사 한달 준비 / A: 역할분담+주2회 회의 / R: 참여율 95%, 성공적 행사"
+    },
+    # 상황대처 질문
+    "기내에서 승객이 쓰러지면 어떻게 하시겠습니까?": {
+        "intent": "위기 대처 + 안전 의식",
+        "star_focus": "A (행동) 70%, T 20%",
+        "tip": "안전 절차 + 팀 협력 + 침착함 강조",
+        "example_star": "T: 승객 응급상황 / A: 1)상황 파악 2)기장 보고 3)응급처치 4)의료진 호출 / R: 침착한 대응으로 안전 확보"
+    },
+    "승객이 무리한 요구를 하면 어떻게 대응하시겠습니까?": {
+        "intent": "원칙 vs 유연성 균형",
+        "star_focus": "A (행동) 65%, R (결과) 25%",
+        "tip": "공감 → 대안 제시 → 원칙 설명",
+        "example_star": "S: 편의점 아르바이트, 신분증 없이 술 구매 요청 / T: 규정 준수 + 불편 최소화 / A: 정중히 규정 설명→대안 음료 추천 / R: 손님 이해, 감사 인사"
+    },
+    # 스트레스 관리
+    "스트레스를 어떻게 관리하시나요?": {
+        "intent": "자기 관리 능력",
+        "star_focus": "A (행동) 60%, R (결과) 30%",
+        "tip": "구체적인 루틴 + 실제 효과",
+        "example_star": "S: 시험+아르바이트 병행 / T: 체력 한계 / A: 운동 루틴+수면시간 확보 / R: 스트레스 50% 감소"
+    },
+    # 기본 힌트 (매칭 안 되는 질문용)
+    "_default": {
+        "intent": "면접관은 구체성과 진정성을 봅니다",
+        "star_focus": "S 20%, T 20%, A 40%, R 20%",
+        "tip": "숫자로 증명 + 배운 점 마무리",
+        "example_star": "S: 구체적 상황(언제, 어디서, 몇 명) / T: 해결할 문제 / A: 3단계 행동 / R: 숫자 결과 + 배움"
+    }
+}
+
+# STAR 기법 짧은 예시 (연습모드 참고용)
+STAR_QUICK_EXAMPLES = [
+    {"역량": "시간 관리", "hint": "S:시험 3과목 동시 준비 T:일주일 안에 A+ A:우선순위표+매일 6시간 R:전과목 A+"},
+    {"역량": "서비스 마인드", "hint": "S:카페 단골 손님 T:취향 기억 A:주문 기록+맞춤 추천 R:단골 3배 증가"},
+    {"역량": "융통성", "hint": "S:행사 당일 비 T:실외 불가 A:즉시 실내 확보+프로그램 수정 R:만족도 4.8/5"},
+    {"역량": "위기 대처", "hint": "S:발표 당일 노트북 고장 T:10분 내 복구 불가 A:종이 자료+구두 발표 R:교수 칭찬, A+"},
+    {"역량": "인내심", "hint": "S:클레임 고객 30분 응대 T:화 진정 A:경청+공감+해결책 R:사과 받음, 5점 리뷰"},
+    {"역량": "적응력", "hint": "S:새 아르바이트 첫날 T:빠른 습득 A:메모+선배 질문+복습 R:1주일 만에 독립 근무"},
+    {"역량": "책임감", "hint": "S:팀 프로젝트 리더 T:팀원 1명 중도 포기 A:업무 재분배+격려 R:기한 내 완료, A학점"},
+]
+
+QUESTION_CATEGORIES = {
+    "common": "기본 질문",
+    "experience": "경험 질문",
+    "situational": "상황 대처",
+    "personality": "인성 질문"
 }
 
 # 항공사별 핵심가치 요약 (UI 표시용)
@@ -214,6 +410,13 @@ defaults = {
     # 고도화된 음성 분석 결과
     "mock_advanced_analyses": [],  # 각 질문별 고도화 음성 분석 결과
     "mock_stress_timeline": [],  # 스트레스 변화 추이
+    # Phase B1: 면접 강화 기능
+    "mock_interviewer_type": "neutral",  # 면접관 유형
+    "mock_enhanced_analyses": [],  # 강화된 분석 결과 (키워드, 시간 관리)
+    "mock_follow_up_questions": [],  # 꼬리질문 목록
+    "mock_keyword_scores": [],  # 키워드 점수 목록
+    # 통합: 연습모드 / 실전 시뮬레이션 모드
+    "mock_interview_mode": "practice",  # practice / simulation
 }
 
 # 세션 상태 안전 초기화 (safe_api 사용 시)
@@ -394,6 +597,8 @@ def evaluate_interview_combined(
 # UI
 # =====================
 
+st.markdown("---")
+
 # Page description already handled by init_page
 
 # D-ID API 상태 확인
@@ -405,10 +610,41 @@ if not st.session_state.mock_started:
     # =====================
     st.subheader("면접 설정")
 
+    # 모드 선택 (연습 / 실전 시뮬레이션)
+    st.markdown("**면접 모드 선택**")
+    mode_col1, mode_col2 = st.columns(2)
+    with mode_col1:
+        practice_selected = st.button(
+            "📚 연습 모드",
+            use_container_width=True,
+            type="primary" if st.session_state.get("_temp_mode", "practice") == "practice" else "secondary",
+            help="STAR 기법 힌트와 답변 가이드가 함께 표시됩니다"
+        )
+        if practice_selected:
+            st.session_state["_temp_mode"] = "practice"
+    with mode_col2:
+        simulation_selected = st.button(
+            "🎯 실전 시뮬레이션",
+            use_container_width=True,
+            type="primary" if st.session_state.get("_temp_mode", "practice") == "simulation" else "secondary",
+            help="실제 면접처럼 힌트 없이 진행됩니다"
+        )
+        if simulation_selected:
+            st.session_state["_temp_mode"] = "simulation"
+
+    # 선택된 모드 표시
+    selected_mode = st.session_state.get("_temp_mode", "practice")
+    if selected_mode == "practice":
+        st.info("📚 **연습 모드**: STAR 기법 힌트, 면접관 질문 의도, 예시 답변 구조가 옆에 표시됩니다.")
+    else:
+        st.warning("🎯 **실전 시뮬레이션**: 실제 면접처럼 힌트 없이 진행됩니다. 긴장감을 갖고 연습하세요!")
+
+    st.divider()
+
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        airline = st.selectbox("지원 항공사", AIRLINES)
+        airline = st.selectbox("지원 항공사", AIRLINES_WITH_RESUME)
         airline_type = AIRLINE_TYPE.get(airline, "LCC")
 
     with col2:
@@ -420,6 +656,41 @@ if not st.session_state.mock_started:
             ["텍스트 입력", "음성 녹음"],
             help="음성 녹음 시 마이크 권한이 필요합니다"
         )
+
+    # Phase B1: 면접관 캐릭터 선택
+    if INTERVIEW_ENHANCER_AVAILABLE:
+        st.markdown("---")
+        st.markdown("**면접관 스타일 선택**")
+        interviewer_options = {
+            "warm": "온화한 면접관 (김민지 팀장) - 격려하고 장점을 찾아줌",
+            "neutral": "중립적 면접관 (박서연 부장) - 공정하고 객관적",
+            "sharp": "날카로운 면접관 (이정훈 상무) - 논리적 허점 파악",
+            "pressure": "압박 면접관 (최현우 전무) - 한계를 테스트",
+        }
+
+        # 한국어 표시용 매핑
+        interviewer_labels = {
+            "warm": "온화형",
+            "neutral": "중립형",
+            "sharp": "날카로움형",
+            "pressure": "압박형",
+        }
+
+        col_int1, col_int2 = st.columns([1, 2])
+        with col_int1:
+            interviewer_type = st.selectbox(
+                "면접관 유형",
+                list(interviewer_options.keys()),
+                format_func=lambda x: interviewer_labels.get(x, x),
+                index=1,  # 기본: 중립
+                help="면접관 스타일에 따라 꼬리질문 빈도와 피드백 스타일이 달라집니다"
+            )
+        with col_int2:
+            selected_char = get_interviewer_character(interviewer_type)
+            st.info(f"**{selected_char.name}** - {selected_char.personality}")
+            st.caption(f"압박 수준: {'★' * selected_char.pressure_level}{'☆' * (10 - selected_char.pressure_level)} | 꼬리질문 빈도: {int(selected_char.follow_up_tendency * 100)}%")
+    else:
+        interviewer_type = "neutral"
 
     # Phase 2: 웹캠 분석 옵션
     # 항공사 핵심가치 표시
@@ -477,6 +748,13 @@ if not st.session_state.mock_started:
         st.session_state.mock_advanced_analyses = []
         st.session_state.mock_confidence_timeline = []
         st.session_state.mock_stress_timeline = []
+        # Phase B1: 면접 강화 기능 초기화
+        st.session_state.mock_interviewer_type = interviewer_type
+        st.session_state.mock_enhanced_analyses = []
+        st.session_state.mock_follow_up_questions = []
+        st.session_state.mock_keyword_scores = []
+        # 면접 모드 저장 (연습 / 실전 시뮬레이션)
+        st.session_state.mock_interview_mode = st.session_state.get("_temp_mode", "practice")
         st.rerun()
 
 
@@ -493,50 +771,105 @@ elif not st.session_state.mock_completed:
     # 진행률
     st.progress((current_idx) / total)
 
+    # 현재 면접 모드 확인
+    interview_mode = st.session_state.get("mock_interview_mode", "practice")
+    is_practice_mode = (interview_mode == "practice")
+
     col1, col2 = st.columns([3, 1])
     with col1:
-        st.subheader(f"질문 {current_idx + 1} / {total}")
+        mode_label = "📚 연습" if is_practice_mode else "🎯 실전"
+        st.subheader(f"질문 {current_idx + 1} / {total} [{mode_label}]")
     with col2:
         if st.button("면접 중단"):
             st.session_state.mock_started = False
             st.session_state.timer_running = False
             st.rerun()
 
-    # 면접관 표시 영역
-    st.markdown("---")
-
-    # 면접관 아바타/영상
-    if did_available:
-        # D-ID API로 실제 영상 면접관 생성
-        with st.spinner("면접관 영상 생성 중..."):
-            try:
-                video_result = create_interviewer_video(
-                    question=question,
-                    interviewer_type="female_professional",
-                    airline_type="FSC" if airline in ["대한항공", "아시아나항공"] else "LCC"
-                )
-                if video_result and video_result.get("video_url"):
-                    st.markdown(get_video_html(video_result["video_url"], width=400, autoplay=True), unsafe_allow_html=True)
-                    st.caption("🎥 AI 영상 면접관이 질문합니다")
-                else:
-                    # D-ID 실패 시 향상된 폴백 아바타
-                    st.markdown(get_enhanced_fallback_avatar_html(question, "interviewer", "neutral"), unsafe_allow_html=True)
-            except Exception as e:
-                # 오류 시에도 향상된 폴백 아바타 표시
-                st.markdown(get_enhanced_fallback_avatar_html(question, "interviewer", "neutral"), unsafe_allow_html=True)
+    # =====================
+    # 연습모드: 힌트 패널 + 질문 영역 (2컬럼)
+    # 실전모드: 질문 영역만 (힌트 없음)
+    # =====================
+    if is_practice_mode:
+        # 연습모드: 좌측 질문, 우측 힌트
+        main_col, hint_col = st.columns([2, 1])
     else:
-        # D-ID 미설정 시 향상된 폴백 아바타 (CSS 애니메이션)
-        st.markdown(get_enhanced_fallback_avatar_html(question, "interviewer", "neutral"), unsafe_allow_html=True)
+        # 실전모드: 질문만
+        main_col = st.container()
+        hint_col = None
 
-    # TTS로 질문 읽기 (옵션)
-    if st.session_state.mock_mode == "voice" and VIDEO_UTILS_AVAILABLE:
-        if st.button("질문 다시 듣기"):
-            with st.spinner("음성 생성 중..."):
-                audio_bytes = generate_tts_audio(question, voice="alloy", speed=0.85)
-                if audio_bytes:
-                    get_loud_audio_component(audio_bytes, autoplay=True, gain=5.0)
+    with main_col:
+        # 면접관 표시 영역
+        st.markdown("---")
 
-    st.markdown("---")
+        # 면접관 아바타/영상
+        if did_available:
+            # D-ID API로 실제 영상 면접관 생성
+            with st.spinner("면접관 영상 생성 중..."):
+                try:
+                    video_result = create_interviewer_video(
+                        question=question,
+                        interviewer_type="female_professional",
+                        airline_type="FSC" if airline in ["대한항공", "아시아나항공"] else "LCC"
+                    )
+                    if video_result and video_result.get("video_url"):
+                        st.markdown(get_video_html(video_result["video_url"], width=400, autoplay=True), unsafe_allow_html=True)
+                        st.caption("🎥 AI 영상 면접관이 질문합니다")
+                    else:
+                        # D-ID 실패 시 향상된 폴백 아바타
+                        st.markdown(get_enhanced_fallback_avatar_html(question, "interviewer", "neutral"), unsafe_allow_html=True)
+                except Exception as e:
+                    # 오류 시에도 향상된 폴백 아바타 표시
+                    st.markdown(get_enhanced_fallback_avatar_html(question, "interviewer", "neutral"), unsafe_allow_html=True)
+        else:
+            # D-ID 미설정 시 향상된 폴백 아바타 (CSS 애니메이션)
+            st.markdown(get_enhanced_fallback_avatar_html(question, "interviewer", "neutral"), unsafe_allow_html=True)
+
+        # TTS로 질문 읽기 (옵션)
+        if st.session_state.mock_mode == "voice" and VIDEO_UTILS_AVAILABLE:
+            if st.button("질문 다시 듣기"):
+                with st.spinner("음성 생성 중..."):
+                    audio_bytes = generate_tts_audio(question, voice="alloy", speed=0.85)
+                    if audio_bytes:
+                        get_loud_audio_component(audio_bytes, autoplay=True, gain=5.0)
+
+        st.markdown("---")
+
+    # =====================
+    # 연습모드: 힌트 패널 표시
+    # =====================
+    if is_practice_mode and hint_col is not None:
+        with hint_col:
+            st.markdown("### 📚 STAR 기법 힌트")
+
+            # 질문에 맞는 힌트 찾기
+            hint = STAR_HINTS.get(question, STAR_HINTS.get("_default", {}))
+
+            # 면접관 질문 의도
+            st.markdown(f"**🎯 면접관 의도**")
+            st.caption(hint.get("intent", "구체성과 진정성을 봅니다"))
+
+            # STAR 강조점
+            st.markdown(f"**⭐ STAR 비중**")
+            st.caption(hint.get("star_focus", "S 20%, T 20%, A 40%, R 20%"))
+
+            # 핵심 팁
+            st.markdown(f"**💡 핵심 팁**")
+            st.info(hint.get("tip", "숫자로 증명 + 배운 점 마무리"))
+
+            # 예시 구조
+            with st.expander("📝 예시 STAR 구조", expanded=False):
+                example = hint.get("example_star", "S: 상황 / T: 과제 / A: 행동 / R: 결과")
+                for part in example.split(" / "):
+                    st.caption(f"• {part}")
+
+            st.divider()
+
+            # 빠른 참고 예시
+            st.markdown("**🚀 빠른 참고**")
+            sample_examples = random.sample(STAR_QUICK_EXAMPLES, min(2, len(STAR_QUICK_EXAMPLES)))
+            for ex in sample_examples:
+                with st.expander(f"{ex['역량']}", expanded=False):
+                    st.caption(ex['hint'])
 
     # =====================
     # 답변 입력 영역
@@ -647,6 +980,33 @@ elif not st.session_state.mock_completed:
                                     st.session_state.mock_confidence_timeline.append(5.0)
                                     st.session_state.mock_stress_timeline.append(5.0)
 
+                                # Phase B1: 강화된 분석 수행
+                                enhanced_analysis = None
+                                follow_up = None
+                                if INTERVIEW_ENHANCER_AVAILABLE:
+                                    try:
+                                        interviewer_type = st.session_state.get("mock_interviewer_type", "neutral")
+                                        enhanced_analysis = analyze_interview_answer(
+                                            question=question,
+                                            answer=transcribed_text,
+                                            elapsed_seconds=elapsed,
+                                            airline=airline,
+                                            interviewer_type=interviewer_type
+                                        )
+                                        st.session_state.mock_enhanced_analyses.append(enhanced_analysis)
+                                        st.session_state.mock_keyword_scores.append(
+                                            enhanced_analysis.get("keyword_analysis", {}).get("keyword_score", 0)
+                                        )
+                                        # 꼬리질문 저장
+                                        if enhanced_analysis.get("should_follow_up") and enhanced_analysis.get("follow_up"):
+                                            st.session_state.mock_follow_up_questions.append({
+                                                "question_idx": current_idx,
+                                                "follow_up": enhanced_analysis["follow_up"]
+                                            })
+                                    except Exception as e:
+                                        st.session_state.mock_enhanced_analyses.append({"error": str(e)})
+                                        st.session_state.mock_keyword_scores.append(0)
+
                                 # 세션에 저장
                                 st.session_state.mock_answers.append(transcribed_text)
                                 st.session_state.mock_transcriptions.append(result)
@@ -706,6 +1066,33 @@ elif not st.session_state.mock_completed:
                     else:
                         content_analysis = {"total_score": 0, "error": "분석 불가"}
 
+                    # Phase B1: 강화된 분석 수행
+                    if INTERVIEW_ENHANCER_AVAILABLE:
+                        try:
+                            interviewer_type = st.session_state.get("mock_interviewer_type", "neutral")
+                            enhanced_analysis = analyze_interview_answer(
+                                question=question,
+                                answer=fallback_answer.strip(),
+                                elapsed_seconds=elapsed,
+                                airline=airline,
+                                interviewer_type=interviewer_type
+                            )
+                            st.session_state.mock_enhanced_analyses.append(enhanced_analysis)
+                            st.session_state.mock_keyword_scores.append(
+                                enhanced_analysis.get("keyword_analysis", {}).get("keyword_score", 0)
+                            )
+                            if enhanced_analysis.get("should_follow_up") and enhanced_analysis.get("follow_up"):
+                                st.session_state.mock_follow_up_questions.append({
+                                    "question_idx": current_idx,
+                                    "follow_up": enhanced_analysis["follow_up"]
+                                })
+                        except Exception as e:
+                            st.session_state.mock_enhanced_analyses.append({"error": str(e)})
+                            st.session_state.mock_keyword_scores.append(0)
+                    else:
+                        st.session_state.mock_enhanced_analyses.append({})
+                        st.session_state.mock_keyword_scores.append(0)
+
                     st.session_state.mock_answers.append(fallback_answer.strip())
                     st.session_state.mock_times.append(elapsed)
                     st.session_state.mock_voice_analyses.append(voice_analysis)
@@ -754,6 +1141,9 @@ elif not st.session_state.mock_completed:
             })
             st.session_state.mock_confidence_timeline.append(5.0)
             st.session_state.mock_stress_timeline.append(5.0)
+            # Phase B1: 강화 분석 빈 데이터 추가
+            st.session_state.mock_enhanced_analyses.append({"skipped": True})
+            st.session_state.mock_keyword_scores.append(0)
             st.session_state.answer_start_time = None
 
             if current_idx + 1 >= total:
@@ -822,6 +1212,33 @@ elif not st.session_state.mock_completed:
                     else:
                         content_analysis = {"total_score": 0}
 
+                    # Phase B1: 강화된 분석 수행
+                    if INTERVIEW_ENHANCER_AVAILABLE:
+                        try:
+                            interviewer_type = st.session_state.get("mock_interviewer_type", "neutral")
+                            enhanced_analysis = analyze_interview_answer(
+                                question=question,
+                                answer=answer.strip(),
+                                elapsed_seconds=elapsed,
+                                airline=airline,
+                                interviewer_type=interviewer_type
+                            )
+                            st.session_state.mock_enhanced_analyses.append(enhanced_analysis)
+                            st.session_state.mock_keyword_scores.append(
+                                enhanced_analysis.get("keyword_analysis", {}).get("keyword_score", 0)
+                            )
+                            if enhanced_analysis.get("should_follow_up") and enhanced_analysis.get("follow_up"):
+                                st.session_state.mock_follow_up_questions.append({
+                                    "question_idx": current_idx,
+                                    "follow_up": enhanced_analysis["follow_up"]
+                                })
+                        except Exception as e:
+                            st.session_state.mock_enhanced_analyses.append({"error": str(e)})
+                            st.session_state.mock_keyword_scores.append(0)
+                    else:
+                        st.session_state.mock_enhanced_analyses.append({})
+                        st.session_state.mock_keyword_scores.append(0)
+
                     st.session_state.mock_answers.append(answer.strip())
                     st.session_state.mock_times.append(elapsed)
                     st.session_state.mock_voice_analyses.append({})  # 텍스트 모드는 음성 분석 없음
@@ -868,6 +1285,9 @@ elif not st.session_state.mock_completed:
                     })
                     st.session_state.mock_confidence_timeline.append(5.0)
                     st.session_state.mock_stress_timeline.append(5.0)
+                    # Phase B1: 강화 분석 빈 데이터 추가
+                    st.session_state.mock_enhanced_analyses.append({"skipped": True})
+                    st.session_state.mock_keyword_scores.append(0)
                     st.session_state.timer_running = False
 
                     if current_idx + 1 >= total:
@@ -906,10 +1326,15 @@ else:
             except Exception as e:
                 st.session_state.mock_combined_voice_analysis = {"error": str(e)}
 
+    # Phase B1: 면접관 정보 표시
+    if INTERVIEW_ENHANCER_AVAILABLE and st.session_state.get("mock_interviewer_type"):
+        interviewer = get_interviewer_character(st.session_state.mock_interviewer_type)
+        st.info(f"**면접관:** {interviewer.name} ({st.session_state.mock_interviewer_type.upper()}) - {interviewer.personality}")
+
     st.divider()
 
-    # 질문별 결과 탭 (Phase 1: 감정 분석 포함)
-    tab1, tab2, tab3, tab4 = st.tabs(["📝 질문별 분석", "🎤 음성 평가", "💭 감정 분석", "📊 종합 평가"])
+    # 질문별 결과 탭 (Phase B1: 키워드 분석 탭 추가)
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📝 질문별 분석", "🎤 음성 평가", "💭 감정 분석", "🔑 키워드 분석", "📊 종합 평가"])
 
     with tab1:
         for i, (q, a, t) in enumerate(zip(
@@ -1072,6 +1497,135 @@ else:
 
                         with col3:
                             st.metric("음성 점수", f"{voice.get('total_score', 0)}/100")
+
+            # Phase D1: 고도화된 음성 분석 그래프
+            if VOICE_ENHANCER_AVAILABLE and st.session_state.mock_answers:
+                st.divider()
+                st.subheader("📊 음성 분석 그래프")
+
+                # 전체 답변 텍스트 결합
+                combined_transcript = " ".join(st.session_state.mock_answers)
+                total_duration = sum(st.session_state.mock_response_times) if st.session_state.mock_response_times else 60.0
+
+                # 말 속도 그래프 데이터
+                speed_data = get_speech_speed_graph_data(combined_transcript, total_duration, "ko")
+
+                # 말 속도 시각화
+                with st.expander("🎤 말 속도 분석", expanded=True):
+                    col1, col2 = st.columns([2, 1])
+
+                    with col1:
+                        # 시간대별 말 속도 그래프
+                        import pandas as pd
+                        if speed_data.get("timeline"):
+                            speed_df = pd.DataFrame(speed_data["timeline"])
+                            st.line_chart(speed_df.set_index("timestamp")["wpm"], use_container_width=True)
+                            st.caption("시간대별 말 속도 변화 (WPM)")
+
+                    with col2:
+                        avg_wpm = speed_data.get("average_wpm", 0)
+                        optimal = speed_data.get("optimal_range", (110, 140))
+                        st.metric("평균 속도", f"{avg_wpm:.0f} WPM")
+                        st.caption(f"적정 범위: {optimal[0]}-{optimal[1]} WPM")
+
+                        if avg_wpm < optimal[0]:
+                            st.warning("말 속도가 느립니다. 조금 더 빠르게 말해보세요.")
+                        elif avg_wpm > optimal[1]:
+                            st.warning("말 속도가 빠릅니다. 천천히 말해보세요.")
+                        else:
+                            st.success("적절한 말 속도입니다!")
+
+                        # 빠른/느린 구간 표시
+                        fast_segs = speed_data.get("fast_segments", [])
+                        slow_segs = speed_data.get("slow_segments", [])
+                        if fast_segs:
+                            st.caption(f"빠른 구간: {len(fast_segs)}개")
+                        if slow_segs:
+                            st.caption(f"느린 구간: {len(slow_segs)}개")
+
+                # 톤/억양 그래프 (시뮬레이션 데이터 사용)
+                with st.expander("🎵 음성 톤 분석", expanded=False):
+                    tone_data = get_tone_graph_data(total_duration)
+
+                    col1, col2 = st.columns([2, 1])
+
+                    with col1:
+                        if tone_data.get("timeline"):
+                            tone_df = pd.DataFrame(tone_data["timeline"])
+                            st.line_chart(tone_df.set_index("timestamp")["pitch"], use_container_width=True)
+                            st.caption("시간대별 음성 톤 변화 (Hz)")
+
+                    with col2:
+                        pattern = tone_data.get("pattern", "stable")
+                        pattern_names = {
+                            "monotone": "단조로움",
+                            "stable": "안정적",
+                            "dynamic": "역동적",
+                            "nervous": "긴장됨",
+                            "confident": "자신감"
+                        }
+                        st.metric("톤 패턴", pattern_names.get(pattern, pattern))
+                        st.metric("평균 피치", f"{tone_data.get('average_pitch', 0):.0f} Hz")
+
+                        if pattern == "monotone":
+                            st.info("억양에 변화를 주면 더 생동감 있게 전달됩니다.")
+                        elif pattern == "nervous":
+                            st.info("심호흡 후 편안하게 말해보세요.")
+
+                # 음량 그래프 (시뮬레이션 데이터 사용)
+                with st.expander("🔊 음량 분석", expanded=False):
+                    volume_data = get_volume_graph_data(total_duration)
+
+                    col1, col2 = st.columns([2, 1])
+
+                    with col1:
+                        if volume_data.get("timeline"):
+                            vol_df = pd.DataFrame(volume_data["timeline"])
+                            st.line_chart(vol_df.set_index("timestamp")["db"], use_container_width=True)
+                            st.caption("시간대별 음량 변화 (dB)")
+
+                    with col2:
+                        level = volume_data.get("level", "optimal")
+                        level_names = {
+                            "too_quiet": "너무 작음",
+                            "quiet": "조금 작음",
+                            "optimal": "적절함",
+                            "loud": "조금 큼",
+                            "too_loud": "너무 큼"
+                        }
+                        st.metric("음량 수준", level_names.get(level, level))
+                        st.metric("평균 음량", f"{volume_data.get('average_db', 0):.0f} dB")
+
+                        if level in ["too_quiet", "quiet"]:
+                            st.info("목소리를 조금 더 크게 말해보세요.")
+                        elif level in ["too_loud", "loud"]:
+                            st.info("면접관과의 거리를 고려해 음량을 조절하세요.")
+
+                # 침묵/멈춤 분석
+                with st.expander("⏸️ 멈춤/침묵 분석", expanded=False):
+                    silence_data = get_silence_analysis(total_duration)
+
+                    col1, col2, col3 = st.columns(3)
+
+                    with col1:
+                        st.metric("침묵 비율", f"{silence_data.get('ratio', 0) * 100:.1f}%")
+                        st.caption("전체 발화 대비 침묵 비율")
+
+                    with col2:
+                        st.metric("자연스러운 멈춤", f"{silence_data.get('natural_pauses', 0)}회")
+                        st.metric("머뭇거림", f"{silence_data.get('hesitations', 0)}회")
+
+                    with col3:
+                        st.metric("긴 침묵", f"{silence_data.get('long_pauses', 0)}회")
+                        quality = silence_data.get("quality_score", 0)
+                        if quality >= 80:
+                            st.success("적절한 멈춤 활용!")
+                        elif quality >= 60:
+                            st.info("멈춤 활용을 개선해보세요.")
+                        else:
+                            st.warning("긴 침묵을 줄여보세요.")
+
+                    st.caption(silence_data.get("feedback", ""))
 
         else:
             st.info("텍스트 모드에서는 음성 평가가 제공되지 않습니다. 음성 모드로 면접을 진행하면 상세한 음성 분석을 받을 수 있습니다.")
@@ -1483,10 +2037,314 @@ else:
                     st.markdown(f"- 필러: {filler.get('feedback', '분석 중')}")
                     st.markdown(f"- 구조: {structure.get('feedback', '분석 중')}")
 
+            # Phase D2: 감정 분석 고도화 (자신감/긴장도 타임라인)
+            if EMOTION_ENHANCER_AVAILABLE and st.session_state.mock_response_times:
+                st.divider()
+                st.markdown("### 📊 감정 분석 타임라인")
+
+                total_duration = sum(st.session_state.mock_response_times)
+                import pandas as pd
+
+                # 자신감/긴장도 타임라인 데이터
+                conf_timeline = get_confidence_timeline(total_duration)
+                stress_timeline = get_stress_timeline(total_duration)
+
+                # 자신감 타임라인 그래프
+                with st.expander("💪 자신감 변화", expanded=True):
+                    col1, col2 = st.columns([2, 1])
+
+                    with col1:
+                        conf_df = pd.DataFrame({
+                            'timestamp': conf_timeline['timestamps'],
+                            'confidence': conf_timeline['values']
+                        })
+                        st.line_chart(conf_df.set_index('timestamp')['confidence'], use_container_width=True)
+                        st.caption("시간대별 자신감 변화")
+
+                    with col2:
+                        conf_score = conf_timeline['overall_score']
+                        conf_level = conf_timeline['level']
+                        level_names = {
+                            "very_low": "매우 낮음", "low": "낮음",
+                            "moderate": "보통", "high": "높음", "very_high": "매우 높음"
+                        }
+                        st.metric("자신감 점수", f"{conf_score:.0f}/100")
+                        st.metric("수준", level_names.get(conf_level, conf_level))
+                        st.metric("추세", {"improving": "상승 ↑", "declining": "하락 ↓", "stable": "안정 →", "fluctuating": "변동 ↕"}.get(conf_timeline['trend'], "-"))
+
+                    st.info(conf_timeline['feedback'])
+
+                # 긴장도 타임라인 그래프
+                with st.expander("😰 긴장도 변화", expanded=False):
+                    col1, col2 = st.columns([2, 1])
+
+                    with col1:
+                        stress_df = pd.DataFrame({
+                            'timestamp': stress_timeline['timestamps'],
+                            'stress': stress_timeline['values']
+                        })
+                        st.line_chart(stress_df.set_index('timestamp')['stress'], use_container_width=True)
+                        st.caption("시간대별 긴장도 변화 (낮을수록 좋음)")
+
+                    with col2:
+                        stress_score = stress_timeline['overall_score']
+                        stress_level = stress_timeline['level']
+                        level_names = {
+                            "relaxed": "매우 편안", "calm": "편안",
+                            "slight": "약간 긴장", "moderate": "보통",
+                            "high": "높음", "very_high": "매우 높음"
+                        }
+                        st.metric("긴장도", f"{stress_score:.0f}/100")
+                        st.metric("수준", level_names.get(stress_level, stress_level))
+
+                        if stress_timeline['peak_time']:
+                            st.metric("피크 시점", f"{stress_timeline['peak_time']:.0f}초")
+
+                    st.info(stress_timeline['feedback'])
+
+                # 구간별 피드백
+                with st.expander("📋 구간별 상세 피드백", expanded=False):
+                    segments = get_segment_analysis(total_duration)
+
+                    for i, seg in enumerate(segments, 1):
+                        seg_names = {1: "초반", 2: "중반", 3: "후반"}
+                        seg_name = seg_names.get(i, f"{i}구간")
+
+                        st.markdown(f"**{seg_name}** ({seg['start']:.0f}~{seg['end']:.0f}초)")
+
+                        scol1, scol2, scol3 = st.columns(3)
+                        with scol1:
+                            st.metric("자신감", f"{seg['confidence']:.0f}")
+                        with scol2:
+                            st.metric("긴장도", f"{seg['stress']:.0f}")
+                        with scol3:
+                            emotion_kr = {
+                                "neutral": "중립", "confident": "자신감",
+                                "nervous": "긴장", "calm": "차분",
+                                "anxious": "불안", "enthusiastic": "열정",
+                                "hesitant": "주저"
+                            }
+                            st.metric("감정", emotion_kr.get(seg['emotion'], seg['emotion']))
+
+                        st.caption(seg['feedback'])
+                        if seg.get('suggestions'):
+                            for sug in seg['suggestions']:
+                                st.caption(f"💡 {sug}")
+                        st.markdown("---")
+
         else:
             st.info("음성 모드로 면접을 진행하면 상세한 음성 분석 결과를 확인할 수 있습니다. 텍스트 모드에서는 음성 분석이 제공되지 않습니다.")
 
+    # Phase B1: 키워드 분석 탭
     with tab4:
+        st.markdown("""
+        <style>
+        .keyword-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 20px;
+            padding: 25px;
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(240, 147, 251, 0.3);
+        }
+        .keyword-score {
+            font-size: 56px;
+            font-weight: 800;
+            line-height: 1;
+        }
+        .keyword-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            margin: 4px;
+            font-size: 14px;
+        }
+        .time-indicator {
+            padding: 15px;
+            border-radius: 12px;
+            margin: 8px 0;
+        }
+        .time-optimal { background: #dcfce7; border-left: 4px solid #22c55e; }
+        .time-short { background: #fef3c7; border-left: 4px solid #f59e0b; }
+        .time-long { background: #fee2e2; border-left: 4px solid #ef4444; }
+        .follow-up-card {
+            background: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 12px 0;
+        }
+        .follow-up-question {
+            font-size: 16px;
+            font-weight: 600;
+            color: #0369a1;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+        if INTERVIEW_ENHANCER_AVAILABLE and st.session_state.get("mock_enhanced_analyses"):
+            enhanced_list = st.session_state.mock_enhanced_analyses
+            keyword_scores = st.session_state.get("mock_keyword_scores", [])
+            follow_ups = st.session_state.get("mock_follow_up_questions", [])
+
+            # 평균 키워드 점수 계산
+            valid_scores = [s for s in keyword_scores if s > 0]
+            avg_keyword_score = sum(valid_scores) / len(valid_scores) if valid_scores else 0
+
+            # 등급 계산
+            if avg_keyword_score >= 80:
+                grade = "A"
+                grade_text = "우수"
+            elif avg_keyword_score >= 60:
+                grade = "B"
+                grade_text = "양호"
+            elif avg_keyword_score >= 40:
+                grade = "C"
+                grade_text = "보통"
+            else:
+                grade = "D"
+                grade_text = "개선필요"
+
+            # 상단 종합 점수 카드
+            st.markdown(f"""
+            <div class="keyword-card">
+                <div style="font-size: 16px; opacity: 0.9;">키워드 활용도</div>
+                <div class="keyword-score">{avg_keyword_score:.0f}</div>
+                <div style="margin-top: 10px;">
+                    <span class="keyword-badge">{grade} 등급</span>
+                    <span class="keyword-badge">{grade_text}</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # 면접관 정보
+            interviewer_type = st.session_state.get("mock_interviewer_type", "neutral")
+            interviewer = get_interviewer_character(interviewer_type)
+            st.caption(f"면접관: {interviewer.name} | 압박 수준: {interviewer.pressure_level}/10")
+
+            st.divider()
+
+            # 질문별 키워드 분석
+            st.markdown("### 🔍 질문별 키워드 분석")
+
+            for i, (q, a, t, enhanced) in enumerate(zip(
+                st.session_state.mock_questions,
+                st.session_state.mock_answers,
+                st.session_state.mock_times,
+                enhanced_list
+            ), 1):
+                if enhanced.get("skipped") or enhanced.get("error"):
+                    continue
+
+                kw_analysis = enhanced.get("keyword_analysis", {})
+                time_analysis = enhanced.get("time_analysis", {})
+                kw_score = kw_analysis.get("keyword_score", 0)
+
+                with st.expander(f"Q{i}. 키워드 점수: {kw_score}/100 | 시간: {t}초", expanded=False):
+                    col_kw, col_time = st.columns(2)
+
+                    with col_kw:
+                        st.markdown("**키워드 분석**")
+
+                        # STAR 구조
+                        star = kw_analysis.get("star_structure", {})
+                        if star:
+                            star_cols = st.columns(4)
+                            for j, (key, label) in enumerate([
+                                ("situation", "S"), ("task", "T"), ("action", "A"), ("result", "R")
+                            ]):
+                                with star_cols[j]:
+                                    if star.get("components", {}).get(key):
+                                        st.success(f"{label}")
+                                    else:
+                                        st.error(f"{label}")
+
+                        # 발견된 키워드
+                        airline_kw = kw_analysis.get("airline_keywords", {}).get("found", {})
+                        found_list = []
+                        for cat_kws in airline_kw.values():
+                            found_list.extend(cat_kws)
+                        if found_list:
+                            st.markdown("**사용된 키워드:**")
+                            st.markdown(" ".join([f"`{kw}`" for kw in found_list[:6]]))
+
+                        # 누락된 키워드
+                        missing = kw_analysis.get("missing_keywords", [])
+                        if missing:
+                            st.markdown("**보완 필요:**")
+                            for m in missing[:3]:
+                                st.caption(f"- {m}")
+
+                    with col_time:
+                        st.markdown("**시간 관리**")
+                        time_status = time_analysis.get("status", "unknown")
+                        time_class = "time-optimal" if time_status == "optimal" else ("time-short" if time_status == "too_short" else "time-long")
+
+                        status_text = {"optimal": "적절", "too_short": "너무 짧음", "too_long": "너무 김"}.get(time_status, "알 수 없음")
+                        st.markdown(f"""
+                        <div class="time-indicator {time_class}">
+                            <strong>{status_text}</strong><br>
+                            <small>{time_analysis.get('feedback', '')}</small>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                        # 권장 시간 배분
+                        ideal = time_analysis.get("ideal_range", (60, 90))
+                        st.caption(f"권장 시간: {ideal[0]}~{ideal[1]}초")
+
+                        # 말 속도
+                        pace = time_analysis.get("pace_analysis", {})
+                        if pace:
+                            st.caption(f"속도: {pace.get('pace', '알 수 없음')} ({pace.get('cps', 0):.1f} 글자/초)")
+
+            # 꼬리질문 섹션
+            if follow_ups:
+                st.divider()
+                st.markdown("### 💬 AI 꼬리질문")
+                st.caption("면접관이 추가로 물어봤을 수 있는 질문들입니다. 이 질문들에도 답변할 수 있도록 준비하세요.")
+
+                for fu in follow_ups:
+                    q_idx = fu.get("question_idx", 0)
+                    fu_data = fu.get("follow_up", {})
+                    original_q = st.session_state.mock_questions[q_idx] if q_idx < len(st.session_state.mock_questions) else ""
+
+                    st.markdown(f"""
+                    <div class="follow-up-card">
+                        <div style="color: #64748b; font-size: 12px;">Q{q_idx + 1}에 대한 꼬리질문</div>
+                        <div class="follow-up-question">{fu_data.get('follow_up_question', '')}</div>
+                        <div style="margin-top: 8px; color: #64748b; font-size: 13px;">
+                            목적: {fu_data.get('purpose', '')}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    expected = fu_data.get("expected_elements", [])
+                    if expected:
+                        st.caption(f"답변에 포함하면 좋을 요소: {', '.join(expected)}")
+
+            # 종합 추천
+            st.divider()
+            st.markdown("### 💡 키워드 활용 추천")
+
+            all_recommendations = []
+            for enhanced in enhanced_list:
+                if enhanced and not enhanced.get("skipped") and not enhanced.get("error"):
+                    recs = enhanced.get("keyword_analysis", {}).get("recommendations", [])
+                    all_recommendations.extend(recs)
+
+            unique_recs = list(dict.fromkeys(all_recommendations))[:5]
+            if unique_recs:
+                for rec in unique_recs:
+                    st.markdown(f"- {rec}")
+            else:
+                st.success("키워드를 잘 활용하셨습니다!")
+
+        else:
+            st.info("키워드 분석 기능을 사용할 수 없거나 분석 데이터가 없습니다.")
+
+    with tab5:
         if st.session_state.mock_evaluation is None:
             with st.spinner("종합 평가 생성 중... (최대 1분)"):
                 evaluation = evaluate_interview_combined(

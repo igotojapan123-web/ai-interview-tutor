@@ -1,5 +1,6 @@
 # env_config.py
 # 환경변수 로드 및 검증을 위한 공통 모듈
+# Phase A1: 엔터프라이즈급 보안 강화
 
 import os
 import re
@@ -10,6 +11,22 @@ from typing import Optional, Tuple, Dict
 
 # 로거 설정
 logger = logging.getLogger(__name__)
+
+# 암호화 키 관리자 (지연 로딩)
+_secure_key_manager = None
+
+
+def _get_key_manager():
+    """암호화 키 관리자 지연 로딩"""
+    global _secure_key_manager
+    if _secure_key_manager is None:
+        try:
+            from enhanced_security import SecureKeyManager
+            _secure_key_manager = SecureKeyManager()
+        except ImportError:
+            logger.warning("enhanced_security 모듈을 로드할 수 없습니다. 암호화 기능이 비활성화됩니다.")
+            _secure_key_manager = None
+    return _secure_key_manager
 
 # .env 파일 로드 (프로젝트 루트에서)
 _env_path = Path(__file__).parent / ".env"
@@ -110,6 +127,8 @@ OPENAI_API_KEY = get_env("OPENAI_API_KEY") or get_env("OPENAI_APIKEY")
 DID_API_KEY = get_env("DID_API_KEY")
 CLOVA_CLIENT_ID = get_env("CLOVA_CLIENT_ID")
 CLOVA_CLIENT_SECRET = get_env("CLOVA_CLIENT_SECRET")
+NAVER_CLIENT_ID = get_env("NAVER_CLIENT_ID")
+NAVER_CLIENT_SECRET = get_env("NAVER_CLIENT_SECRET")
 GOOGLE_TTS_API_KEY = get_env("GOOGLE_TTS_API_KEY") or get_env("GOOGLE_CLOUD_API_KEY") or get_env("GOOGLE_API_KEY")
 
 # App Passwords - 환경변수 필수 (보안상 기본값 제거)
@@ -149,6 +168,7 @@ def check_all_keys() -> Dict[str, bool]:
         "openai": bool(OPENAI_API_KEY) and validate_api_key(OPENAI_API_KEY, "openai")[0],
         "did": bool(DID_API_KEY) and validate_api_key(DID_API_KEY, "did")[0],
         "clova": bool(CLOVA_CLIENT_ID and CLOVA_CLIENT_SECRET),
+        "naver": bool(NAVER_CLIENT_ID and NAVER_CLIENT_SECRET),
         "google_tts": bool(GOOGLE_TTS_API_KEY) and validate_api_key(GOOGLE_TTS_API_KEY, "google")[0],
     }
 
@@ -179,3 +199,160 @@ def get_api_status_message() -> str:
         messages.append("D-ID: 미설정")
 
     return " | ".join(messages)
+
+
+# =============================================================================
+# 암호화된 API 키 관리 (Phase A1 보안 강화)
+# =============================================================================
+
+def get_encrypted_env(key: str, default: str = "") -> str:
+    """암호화된 환경변수 가져오기
+
+    환경변수 이름에 _ENCRYPTED 접미사가 있으면 복호화합니다.
+    예: OPENAI_API_KEY_ENCRYPTED -> 복호화된 값 반환
+
+    Args:
+        key: 환경변수 키
+        default: 기본값
+
+    Returns:
+        복호화된 값 또는 평문 값
+    """
+    # 먼저 암호화된 키 확인
+    encrypted_key = f"{key}_ENCRYPTED"
+    encrypted_value = os.environ.get(encrypted_key, "")
+
+    if encrypted_value:
+        key_manager = _get_key_manager()
+        if key_manager:
+            decrypted = key_manager.decrypt_key(encrypted_value)
+            if decrypted:
+                return decrypted
+            else:
+                logger.warning(f"{encrypted_key} 복호화 실패, 평문 키 확인 중...")
+
+    # 평문 키 반환
+    return os.environ.get(key, default)
+
+
+def encrypt_api_key(api_key: str) -> str:
+    """API 키 암호화
+
+    Args:
+        api_key: 평문 API 키
+
+    Returns:
+        암호화된 키 (환경변수에 저장용)
+    """
+    key_manager = _get_key_manager()
+    if key_manager:
+        return key_manager.encrypt_key(api_key)
+    return ""
+
+
+def get_secure_api_key(key_type: str) -> str:
+    """보안 API 키 가져오기
+
+    암호화된 키를 우선 사용하고, 없으면 평문 키를 반환합니다.
+
+    Args:
+        key_type: 키 유형 (openai, did, clova_id, clova_secret, google_tts)
+
+    Returns:
+        API 키 값
+    """
+    key_mapping = {
+        'openai': ['OPENAI_API_KEY', 'OPENAI_APIKEY'],
+        'did': ['DID_API_KEY'],
+        'clova_id': ['CLOVA_CLIENT_ID'],
+        'clova_secret': ['CLOVA_CLIENT_SECRET'],
+        'google_tts': ['GOOGLE_TTS_API_KEY', 'GOOGLE_CLOUD_API_KEY', 'GOOGLE_API_KEY'],
+    }
+
+    keys = key_mapping.get(key_type, [])
+
+    for key in keys:
+        value = get_encrypted_env(key)
+        if value:
+            return value
+
+    return ""
+
+
+def generate_encrypted_env_file() -> str:
+    """현재 평문 API 키를 암호화한 .env.encrypted 파일 내용 생성
+
+    Returns:
+        암호화된 환경변수 파일 내용
+    """
+    key_manager = _get_key_manager()
+    if not key_manager:
+        return "# 암호화 모듈을 로드할 수 없습니다."
+
+    lines = [
+        "# FlyReady Lab - 암호화된 환경변수",
+        "# 이 파일의 값들은 enhanced_security.py로 암호화되었습니다.",
+        "# 원본 .env 파일은 안전한 곳에 백업하고 삭제하세요.",
+        "",
+    ]
+
+    # API 키 암호화
+    keys_to_encrypt = [
+        ('OPENAI_API_KEY', OPENAI_API_KEY),
+        ('DID_API_KEY', DID_API_KEY),
+        ('CLOVA_CLIENT_ID', CLOVA_CLIENT_ID),
+        ('CLOVA_CLIENT_SECRET', CLOVA_CLIENT_SECRET),
+        ('GOOGLE_TTS_API_KEY', GOOGLE_TTS_API_KEY),
+        ('TESTER_PASSWORD', TESTER_PASSWORD),
+        ('ADMIN_PASSWORD', ADMIN_PASSWORD),
+    ]
+
+    for key_name, key_value in keys_to_encrypt:
+        if key_value:
+            encrypted = key_manager.encrypt_key(key_value)
+            lines.append(f"{key_name}_ENCRYPTED={encrypted}")
+        else:
+            lines.append(f"# {key_name}_ENCRYPTED= (원본 키가 없음)")
+
+    return "\n".join(lines)
+
+
+def validate_security_config() -> Tuple[bool, List[str]]:
+    """보안 설정 검증
+
+    Returns:
+        (is_valid, issues_list)
+    """
+    issues = []
+
+    # 필수 환경변수 확인
+    if not OPENAI_API_KEY:
+        issues.append("OPENAI_API_KEY가 설정되지 않았습니다.")
+
+    # 비밀번호 강도 확인
+    if ADMIN_PASSWORD:
+        if len(ADMIN_PASSWORD) < 8:
+            issues.append("ADMIN_PASSWORD는 8자 이상이어야 합니다.")
+        if ADMIN_PASSWORD.lower() == 'admin' or ADMIN_PASSWORD == '1234':
+            issues.append("ADMIN_PASSWORD가 너무 단순합니다.")
+
+    if TESTER_PASSWORD:
+        if len(TESTER_PASSWORD) < 6:
+            issues.append("TESTER_PASSWORD는 6자 이상이어야 합니다.")
+
+    # API 키 형식 검증
+    for key_name, key_value, key_type in [
+        ('OPENAI_API_KEY', OPENAI_API_KEY, 'openai'),
+        ('DID_API_KEY', DID_API_KEY, 'did'),
+        ('GOOGLE_TTS_API_KEY', GOOGLE_TTS_API_KEY, 'google'),
+    ]:
+        if key_value:
+            is_valid, msg = validate_api_key(key_value, key_type)
+            if not is_valid:
+                issues.append(f"{key_name}: {msg}")
+
+    return len(issues) == 0, issues
+
+
+# 타입 힌트용 (List import)
+from typing import List

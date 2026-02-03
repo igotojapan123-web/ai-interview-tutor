@@ -37,7 +37,7 @@ else:
 
 
 def get_env(key: str, default: str = "", required: bool = False) -> str:
-    """환경변수를 안전하게 가져옴
+    """환경변수를 안전하게 가져옴 (Streamlit secrets 우선)
 
     Args:
         key: 환경변수 키
@@ -50,7 +50,20 @@ def get_env(key: str, default: str = "", required: bool = False) -> str:
     Raises:
         ValueError: required=True인데 값이 없을 때
     """
-    value = os.environ.get(key, default)
+    value = default
+
+    # 1. Streamlit secrets 먼저 확인 (Streamlit Cloud 배포 환경)
+    try:
+        import streamlit as st
+        if hasattr(st, 'secrets') and key in st.secrets:
+            value = str(st.secrets[key])
+    except:
+        pass
+
+    # 2. 환경변수 확인 (로컬 환경)
+    if not value or value == default:
+        value = os.environ.get(key, default)
+
     if required and not value:
         error_msg = f"필수 환경변수 '{key}'가 설정되지 않았습니다. .env 파일을 확인하세요."
         logger.error(error_msg)

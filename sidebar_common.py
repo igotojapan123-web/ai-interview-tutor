@@ -3,7 +3,6 @@
 # Fixed version without complex f-string CSS that causes rendering issues
 
 import streamlit as st
-import streamlit.components.v1 as components
 
 # Legacy imports for backward compatibility
 try:
@@ -17,9 +16,10 @@ MODULES_AVAILABLE = {}
 
 
 def inject_google_analytics():
-    """Inject Google Analytics 4 tracking code for beta web only."""
-    ga_code = '<img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" onload="if(!window.gtag){var s=document.createElement(\'script\');s.async=true;s.src=\'https://www.googletagmanager.com/gtag/js?id=G-QRJLVE7B7S\';document.head.appendChild(s);window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;gtag(\'js\',new Date());gtag(\'config\',\'G-QRJLVE7B7S\');}" style="display:none;">'
-    st.markdown(ga_code, unsafe_allow_html=True)
+    """Google Analytics - Streamlit Cloud에서는 서버사이드 방식 필요 (추후 구현)"""
+    # Streamlit이 클라이언트 사이드 script를 차단하므로 GA 비활성화
+    # 나중에 GA Measurement Protocol API로 구현 예정
+    pass
 
 
 def get_simple_css():

@@ -156,49 +156,7 @@ init_page(
 
 
 
-# 구글 번역 방지 + 복사/붙여넣기 허용
-st.markdown("""
-<meta name="google" content="notranslate">
-<meta http-equiv="Content-Language" content="ko">
-<style>
-html, body, .stApp, .main, [data-testid="stAppViewContainer"] {
-    translate: no !important;
-}
-.notranslate, [translate="no"] {
-    translate: no !important;
-}
-
-/* 모든 입력 필드에서 복사/붙여넣기 허용 - 강화된 선택자 */
-textarea, input, [contenteditable="true"],
-.stTextArea textarea, .stTextInput input,
-[data-testid="stTextArea"] textarea,
-[data-testid="stTextInput"] input,
-div[data-baseweb="textarea"] textarea,
-div[data-baseweb="input"] input {
-    -webkit-user-select: text !important;
-    -moz-user-select: text !important;
-    -ms-user-select: text !important;
-    user-select: text !important;
-    -webkit-user-drag: none !important;
-    pointer-events: auto !important;
-}
-
-/* 전체 문서에서 텍스트 선택 허용 */
-* {
-    -webkit-user-select: text !important;
-    -moz-user-select: text !important;
-    -ms-user-select: text !important;
-    user-select: text !important;
-}
-
-/* 버튼과 특수 요소는 제외 */
-button, .stButton, [role="button"] {
-    -webkit-user-select: none !important;
-    user-select: none !important;
-}
-</style>
-""", unsafe_allow_html=True)
-st.markdown('<div translate="no" class="notranslate" lang="ko">', unsafe_allow_html=True)
+# 구글 번역 방지는 sidebar_common에서 처리됨
 
 # ----------------------------
 # 비밀번호 보호

@@ -1,0 +1,1683 @@
+{
+  "timestamp": "2026-02-03T21:42:39.469295",
+  "total_tests": 279,
+  "passed": 273,
+  "failed": 1,
+  "warnings": 5,
+  "details": [
+    {
+      "category": "구문검사",
+      "name": "accessibility.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "accessibility_enhancer.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "admin_alerts.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "admin_dashboard.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "airline_database.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "airline_questions.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "ai_coach.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "analysis.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "analytics.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "analytics_tracker.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "animation_components.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "api_utils.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "api_versioning.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "auth_system.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "auth_utils.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "auto_recovery.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "backup_system.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "benchmark_service.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "cache_utils.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "config.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "constants.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "content_enhancer.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "csrf_protection.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "data_cleanup.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "data_export.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "db_migration.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "debate_enhancer.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "debate_report.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "debate_topics.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "emotion_analysis_enhancer.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "english_interview_data.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "english_interview_enhancer.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "english_interview_report.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "enhanced_error_handler.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "enhanced_security.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "enhancement_integrator.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "enterprise_core.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "env_config.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "env_manager.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "error_handler.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "error_monitor.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "expression_analysis_enhancer.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "extraction_verifier.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "feature_flags.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "feedback_analyzer.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "feedback_data.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "feedback_ux.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "flyready_clova_engine.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "flyready_question_data.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "functional_enhancer.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "growth_report.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "health_check.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "image_optimizer.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "interview_enhancer.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "job_crawler.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "job_queue.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "layout.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "learning_experience_enhancer.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "learning_path.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "llm_utils.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "logging_config.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "main.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "mentor_system.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "mock_interview_report.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "monitoring.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "motivation.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "multiplayer_service.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "nav_utils.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "news_scraper.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "notification_system.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "notification_webhook.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "onboarding.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "page_template.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "page_wrapper.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "payment_system.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "peer_evaluation.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "performance_config.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "performance_monitor.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "performance_optimizer.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "performance_utils.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "personalized_interview_prototype.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "phase_final_check.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "posture_analysis_enhancer.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "progress_tracker.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "question_history.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "rate_limiter.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "realism_enhancer.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "realtime_dashboard.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "recommendation_system.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "response_cache.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "responsive_design.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "resume_enhancer.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "resume_question_enhancer.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "resume_template.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "resume_writer_helper.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "roleplay_enhancer.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "roleplay_report.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "roleplay_scenarios.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "room_manager.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "safe_api.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "safe_utils.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "score_aggregator.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "score_utils.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "security_utils.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "session_manager.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "shared_utils.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "sharp_question_pipeline.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "sidebar_common.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "text_utils.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "uiux_enhancer.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "ui_components.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "ui_config.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "usage_limiter.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "user_analytics.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "user_experience_enhancer.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "validation.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "video_recorder.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "video_utils.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "voice_analysis_enhancer.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "voice_utils.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "webcam_analyzer.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "webcam_component.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "websocket_handler.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "weekly_report.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "자소서분석.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "홈.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "0_시작하기.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "10_채용알림.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "11_항공사가이드.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "12_표정연습.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "14_항공사퀴즈.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "15_국민체력.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "16_기업분석.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "17_자소서기반질문.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "19_자소서작성.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "1_롤플레잉.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "20_자소서첨삭.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "21_이미지메이킹.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "21_자소서템플릿.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "23_D-Day캘린더.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "24_QnA게시판.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "24_에어로케이.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "26_기내방송연습.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "2_영어면접.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "30_로그인.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "31_구독.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "32_멘토찾기.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "34_스킬분석.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "35_요금제.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "36_AI코칭.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "37_그룹면접.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "3_진도관리.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "4_모의면접.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "5_토론면접.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "6_성장그래프.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "7_합격자DB.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "8_면접꿀팁.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "구문검사",
+      "name": "99_관리자.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "Import",
+      "name": "config",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "Import",
+      "name": "env_config",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "Import",
+      "name": "api_utils",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "Import",
+      "name": "auth_utils",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "Import",
+      "name": "ui_config",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "Import",
+      "name": "sidebar_common",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "Import",
+      "name": "airline_questions",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "Import",
+      "name": "feedback_analyzer",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "Import",
+      "name": "security_utils",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "0_시작하기.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "10_채용알림.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "11_항공사가이드.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "12_표정연습.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "14_항공사퀴즈.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "15_국민체력.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "16_기업분석.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "17_자소서기반질문.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "19_자소서작성.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "1_롤플레잉.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "20_자소서첨삭.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "21_이미지메이킹.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "21_자소서템플릿.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "23_D-Day캘린더.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "24_QnA게시판.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "24_에어로케이.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "26_기내방송연습.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "2_영어면접.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "30_로그인.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "31_구독.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "32_멘토찾기.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "34_스킬분석.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "35_요금제.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "36_AI코칭.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "37_그룹면접.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "3_진도관리.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "4_모의면접.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "5_토론면접.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "6_성장그래프.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "7_합격자DB.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "8_면접꿀팁.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "페이지",
+      "name": "99_관리자.py",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "Dep",
+      "name": "streamlit",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "Dep",
+      "name": "openai",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "Dep",
+      "name": "pandas",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "Dep",
+      "name": "plotly",
+      "status": "WARN",
+      "message": "Not installed"
+    },
+    {
+      "category": "Dep",
+      "name": "requests",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "Dep",
+      "name": "Pillow",
+      "status": "WARN",
+      "message": "Not installed"
+    },
+    {
+      "category": "Dep",
+      "name": "google.generativeai",
+      "status": "WARN",
+      "message": "Not installed"
+    },
+    {
+      "category": "데이터",
+      "name": "data\\airline_news.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\competition_scores.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\fitness_log.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\job_alerts.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\job_postings.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\job_postings_auto.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\learning_content.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\match_history.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\mentoring_sessions.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\mentors.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\news_cache.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\payments.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\practice_history.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\question_history.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\quiz_history.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\rooms.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\room_messages.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\score_aggregate.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\skill_profiles.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\subscriptions.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\users.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\user_achievements.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\user_goals.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\airline_news.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\competition_scores.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\fitness_log.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\job_alerts.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\job_postings.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\job_postings_auto.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\learning_content.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\match_history.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\mentoring_sessions.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\mentors.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\news_cache.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\payments.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\practice_history.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\question_history.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\quiz_history.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\rooms.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\room_messages.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\score_aggregate.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\skill_profiles.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\subscriptions.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\users.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\user_achievements.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\user_goals.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\admin\\audit_log.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\admin\\credentials.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\admin\\revenue.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\admin\\subscriptions.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\admin\\usage_stats.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\admin\\users.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\alerts\\history.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\analytics\\realtime.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\analytics\\sessions.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\errors\\error_log.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\errors\\error_stats.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\mentors\\mentors.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "데이터",
+      "name": "data\\recommendations\\learning_content.json",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "환경설정",
+      "name": "env_config 모듈",
+      "status": "FAIL",
+      "message": "cannot import name 'get_api_key' from 'env_config' (C:\\Users\\ADMIN\\ai_tutor\\env_config.py)"
+    },
+    {
+      "category": "Streamlit",
+      "name": "config.toml",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "Streamlit",
+      "name": "secrets.toml",
+      "status": "WARN",
+      "message": "파일 없음 - 배포 환경에서 설정 필요"
+    },
+    {
+      "category": "홈페이지",
+      "name": "홈.py",
+      "status": "PASS",
+      "message": "구문 정상"
+    },
+    {
+      "category": "핵심페이지",
+      "name": "4_모의면접.py",
+      "status": "PASS",
+      "message": "Streamlit import 확인됨"
+    },
+    {
+      "category": "핵심페이지",
+      "name": "2_영어면접.py",
+      "status": "PASS",
+      "message": "Streamlit import 확인됨"
+    },
+    {
+      "category": "핵심페이지",
+      "name": "1_롤플레잉.py",
+      "status": "PASS",
+      "message": "Streamlit import 확인됨"
+    },
+    {
+      "category": "핵심페이지",
+      "name": "5_토론면접.py",
+      "status": "PASS",
+      "message": "Streamlit import 확인됨"
+    },
+    {
+      "category": "핵심페이지",
+      "name": "17_자소서기반질문.py",
+      "status": "PASS",
+      "message": "Streamlit import 확인됨"
+    },
+    {
+      "category": "핵심페이지",
+      "name": "19_자소서작성.py",
+      "status": "PASS",
+      "message": "Streamlit import 확인됨"
+    },
+    {
+      "category": "핵심페이지",
+      "name": "20_자소서첨삭.py",
+      "status": "PASS",
+      "message": "Streamlit import 확인됨"
+    },
+    {
+      "category": "API모듈",
+      "name": "flyready_clova_engine_v3",
+      "status": "WARN",
+      "message": "파일 없음"
+    },
+    {
+      "category": "API모듈",
+      "name": "api_utils (API 유틸리티)",
+      "status": "PASS",
+      "message": ""
+    },
+    {
+      "category": "API모듈",
+      "name": "safe_api (안전한 API 래퍼)",
+      "status": "PASS",
+      "message": ""
+    }
+  ]
+}

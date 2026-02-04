@@ -15,11 +15,6 @@ ENHANCEMENT_AVAILABLE = False
 MODULES_AVAILABLE = {}
 
 
-def inject_google_analytics():
-    """Google Analytics - Streamlit Cloud에서는 서버사이드 방식 필요 (추후 구현)"""
-    # Streamlit이 클라이언트 사이드 script를 차단하므로 GA 비활성화
-    # 나중에 GA Measurement Protocol API로 구현 예정
-    pass
 
 
 def get_simple_css():
@@ -342,9 +337,6 @@ def render_sidebar(current_page: str = ""):
     Args:
         current_page: Current page identifier for highlighting
     """
-    # Google Analytics (Beta Web Only)
-    inject_google_analytics()
-
     # Apply simple CSS
     st.markdown(get_simple_css(), unsafe_allow_html=True)
 

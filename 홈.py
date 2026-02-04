@@ -1243,9 +1243,7 @@ st.markdown(f'''
 <div class="fr-header">
     <a target="_self" href="/" class="fr-logo">{logo_html}</a>
     <div class="fr-header-nav">
-        <a target="_self" href="/요금제" class="fr-nav-link">요금제</a>
-        <a target="_self" href="/로그인" class="fr-nav-link">로그인</a>
-        <a target="_self" href="/자소서첨삭" class="fr-nav-btn">무료로 시작하기</a>
+        <span class="fr-nav-btn" style="cursor: default;">Beta Test</span>
     </div>
 </div>
 ''', unsafe_allow_html=True)

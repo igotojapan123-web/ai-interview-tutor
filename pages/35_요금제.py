@@ -42,12 +42,16 @@ header[data-testid="stHeader"] { display: none; }
 .pricing-inner { max-width: 1200px; margin: 0 auto; }
 .pricing-title { font-size: 2.5rem; font-weight: 800; color: #1e3a5f; text-align: center; margin-bottom: 16px; }
 .pricing-subtitle { font-size: 1.1rem; color: #64748b; text-align: center; margin-bottom: 48px; }
-.pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.pricing-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
 @media (max-width: 900px) { .pricing-grid { grid-template-columns: 1fr; } .pricing-header { padding: 12px 20px; } }
 .pricing-card { background: white; border-radius: 16px; padding: 32px 24px; border: 2px solid #e2e8f0; text-align: center; transition: all 0.3s; }
 .pricing-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.08); }
 .pricing-card.popular { border-color: #3b82f6; position: relative; }
 .pricing-card.premium { border-color: #8b5cf6; }
+.pricing-card.premium-plus { border-color: #f59e0b; }
+.plan-price.premium-plus { color: #f59e0b; }
+.plan-btn-premium-plus { background: #d97706 !important; color: #FFFFFF !important; }
+.plan-btn-premium-plus:hover { background: #b45309 !important; color: #FFFFFF !important; }
 .popular-badge { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); background: #3b82f6; color: white; font-size: 0.8rem; font-weight: 600; padding: 6px 16px; border-radius: 20px; }
 .plan-name { font-size: 1.25rem; font-weight: 700; color: #1e3a5f; margin-bottom: 8px; }
 .plan-price { font-size: 2.5rem; font-weight: 800; margin-bottom: 4px; }
@@ -124,7 +128,7 @@ pricing = """
             <div class="pricing-card popular">
                 <span class="popular-badge">인기</span>
                 <div class="plan-name">STANDARD</div>
-                <div class="plan-price standard">₩19,900</div>
+                <div class="plan-price standard">₩29,000</div>
                 <div class="plan-period">월간 구독</div>
                 <ul class="plan-features">
                     <li class="section-label">면접 연습</li>
@@ -148,7 +152,7 @@ pricing = """
             </div>
             <div class="pricing-card premium">
                 <div class="plan-name">PREMIUM</div>
-                <div class="plan-price premium">₩49,900</div>
+                <div class="plan-price premium">₩49,000</div>
                 <div class="plan-period">월간 구독</div>
                 <ul class="plan-features">
                     <li class="section-label">면접 연습</li>
@@ -159,6 +163,8 @@ pricing = """
                     <li><span class="check">✓</span> 음성 면접 / 영어 면접</li>
                     <li><span class="check">✓</span> 롤플레잉 / 토론 무제한</li>
                     <li><span class="check">✓</span> 합격자 DB 분석</li>
+                    <li class="section-label">커스텀 면접</li>
+                    <li><span class="check">✓</span> 에어로케이 맞춤 분석</li>
                     <li class="section-label">스터디 플랜 무료 포함</li>
                     <li><span class="check">✓</span> 스터디 매칭 (무료)</li>
                     <li><span class="check">✓</span> 스터디 기능 (무료)</li>
@@ -167,6 +173,31 @@ pricing = """
                     <li><span class="check">✓</span> 우선 고객 지원</li>
                 </ul>
                 <a target="_self" href="/구독" class="plan-btn plan-btn-premium">프리미엄 시작</a>
+            </div>
+            <div class="pricing-card premium-plus">
+                <div class="plan-name">PREMIUM+ CUSTOM</div>
+                <div class="plan-price premium-plus">₩69,000</div>
+                <div class="plan-period">월간 구독</div>
+                <ul class="plan-features">
+                    <li class="section-label">PREMIUM 전체 포함</li>
+                    <li><span class="check">✓</span> 프리미엄 모든 기능</li>
+                    <li><span class="check">✓</span> 스터디 플랜 무료</li>
+                    <li class="section-label">10개 항공사 커스텀</li>
+                    <li><span class="check">✓</span> 대한항공 맞춤 분석</li>
+                    <li><span class="check">✓</span> 아시아나 맞춤 분석</li>
+                    <li><span class="check">✓</span> 진에어 맞춤 분석</li>
+                    <li><span class="check">✓</span> 티웨이 맞춤 분석</li>
+                    <li><span class="check">✓</span> 제주항공 맞춤 분석</li>
+                    <li><span class="check">✓</span> 에어부산 맞춤 분석</li>
+                    <li><span class="check">✓</span> 에어서울 맞춤 분석</li>
+                    <li><span class="check">✓</span> 이스타항공 맞춤 분석</li>
+                    <li><span class="check">✓</span> 파라타항공 맞춤 분석</li>
+                    <li><span class="check">✓</span> 에어프레미아 맞춤 분석</li>
+                    <li class="section-label">전용 혜택</li>
+                    <li><span class="check">✓</span> 항공사별 포트폴리오 분석</li>
+                    <li><span class="check">✓</span> 1:1 우선 지원</li>
+                </ul>
+                <a target="_self" href="/구독" class="plan-btn plan-btn-premium-plus">커스텀 시작</a>
             </div>
         </div>
         <p class="feature-note">

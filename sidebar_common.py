@@ -15,6 +15,20 @@ ENHANCEMENT_AVAILABLE = False
 MODULES_AVAILABLE = {}
 
 
+def get_google_analytics():
+    """Google Analytics 4 tracking code for beta web only."""
+    return """
+    <!-- Google Analytics (Beta Web Only) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QRJLVE7B7S"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-QRJLVE7B7S');
+    </script>
+    """
+
+
 def get_simple_css():
     """Simple, reliable CSS without complex f-string issues."""
     return """
@@ -336,6 +350,9 @@ def render_sidebar(current_page: str = ""):
     Args:
         current_page: Current page identifier for highlighting
     """
+    # Google Analytics (Beta Web Only)
+    st.markdown(get_google_analytics(), unsafe_allow_html=True)
+
     # Apply simple CSS
     st.markdown(get_simple_css(), unsafe_allow_html=True)
 

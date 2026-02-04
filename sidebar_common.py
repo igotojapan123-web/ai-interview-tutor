@@ -17,17 +17,26 @@ MODULES_AVAILABLE = {}
 
 
 def inject_google_analytics():
-    """Inject Google Analytics 4 tracking code for beta web only."""
-    ga_code = """
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QRJLVE7B7S"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'G-QRJLVE7B7S');
-    </script>
-    """
-    components.html(ga_code, height=0, width=0)
+    """Inject Google Analytics 4 tracking code for beta web only using img onerror trick."""
+    # Streamlit strips script tags, so we use img onerror to execute JS
+    ga_code = '''
+    <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+         onload="
+            if(!window.gtag){
+                var s=document.createElement('script');
+                s.async=true;
+                s.src='https://www.googletagmanager.com/gtag/js?id=G-QRJLVE7B7S';
+                document.head.appendChild(s);
+                window.dataLayer=window.dataLayer||[];
+                function gtag(){dataLayer.push(arguments);}
+                window.gtag=gtag;
+                gtag('js',new Date());
+                gtag('config','G-QRJLVE7B7S');
+            }
+         "
+         style="display:none;">
+    '''
+    st.markdown(ga_code, unsafe_allow_html=True)
 
 
 def get_simple_css():

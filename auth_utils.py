@@ -80,6 +80,9 @@ def _inject_save_auth_script():
 
 def require_auth(title: str = "FlyReady Lab") -> bool:
     """인증 필요 - 미인증시 비밀번호 입력 화면 표시 (최초 1회만)"""
+    # [임시] 심사 기간 동안 비밀번호 비활성화 - 심사 통과 후 아래 줄 삭제
+    return True
+
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
 

@@ -323,10 +323,13 @@ def render_page_header(title: str):
 
 
 def render_footer():
-    """Render page footer."""
+    """Render page footer with business info."""
     st.markdown("""
     <div class="footer">
         <p>FlyReady Lab - AI Flight Attendant Interview Coaching Platform</p>
+        <p style="margin-top:8px; font-size:12px; color:#94a3b8;">
+            상호: 셀릭스 | 사업자등록번호: XXX-XX-XXXXX | 이메일: xxx@xxx.com
+        </p>
     </div>
     """, unsafe_allow_html=True)
 

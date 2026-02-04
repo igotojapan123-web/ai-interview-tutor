@@ -1575,6 +1575,7 @@ st.markdown('''
 <div class="fr-footer">
     <div class="fr-footer-brand">FlyReady Lab</div>
     <p>당신의 꿈을 응원합니다</p>
-    <p style="margin-top: 12px; font-size: 0.75rem; opacity: 0.5;">2026 FlyReady Lab. All rights reserved.</p>
+    <p style="margin-top: 12px; font-size: 0.75rem; opacity: 0.7;">상호: 셀릭스 | 사업자등록번호: XXX-XX-XXXXX | 이메일: xxx@xxx.com</p>
+    <p style="margin-top: 8px; font-size: 0.75rem; opacity: 0.5;">2026 FlyReady Lab. All rights reserved.</p>
 </div>
 ''', unsafe_allow_html=True)

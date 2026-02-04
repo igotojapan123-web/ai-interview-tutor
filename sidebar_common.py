@@ -3,6 +3,7 @@
 # Fixed version without complex f-string CSS that causes rendering issues
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 # Legacy imports for backward compatibility
 try:
@@ -15,10 +16,9 @@ ENHANCEMENT_AVAILABLE = False
 MODULES_AVAILABLE = {}
 
 
-def get_google_analytics():
-    """Google Analytics 4 tracking code for beta web only."""
-    return """
-    <!-- Google Analytics (Beta Web Only) -->
+def inject_google_analytics():
+    """Inject Google Analytics 4 tracking code for beta web only."""
+    ga_code = """
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-QRJLVE7B7S"></script>
     <script>
         window.dataLayer = window.dataLayer || [];
@@ -27,6 +27,7 @@ def get_google_analytics():
         gtag('config', 'G-QRJLVE7B7S');
     </script>
     """
+    components.html(ga_code, height=0, width=0)
 
 
 def get_simple_css():
@@ -351,7 +352,7 @@ def render_sidebar(current_page: str = ""):
         current_page: Current page identifier for highlighting
     """
     # Google Analytics (Beta Web Only)
-    st.markdown(get_google_analytics(), unsafe_allow_html=True)
+    inject_google_analytics()
 
     # Apply simple CSS
     st.markdown(get_simple_css(), unsafe_allow_html=True)

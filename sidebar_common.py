@@ -17,25 +17,8 @@ MODULES_AVAILABLE = {}
 
 
 def inject_google_analytics():
-    """Inject Google Analytics 4 tracking code for beta web only using img onerror trick."""
-    # Streamlit strips script tags, so we use img onerror to execute JS
-    ga_code = '''
-    <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
-         onload="
-            if(!window.gtag){
-                var s=document.createElement('script');
-                s.async=true;
-                s.src='https://www.googletagmanager.com/gtag/js?id=G-QRJLVE7B7S';
-                document.head.appendChild(s);
-                window.dataLayer=window.dataLayer||[];
-                function gtag(){dataLayer.push(arguments);}
-                window.gtag=gtag;
-                gtag('js',new Date());
-                gtag('config','G-QRJLVE7B7S');
-            }
-         "
-         style="display:none;">
-    '''
+    """Inject Google Analytics 4 tracking code for beta web only."""
+    ga_code = '<img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" onload="if(!window.gtag){var s=document.createElement(\'script\');s.async=true;s.src=\'https://www.googletagmanager.com/gtag/js?id=G-QRJLVE7B7S\';document.head.appendChild(s);window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;gtag(\'js\',new Date());gtag(\'config\',\'G-QRJLVE7B7S\');}" style="display:none;">'
     st.markdown(ga_code, unsafe_allow_html=True)
 
 
@@ -326,8 +309,7 @@ def render_navbar(current_page: str = ""):
                 {links_html}
             </nav>
             <div class="nav-right">
-                <a href="/로그인" target="_self" class="nav-btn nav-btn-ghost">로그인</a>
-                <a href="/구독" target="_self" class="nav-btn nav-btn-primary">무료 체험</a>
+                <span class="nav-btn nav-btn-primary" style="cursor:default;">Beta Test</span>
             </div>
         </div>
     </div>

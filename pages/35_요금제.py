@@ -138,9 +138,11 @@ pricing = """
                     <li><span class="check">✓</span> 롤플레잉 (하루 2회)</li>
                     <li><span class="check">✓</span> 토론면접 (하루 1회)</li>
                     <li><span class="check">✓</span> 표정연습 / 기내방송</li>
+                    <li class="section-label">스터디 플랜</li>
+                    <li><span class="limited">△</span> 스터디 매칭 (무료)</li>
+                    <li><span class="limited">△</span> 스터디 기능 (+₩30,000)</li>
                     <li class="section-label">미지원</li>
                     <li><span class="cross">✗</span> 음성 면접 / 영어 면접</li>
-                    <li><span class="cross">✗</span> 스터디 매칭/기능</li>
                 </ul>
                 <a target="_self" href="/구독" class="plan-btn plan-btn-primary">구독하기</a>
             </div>
@@ -157,9 +159,9 @@ pricing = """
                     <li><span class="check">✓</span> 음성 면접 / 영어 면접</li>
                     <li><span class="check">✓</span> 롤플레잉 / 토론 무제한</li>
                     <li><span class="check">✓</span> 합격자 DB 분석</li>
-                    <li class="section-label">스터디 플랜 포함</li>
+                    <li class="section-label">스터디 플랜 무료 포함</li>
                     <li><span class="check">✓</span> 스터디 매칭 (무료)</li>
-                    <li><span class="check">✓</span> 스터디 전용 기능</li>
+                    <li><span class="check">✓</span> 스터디 기능 (무료)</li>
                     <li><span class="check">✓</span> 다각도 촬영 분석</li>
                     <li class="section-label">추가 혜택</li>
                     <li><span class="check">✓</span> 우선 고객 지원</li>

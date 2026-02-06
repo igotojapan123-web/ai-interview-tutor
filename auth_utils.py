@@ -79,32 +79,24 @@ def _inject_save_auth_script():
 
 
 def require_auth(title: str = "FlyReady Lab") -> bool:
-    """인증 필요 - 미인증시 비밀번호 입력 화면 표시 (최초 1회만)"""
-    # [임시] 심사 기간 동안 비밀번호 비활성화 - 심사 통과 후 아래 줄 삭제
-    return True
-
+    """인증 필요 - 세션 기반 (브라우저 닫으면 만료)"""
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
 
-    # URL 파라미터로 인증 상태 복원 (localStorage에서 전달됨)
-    if "_auth" in st.query_params and st.query_params["_auth"] == "1":
-        st.session_state.authenticated = True
-        # 파라미터 제거 (URL 깔끔하게)
-        del st.query_params["_auth"]
-
     if not st.session_state.authenticated:
-        # localStorage 확인 스크립트 삽입
-        _inject_auth_persistence_script()
-
+        st.set_page_config(
+            page_title="FlyReady Lab - Beta",
+            page_icon="🔒",
+            layout="centered"
+        )
         st.title(title)
+        st.markdown("베타 테스트 접근 권한이 필요합니다")
         password = st.text_input("비밀번호를 입력하세요", type="password", key="auth_pw")
 
         if password:
             tester_pw = _get_password("TESTER_PASSWORD")
             if password == tester_pw:
                 st.session_state.authenticated = True
-                # localStorage에 저장
-                _inject_save_auth_script()
                 st.rerun()
             else:
                 st.error("비밀번호가 틀렸습니다")

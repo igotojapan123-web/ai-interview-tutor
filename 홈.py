@@ -4,6 +4,11 @@
 # A-G 개선사항 통합 버전
 
 import streamlit as st
+from auth_utils import require_auth
+
+# 비밀번호 인증 (세션 기반 - 브라우저 닫으면 만료)
+require_auth("FlyReady Lab - Beta")
+
 import base64
 import json
 import os

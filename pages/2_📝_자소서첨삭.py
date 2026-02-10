@@ -1,7 +1,6 @@
 """
-대한항공 자소서 첨삭 v2.0
-심리학 + 행동경제학 기반 실시간 분석
-+ Before→After + 안전/서비스 비중 + 점수 변화 그래프
+대한항공 자소서 첨삭
+2026년 객실승무원 채용 대비
 """
 
 import streamlit as st
@@ -172,7 +171,7 @@ if dday > 0:
 # 헤더
 st.markdown("""
 <div style="background: linear-gradient(135deg, #00256C 0%, #0052CC 100%); color: white; padding: 2.5rem; border-radius: 20px; text-align: center; margin-bottom: 2rem; box-shadow: 0 15px 40px rgba(0, 37, 108, 0.3);">
-    <h1 style="color: white; margin: 0; font-size: 2rem;">📝 자소서 첨삭 v2.0</h1>
+    <h1 style="color: white; margin: 0; font-size: 2rem;">📝 자소서 첨삭</h1>
     <p style="opacity: 0.9; margin-top: 0.5rem;">실시간 분석 → AI 심층 분석 → 수정본 자동 생성</p>
 </div>
 """, unsafe_allow_html=True)

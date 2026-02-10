@@ -12,6 +12,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 st.set_page_config(page_title="AI챗봇 - 대한항공", page_icon="💬", layout="wide")
 
+# 비밀번호 보호 체크
+if "authenticated" not in st.session_state or not st.session_state.authenticated:
+    st.warning("🔒 먼저 메인 페이지에서 비밀번호를 입력해주세요.")
+    if st.button("메인으로 이동"):
+        st.switch_page("app.py")
+    st.stop()
+
 # CSS
 st.markdown("""
 <style>

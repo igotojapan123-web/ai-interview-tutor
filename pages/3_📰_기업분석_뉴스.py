@@ -16,6 +16,15 @@ sys.path.insert(0, FLYREADY_PATH)
 
 from data.company_info import COMPANY_INFO, get_company_summary, get_recent_issues
 
+st.set_page_config(page_title="기업분석&뉴스 - 대한항공", page_icon="📰", layout="wide")
+
+# 비밀번호 보호 체크
+if "authenticated" not in st.session_state or not st.session_state.authenticated:
+    st.warning("🔒 먼저 메인 페이지에서 비밀번호를 입력해주세요.")
+    if st.button("메인으로 이동"):
+        st.switch_page("app.py")
+    st.stop()
+
 
 def _calculate_relevance(title: str, description: str) -> str:
     """면접 관련도 태깅"""
@@ -129,8 +138,6 @@ def _strict_filter_for_cabin_crew(articles: list) -> list:
 
     return filtered
 
-
-st.set_page_config(page_title="기업분석&뉴스 - 대한항공", page_icon="📰", layout="wide")
 
 # CSS
 st.markdown("""

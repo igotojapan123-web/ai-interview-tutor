@@ -15,6 +15,13 @@ from utils.prompt_templates import calculate_realtime_score, calculate_safety_se
 
 st.set_page_config(page_title="자소서첨삭 - 대한항공", page_icon="📝", layout="wide")
 
+# 비밀번호 보호 체크
+if "authenticated" not in st.session_state or not st.session_state.authenticated:
+    st.warning("🔒 먼저 메인 페이지에서 비밀번호를 입력해주세요.")
+    if st.button("메인으로 이동"):
+        st.switch_page("app.py")
+    st.stop()
+
 # 세션 초기화 (점수 히스토리)
 if "score_history" not in st.session_state:
     st.session_state.score_history = {1: [], 2: [], 3: []}  # 문항별 점수 기록

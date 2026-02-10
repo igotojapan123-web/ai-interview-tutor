@@ -13,6 +13,64 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+
+# ========== 비밀번호 보호 ==========
+def check_password():
+    """비밀번호 확인 (keway, 대소문자 무관)"""
+
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
+
+    if st.session_state.authenticated:
+        return True
+
+    # 로그인 화면
+    st.markdown("""
+    <style>
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .login-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #00256C;
+            margin-bottom: 0.5rem;
+        }
+        .login-subtitle {
+            color: #64748b;
+            margin-bottom: 2rem;
+        }
+    </style>
+    <div class="login-container">
+        <div class="login-title">✈️ FlyReady Lab</div>
+        <div class="login-subtitle">대한항공 면접 준비</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        password = st.text_input("비밀번호를 입력하세요", type="password", key="password_input")
+
+        if st.button("입장하기", use_container_width=True):
+            if password.lower() == "keway":
+                st.session_state.authenticated = True
+                st.rerun()
+            else:
+                st.error("❌ 비밀번호가 틀렸습니다.")
+
+    return False
+
+
+# 비밀번호 확인
+if not check_password():
+    st.stop()
+
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');

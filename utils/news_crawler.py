@@ -179,29 +179,37 @@ class NewsCrawler:
         return "참고용"
 
 
-# 정적 뉴스 데이터 (크롤링 실패 시 폴백)
+# 정적 뉴스 데이터 (크롤링 실패 시 폴백) - 2026년 채용 기준
 FALLBACK_NEWS = [
     {
-        "title": "대한항공-아시아나 합병, 메가캐리어 시대 개막",
+        "title": "대한항공-아시아나 통합 완료, 세계 11위 메가 캐리어로",
         "date": "2024-12",
-        "summary": "대한항공이 아시아나항공 인수를 완료하며 국내 최대 항공사로 거듭남",
-        "url": "https://www.koreanair.com",
-        "source": "공식 보도자료",
+        "summary": "2024.12.11 지분 63.88% 인수 완료. 2026.12 브랜드 완전 통합 예정. 면접에서 아시아나를 경쟁사로 언급 시 감점 가능",
+        "url": "https://news.koreanair.com",
+        "source": "대한항공 뉴스룸",
         "relevance": "필수"
     },
     {
-        "title": "대한항공, 2025년 신규 노선 확대 계획 발표",
-        "date": "2025-01",
-        "summary": "미주, 유럽 장거리 노선 확대 및 아시아 주요 도시 증편",
-        "url": "https://www.koreanair.com",
+        "title": "아시아나 인천공항 제2터미널 이전 완료",
+        "date": "2026-01",
+        "summary": "대한항공과 아시아나가 인천공항 제2터미널에서 통합 운영 시작",
+        "url": "https://news.koreanair.com",
+        "source": "대한항공 뉴스룸",
+        "relevance": "필수"
+    },
+    {
+        "title": "LCC 통합 추진: 진에어·에어서울·에어부산 → 진에어",
+        "date": "2026-02",
+        "summary": "2027년 초 LCC 3사 통합 예정. 그룹 전체 시너지 효과 기대",
+        "url": "https://news.koreanair.com",
         "source": "대한항공 뉴스룸",
         "relevance": "알면좋음"
     },
     {
         "title": "대한항공, 친환경 SAF 도입 확대",
-        "date": "2025-01",
-        "summary": "지속가능 항공유(SAF) 사용 확대로 탄소중립 목표 추진",
-        "url": "https://www.koreanair.com",
+        "date": "2026-01",
+        "summary": "지속가능 항공유(SAF) 사용 확대로 탄소중립 목표 추진. Better Tomorrow 가치와 연결",
+        "url": "https://news.koreanair.com",
         "source": "대한항공 ESG",
         "relevance": "알면좋음"
     }

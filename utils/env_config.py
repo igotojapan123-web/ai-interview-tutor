@@ -50,8 +50,8 @@ def validate_openai_key(key: str) -> Tuple[bool, str]:
     return True, "OK"
 
 
-# API Keys
-OPENAI_API_KEY = get_env("OPENAI_API_KEY") or get_env("OPENAI_APIKEY")
+# API Keys (대소문자 모두 지원)
+OPENAI_API_KEY = get_env("OPENAI_API_KEY") or get_env("OPENAI_APIKEY") or get_env("openai_api_key")
 
 
 def check_openai_key() -> Tuple[bool, str]:

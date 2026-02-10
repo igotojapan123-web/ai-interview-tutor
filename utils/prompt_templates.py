@@ -563,6 +563,316 @@ def check_forbidden_patterns(text: str) -> list:
     return found
 
 
+# ═══════════════════════════════════════════
+# 4. 하이브리드 채점 v3.0 - 코드 기반 정량 채점 (60점)
+# ═══════════════════════════════════════════
+
+def score_by_code(text: str, question_num: int) -> dict:
+    """
+    코드가 직접 채점. 매번 100% 동일한 점수.
+    총 60점 = 구조(20) + 내용(25) + 표현(15)
+    """
+    import re
+
+    score = 0
+    details = {}
+
+    # ═══════════════════════════════════
+    # A. 구조 점수 (20점)
+    # ═══════════════════════════════════
+
+    structure_score = 0
+
+    # A-1. 글자수 적정성 (5점)
+    char_count = len(text.replace(" ", "").replace("\n", ""))
+    if char_count > 600:
+        structure_score += 0
+        details["char_count"] = {"score": 0, "reason": f"600자 초과 ({char_count}자)"}
+    elif char_count >= 540:  # 90%+
+        structure_score += 5
+        details["char_count"] = {"score": 5, "reason": f"적정 ({char_count}자)"}
+    elif char_count >= 480:  # 80%+
+        structure_score += 3
+        details["char_count"] = {"score": 3, "reason": f"약간 부족 ({char_count}자)"}
+    elif char_count >= 360:  # 60%+
+        structure_score += 1
+        details["char_count"] = {"score": 1, "reason": f"부족 ({char_count}자)"}
+    else:
+        structure_score += 0
+        details["char_count"] = {"score": 0, "reason": f"심각하게 부족 ({char_count}자)"}
+
+    # A-2. 문장 수 (3점)
+    sentences = [s.strip() for s in re.split(r'[.!?]\s', text) if len(s.strip()) > 5]
+    sentence_count = len(sentences)
+    if sentence_count >= 6:
+        structure_score += 3
+    elif sentence_count >= 4:
+        structure_score += 2
+    elif sentence_count >= 2:
+        structure_score += 1
+    details["sentence_count"] = {"score": min(3, max(0, sentence_count - 3)), "count": sentence_count}
+
+    # A-3. 문항별 구조 체크 (12점)
+    if question_num == 1:
+        has_why_ke = any(kw in text for kw in ["대한항공", "KE", "통합", "메가", "스카이팀"])
+        has_why_me = any(kw in text for kw in ["경험", "했습니다", "했고", "만들었", "도입", "제안"])
+        has_plan = any(kw in text for kw in ["입사 후", "되겠습니다", "기여", "목표", "싶습니다"])
+
+        if has_why_ke:
+            structure_score += 4
+        if has_why_me:
+            structure_score += 4
+        if has_plan:
+            structure_score += 4
+        details["q1_structure"] = {
+            "why_ke": has_why_ke,
+            "why_me": has_why_me,
+            "plan": has_plan
+        }
+
+    elif question_num == 2:
+        safety_keywords = ["안전", "비상", "위기", "매뉴얼", "브리핑", "보호"]
+        service_keywords = ["서비스", "고객", "승객", "만족", "배려", "소통", "공감"]
+
+        safety_count = sum(1 for kw in safety_keywords if kw in text)
+        service_count = sum(1 for kw in service_keywords if kw in text)
+
+        total = safety_count + service_count
+        safety_ratio = 0.5
+        if total > 0:
+            safety_ratio = safety_count / total
+            if 0.3 <= safety_ratio <= 0.7:
+                structure_score += 6
+            elif 0.2 <= safety_ratio <= 0.8:
+                structure_score += 3
+            else:
+                structure_score += 0
+        else:
+            structure_score += 0
+
+        competency_markers = ["역량은", "능력은", "자질은", "가장 필요한", "가장 중요한", "필요한 역량"]
+        has_competency = any(m in text for m in competency_markers)
+        if has_competency:
+            structure_score += 3
+
+        has_section = ("안전" in text and "서비스" in text)
+        if has_section:
+            structure_score += 3
+
+        details["q2_structure"] = {
+            "safety_ratio": round(safety_ratio * 100) if total > 0 else 0,
+            "service_ratio": round((1 - safety_ratio) * 100) if total > 0 else 0,
+            "has_competency": has_competency,
+            "has_both_sections": has_section
+        }
+
+    elif question_num == 3:
+        burden_markers = ["부담", "어려", "힘들", "싫", "꺼려", "불안", "걱정", "선뜻"]
+        judgment_markers = ["판단", "결정", "생각", "적합", "해야", "맡기로", "받아들"]
+        effort_markers = ["노력", "분석", "파악", "확인", "면담", "관찰", "청취"]
+        action_markers = ["도입", "제안", "설계", "만들", "변경", "실행", "적용"]
+        result_markers = ["결과", "향상", "감소", "증가", "개선", "성공", "변화", "%"]
+
+        has_burden = any(m in text for m in burden_markers)
+        has_judgment = any(m in text for m in judgment_markers)
+        has_effort = any(m in text for m in effort_markers)
+        has_action = any(m in text for m in action_markers)
+        has_result = any(m in text for m in result_markers)
+
+        steps = [has_burden, has_judgment, has_effort, has_action, has_result]
+        step_count = sum(steps)
+
+        if step_count >= 5:
+            structure_score += 12
+        elif step_count >= 4:
+            structure_score += 9
+        elif step_count >= 3:
+            structure_score += 6
+        elif step_count >= 2:
+            structure_score += 3
+        else:
+            structure_score += 0
+
+        details["q3_structure"] = {
+            "burden": has_burden,
+            "judgment": has_judgment,
+            "effort": has_effort,
+            "action": has_action,
+            "result": has_result,
+            "step_count": step_count
+        }
+
+    # ═══════════════════════════════════
+    # B. 내용 점수 (25점)
+    # ═══════════════════════════════════
+
+    content_score = 0
+
+    # B-1. 숫자/데이터 포함 (8점)
+    numbers = re.findall(r'\d+', text)
+    meaningful_numbers = [n for n in numbers if n not in ["600", "500", "800", "1000"]]
+    num_count = len(meaningful_numbers)
+
+    if num_count >= 4:
+        content_score += 8
+    elif num_count >= 3:
+        content_score += 6
+    elif num_count >= 2:
+        content_score += 4
+    elif num_count >= 1:
+        content_score += 2
+    else:
+        content_score += 0
+    details["numbers"] = {"score": min(8, num_count * 2), "count": num_count, "found": meaningful_numbers[:5]}
+
+    # B-2. 행동 동사 (5점)
+    action_verbs = ["제안", "도입", "설계", "개선", "분석", "기획", "운영",
+                    "주도", "달성", "확보", "구축", "실행", "변경", "적용",
+                    "만들", "이끌", "해결", "발견", "줄이", "높이"]
+    found_verbs = [v for v in action_verbs if v in text]
+    verb_count = len(found_verbs)
+
+    if verb_count >= 4:
+        content_score += 5
+    elif verb_count >= 3:
+        content_score += 4
+    elif verb_count >= 2:
+        content_score += 3
+    elif verb_count >= 1:
+        content_score += 1
+    details["action_verbs"] = {"score": min(5, verb_count + 1), "found": found_verbs}
+
+    # B-3. 안전 키워드 (5점)
+    safety_words = ["안전", "비상", "위기", "매뉴얼", "브리핑", "보호", "예방", "사고"]
+    safety_found = [w for w in safety_words if w in text]
+    if len(safety_found) >= 2:
+        content_score += 5
+    elif len(safety_found) >= 1:
+        content_score += 3
+    else:
+        content_score += 0
+    details["safety"] = {"found": safety_found}
+
+    # B-4. 대한항공/통합 이슈 (4점)
+    ke_keywords = ["대한항공", "통합", "메가 캐리어", "아시아나", "스카이팀",
+                   "44개국", "120", "세계 11위", "KE Way", "프리미엄"]
+    ke_found = [k for k in ke_keywords if k in text]
+    if len(ke_found) >= 2:
+        content_score += 4
+    elif len(ke_found) >= 1:
+        content_score += 2
+    details["ke_keywords"] = {"found": ke_found}
+
+    # B-5. 인재상 키워드 (3점)
+    talent_keywords = ["도전", "글로벌", "전문", "협력", "소통", "팀", "성장", "변화"]
+    talent_found = [t for t in talent_keywords if t in text]
+    if len(talent_found) >= 2:
+        content_score += 3
+    elif len(talent_found) >= 1:
+        content_score += 1
+    details["talent"] = {"found": talent_found}
+
+    # ═══════════════════════════════════
+    # C. 표현 점수 (15점)
+    # ═══════════════════════════════════
+
+    expression_score = 0
+
+    # C-1. 탈락 패턴 감점 (벌점제)
+    fatal_patterns = {
+        "어릴 때부터": -8,
+        "승무원 언니": -8,
+        "하늘을 나는 꿈": -8,
+        "비행기를 타면 설레": -5,
+        "남들이 싫어해서": -6,
+        "팀을 위해 희생": -6,
+        "아무도 안 해서": -5,
+    }
+    penalty = 0
+    triggered_fatal = []
+    for pattern, deduction in fatal_patterns.items():
+        if pattern in text:
+            penalty += deduction
+            triggered_fatal.append(pattern)
+    details["fatal_patterns"] = {"triggered": triggered_fatal, "penalty": penalty}
+
+    # C-2. 클리셰 감점
+    cliche_patterns = ["최선을 다", "열심히", "노력하겠", "항상 밝은", "밝고 활발",
+                       "성실하게", "간절히", "꼭 이루고"]
+    found_cliches = [c for c in cliche_patterns if c in text]
+    cliche_penalty = len(found_cliches) * -2
+    details["cliches"] = {"found": found_cliches, "penalty": cliche_penalty}
+
+    # C-3. 첫 문장 품질 (5점)
+    first_sentence = sentences[0] if sentences else ""
+    weak_starts = ["저는", "제가", "항상", "대한항공은", "객실승무원은", "어릴"]
+    strong_start = not any(first_sentence.startswith(ws) for ws in weak_starts)
+    has_number_in_first = bool(re.search(r'\d', first_sentence))
+
+    if strong_start and has_number_in_first:
+        expression_score += 5
+    elif strong_start:
+        expression_score += 3
+    elif has_number_in_first:
+        expression_score += 2
+    else:
+        expression_score += 0
+    details["first_sentence"] = {
+        "text": first_sentence[:50],
+        "strong_start": strong_start,
+        "has_number": has_number_in_first
+    }
+
+    # C-4. 마지막 문장 품질 (5점)
+    last_sentence = sentences[-1] if sentences else ""
+    generic_endings = ["되겠습니다", "하겠습니다", "싶습니다", "바랍니다"]
+    is_generic_end = any(last_sentence.endswith(ge) for ge in generic_endings)
+
+    if not is_generic_end and len(last_sentence) > 20:
+        expression_score += 5
+    elif not is_generic_end:
+        expression_score += 3
+    elif len(last_sentence) > 30:
+        expression_score += 1
+    details["last_sentence"] = {
+        "text": last_sentence[:50],
+        "is_generic": is_generic_end
+    }
+
+    # C-5. 반복 표현 체크 (5점)
+    words = re.findall(r'[가-힣]{2,}', text)
+    word_freq = {}
+    for w in words:
+        word_freq[w] = word_freq.get(w, 0) + 1
+    repeated = {w: c for w, c in word_freq.items() if c >= 3 and w not in ["대한항공", "승무원", "서비스", "안전"]}
+
+    if len(repeated) == 0:
+        expression_score += 5
+    elif len(repeated) <= 2:
+        expression_score += 3
+    else:
+        expression_score += 0
+    details["repetition"] = {"repeated_words": repeated}
+
+    # 벌점 적용
+    expression_score = max(0, expression_score + penalty + cliche_penalty)
+
+    # ═══════════════════════════════════
+    # 최종 코드 점수
+    # ═══════════════════════════════════
+
+    total_code_score = structure_score + content_score + expression_score
+    total_code_score = max(0, min(60, total_code_score))
+
+    return {
+        "total": total_code_score,
+        "structure": {"score": min(20, structure_score), "max": 20},
+        "content": {"score": min(25, content_score), "max": 25},
+        "expression": {"score": min(15, max(0, expression_score)), "max": 15},
+        "details": details
+    }
+
+
 def calculate_safety_service_ratio(text: str) -> dict:
     """
     2번 문항용: 안전/서비스 비중 측정

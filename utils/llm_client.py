@@ -18,7 +18,8 @@ from utils.prompt_templates import (
     check_forbidden_patterns,
     calculate_realtime_score,
     build_user_prompt,
-    build_rewrite_prompt
+    build_rewrite_prompt,
+    score_by_code
 )
 
 # 타임아웃 설정
@@ -238,6 +239,308 @@ def get_resume_feedback(essay_prompt: str, content: str, char_limit: int = 600) 
 위 자소서를 첨삭해주세요.
 """
     return call_gpt(prompt, system=RESUME_REVIEW_SYSTEM)
+
+
+# ═══════════════════════════════════════
+# 하이브리드 채점 v3.0 - AI 정성 채점 (40점)
+# ═══════════════════════════════════════
+
+AI_SCORING_PROMPT = """당신은 대한항공 객실승무원 채용 자소서 채점관입니다.
+
+[채점 원칙]
+1. 절대 후하게 주지 마세요. 학원식 자소서는 5점 이하입니다.
+2. 각 항목을 독립적으로 채점하세요. 하나가 좋다고 다른 것도 올리지 마세요.
+3. 반드시 JSON 형식으로만 응답하세요.
+
+[채점 기준]
+
+## 설득력 (15점)
+- 0~3점: 선언만 있고 증거 없음 ("저는 성실합니다")
+- 4~6점: 경험은 있지만 피상적 ("팀 프로젝트를 했습니다")
+- 7~9점: 구체적 경험이 있지만 직무 연결 부족
+- 10~12점: 경험+성과+직무 연결이 있음
+- 13~15점: 강렬한 장면+구체적 성과+자연스러운 직무 연결 (상위 5%)
+
+## 차별성 (15점)
+- 0~3점: 누구나 쓸 수 있는 내용 (카페 아르바이트, 봉사활동)
+- 4~6점: 소재는 평범하지만 시각이 약간 다름
+- 7~9점: 독특한 시각이나 해석이 있음
+- 10~12점: 면접관이 "이건 기억에 남겠다" 싶은 수준
+- 13~15점: 소재+시각+표현 모두 독창적 (상위 3%)
+
+## 직무 연결 (10점)
+- 0~2점: 승무원 직무와 연결 없음
+- 3~4점: "승무원이 되겠다" 선언만
+- 5~6점: 경험을 승무원 직무에 연결하려 했으나 억지스러움
+- 7~8점: 자연스러운 직무 연결
+- 9~10점: 읽는 면접관이 "이 사람이 기내에서 일하는 모습이 그려진다"
+
+[금지]
+- 10점 이상 주려면 반드시 구체적 근거를 제시하세요.
+- "잘 쓴 편" 같은 애매한 표현 금지. 점수에 맞는 근거만.
+
+[응답 형식 — 반드시 JSON만]
+{"persuasion": {"score": 0, "reason": "..."}, "uniqueness": {"score": 0, "reason": "..."}, "job_relevance": {"score": 0, "reason": "..."}}
+"""
+
+QUESTION_CONTEXTS = {
+    1: "대한항공의 객실승무원이 되고 싶은 이유와 본인이 객실승무원 직무에 적합하다고 생각하는 이유를 구체적으로 서술하시오.",
+    2: "객실승무원에게 필요한 역량 한 가지를 제시하고, 그 이유를 안전과 서비스 부문으로 나누어 서술하시오.",
+    3: "본인이 선호하지 않거나 부담을 느끼는 과제를 맡게 되었을 때, 이를 어떻게 받아들이고 수행하였는지 구체적인 경험을 바탕으로 서술하시오."
+}
+
+
+def score_by_ai(text: str, question_num: int) -> dict:
+    """
+    AI 정성 채점 (40점 만점)
+    JSON 강제 출력 + temperature=0.1로 일관성 확보
+    """
+    import json
+
+    api_key = get_api_key()
+    if not api_key:
+        return {
+            "total": 0,
+            "persuasion": {"score": 0, "max": 15, "reason": "API 키 없음"},
+            "uniqueness": {"score": 0, "max": 15, "reason": "API 키 없음"},
+            "job_relevance": {"score": 0, "max": 10, "reason": "API 키 없음"},
+            "error": "API 키가 설정되지 않았습니다."
+        }
+
+    user_prompt = f"""[문항 {question_num}번]
+{QUESTION_CONTEXTS.get(question_num, "")}
+
+[자소서]
+{text}
+
+위 자소서를 채점해주세요. 반드시 JSON만 출력하세요."""
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "model": "gpt-4o-mini",
+        "messages": [
+            {"role": "system", "content": AI_SCORING_PROMPT},
+            {"role": "user", "content": user_prompt}
+        ],
+        "temperature": 0.1,  # 최대한 일관되게
+        "response_format": {"type": "json_object"},  # JSON 강제
+        "max_tokens": 500,
+    }
+
+    try:
+        response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=60
+        )
+
+        if response.status_code != 200:
+            return {
+                "total": 0,
+                "persuasion": {"score": 0, "max": 15, "reason": f"API 오류: {response.status_code}"},
+                "uniqueness": {"score": 0, "max": 15, "reason": ""},
+                "job_relevance": {"score": 0, "max": 10, "reason": ""},
+                "error": f"API 오류 (HTTP {response.status_code})"
+            }
+
+        data = response.json()
+        content = data["choices"][0]["message"]["content"]
+        result = json.loads(content)
+
+        # 점수 범위 강제 (AI가 범위 넘기는 거 방지)
+        persuasion = max(0, min(15, result.get("persuasion", {}).get("score", 0)))
+        uniqueness = max(0, min(15, result.get("uniqueness", {}).get("score", 0)))
+        job_relevance = max(0, min(10, result.get("job_relevance", {}).get("score", 0)))
+
+        return {
+            "total": persuasion + uniqueness + job_relevance,
+            "persuasion": {
+                "score": persuasion,
+                "max": 15,
+                "reason": result.get("persuasion", {}).get("reason", "")
+            },
+            "uniqueness": {
+                "score": uniqueness,
+                "max": 15,
+                "reason": result.get("uniqueness", {}).get("reason", "")
+            },
+            "job_relevance": {
+                "score": job_relevance,
+                "max": 10,
+                "reason": result.get("job_relevance", {}).get("reason", "")
+            }
+        }
+
+    except json.JSONDecodeError as e:
+        return {
+            "total": 0,
+            "persuasion": {"score": 0, "max": 15, "reason": "JSON 파싱 실패"},
+            "uniqueness": {"score": 0, "max": 15, "reason": ""},
+            "job_relevance": {"score": 0, "max": 10, "reason": ""},
+            "error": f"JSON 파싱 오류: {e}"
+        }
+    except Exception as e:
+        return {
+            "total": 0,
+            "persuasion": {"score": 0, "max": 15, "reason": str(e)},
+            "uniqueness": {"score": 0, "max": 15, "reason": ""},
+            "job_relevance": {"score": 0, "max": 10, "reason": ""},
+            "error": str(e)
+        }
+
+
+def get_grade(score: int) -> str:
+    """점수에 따른 등급 반환"""
+    if score >= 90:
+        return "S (제출 추천)"
+    elif score >= 80:
+        return "A (제출 가능)"
+    elif score >= 70:
+        return "B (수정 후 제출)"
+    elif score >= 60:
+        return "C (상당한 수정 필요)"
+    elif score >= 50:
+        return "D (구조부터 재작성)"
+    else:
+        return "F (전면 재작성)"
+
+
+def score_resume_hybrid(text: str, question_num: int) -> dict:
+    """
+    하이브리드 채점 v3.0
+    최종 채점 = 코드(60점) + AI(40점) = 100점
+    """
+    # STEP 1: 코드 채점 (항상 동일)
+    code_result = score_by_code(text, question_num)
+
+    # STEP 2: AI 채점 (JSON 강제, temp=0.1)
+    ai_result = score_by_ai(text, question_num)
+
+    # STEP 3: 합산
+    total = code_result["total"] + ai_result["total"]
+
+    return {
+        "total_score": total,
+        "grade": get_grade(total),
+        "code_score": code_result,   # 60점 (매번 동일)
+        "ai_score": ai_result,       # 40점 (±3점 오차)
+        "breakdown": {
+            "구조": f'{code_result["structure"]["score"]}/{code_result["structure"]["max"]}',
+            "내용": f'{code_result["content"]["score"]}/{code_result["content"]["max"]}',
+            "표현": f'{code_result["expression"]["score"]}/{code_result["expression"]["max"]}',
+            "설득력": f'{ai_result["persuasion"]["score"]}/{ai_result["persuasion"]["max"]}',
+            "차별성": f'{ai_result["uniqueness"]["score"]}/{ai_result["uniqueness"]["max"]}',
+            "직무연결": f'{ai_result["job_relevance"]["score"]}/{ai_result["job_relevance"]["max"]}',
+        }
+    }
+
+
+# ═══════════════════════════════════════
+# 하이브리드 채점 v3.0 - 피드백 생성 (점수 참고, 설명만)
+# ═══════════════════════════════════════
+
+FEEDBACK_PROMPT = """당신은 대한항공 자소서 전문 첨삭가입니다.
+
+아래에 자소서와 이미 계산된 채점 결과가 있습니다.
+점수를 다시 매기지 마세요. 점수는 이미 확정되었습니다.
+
+당신의 역할:
+1. 채점 결과를 바탕으로 구체적인 개선점을 설명하세요.
+2. 가장 시급한 문제 3가지를 우선순위로 제시하세요.
+3. 심리학/행동경제학 관점에서 1가지 전략을 제안하세요.
+
+[규칙]
+- 점수를 언급할 때는 이미 계산된 점수를 그대로 인용하세요.
+- "~하면 좋겠습니다" 대신 "~로 바꾸세요"처럼 구체적으로.
+- 칭찬은 1줄 이내. 나머지는 전부 개선점."""
+
+
+def generate_feedback_stream(text: str, question_num: int, scoring_result: dict):
+    """
+    점수는 이미 확정됨. AI는 설명만 생성. (스트리밍)
+    """
+    api_key = get_api_key()
+    if not api_key:
+        yield "[오류] API 키가 설정되지 않았습니다."
+        return
+
+    user_prompt = f"""[문항 {question_num}번 자소서]
+{text}
+
+[확정된 채점 결과]
+총점: {scoring_result["total_score"]}점/100점
+등급: {scoring_result["grade"]}
+- 구조: {scoring_result["breakdown"]["구조"]}
+- 내용: {scoring_result["breakdown"]["내용"]}
+- 표현: {scoring_result["breakdown"]["표현"]}
+- 설득력: {scoring_result["breakdown"]["설득력"]} — {scoring_result["ai_score"]["persuasion"]["reason"]}
+- 차별성: {scoring_result["breakdown"]["차별성"]} — {scoring_result["ai_score"]["uniqueness"]["reason"]}
+- 직무연결: {scoring_result["breakdown"]["직무연결"]} — {scoring_result["ai_score"]["job_relevance"]["reason"]}
+
+감점 요인:
+- 탈락 패턴: {scoring_result["code_score"]["details"].get("fatal_patterns", {}).get("triggered", [])}
+- 클리셰: {scoring_result["code_score"]["details"].get("cliches", {}).get("found", [])}
+- 숫자: {scoring_result["code_score"]["details"].get("numbers", {}).get("count", 0)}개
+
+위 결과를 바탕으로 피드백을 작성하세요."""
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "model": "gpt-4o-mini",
+        "messages": [
+            {"role": "system", "content": FEEDBACK_PROMPT},
+            {"role": "user", "content": user_prompt}
+        ],
+        "temperature": 0.3,
+        "max_tokens": 1500,
+        "stream": True
+    }
+
+    try:
+        response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers,
+            json=payload,
+            stream=True,
+            timeout=90
+        )
+
+        if response.status_code != 200:
+            yield f"[오류] API 응답 오류: {response.status_code}"
+            return
+
+        for line in response.iter_lines():
+            if line:
+                line_text = line.decode('utf-8')
+                if line_text.startswith('data: '):
+                    data_str = line_text[6:]
+                    if data_str.strip() == '[DONE]':
+                        break
+                    try:
+                        import json
+                        data = json.loads(data_str)
+                        delta = data.get('choices', [{}])[0].get('delta', {})
+                        content = delta.get('content', '')
+                        if content:
+                            yield content
+                    except json.JSONDecodeError:
+                        continue
+
+    except requests.Timeout:
+        yield "[오류] 응답 시간 초과"
+    except requests.ConnectionError:
+        yield "[오류] 네트워크 연결 오류"
+    except Exception as e:
+        yield f"[오류] {str(e)}"
 
 
 def analyze_resume(resume_text: str, question_number: int, char_limit: int = 600) -> dict:

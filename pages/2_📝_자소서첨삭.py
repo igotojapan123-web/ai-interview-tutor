@@ -11,7 +11,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from data.essay_prompts import ESSAY_PROMPTS, get_prompts
-from utils.prompt_templates import calculate_realtime_score, calculate_safety_service_ratio
+from utils.prompt_templates import calculate_realtime_score, calculate_safety_service_ratio, score_by_code
 
 st.set_page_config(page_title="자소서첨삭 - 대한항공", page_icon="📝", layout="wide")
 
@@ -288,27 +288,29 @@ with col_input:
         """, unsafe_allow_html=True)
 
 with col_analysis:
-    st.markdown("### 실시간 감점 체크")
+    st.markdown("### 실시간 체크")
 
     if content and len(content.strip()) > 10:
-        score, feedbacks, passed = calculate_realtime_score(content, question_number, char_limit)
+        # 내부적으로 코드 채점 (사용자에게 안 보임)
+        code_result = score_by_code(content, question_number)
+        _, feedbacks, passed = calculate_realtime_score(content, question_number, char_limit)
 
-        # 점수 게이지
-        if score >= 85:
-            grade, grade_color, grade_text = "S", "#22c55e", "제출 가능"
-        elif score >= 70:
-            grade, grade_color, grade_text = "A", "#3b82f6", "거의 완성"
-        elif score >= 55:
-            grade, grade_color, grade_text = "B", "#f59e0b", "수정 필요"
-        elif score >= 40:
-            grade, grade_color, grade_text = "C", "#f97316", "대폭 수정"
+        # 완성도 표시 (100점 환산)
+        completeness = min(100, int(code_result["total"] * 1.5))  # 60점 → 90점 수준
+        if completeness >= 80:
+            grade_color, grade_text = "#22c55e", "좋음"
+        elif completeness >= 60:
+            grade_color, grade_text = "#3b82f6", "보통"
+        elif completeness >= 40:
+            grade_color, grade_text = "#f59e0b", "부족"
         else:
-            grade, grade_color, grade_text = "D", "#ef4444", "재작성"
+            grade_color, grade_text = "#ef4444", "많이 부족"
 
         st.markdown(f"""
         <div class="score-gauge">
-            <div class="score-number">{score}</div>
-            <div class="score-grade" style="color: {grade_color};">{grade} - {grade_text}</div>
+            <div style="font-size: 1rem; color: #64748b; margin-bottom: 0.5rem;">완성도</div>
+            <div class="score-number" style="font-size: 2.5rem;">{completeness}%</div>
+            <div class="score-grade" style="color: {grade_color};">{grade_text}</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -380,7 +382,7 @@ with col3:
         st.session_state.last_analysis = None
         st.rerun()
 
-# AI 심층 분석
+# AI 심층 분석 (하이브리드 v3.0)
 if analyze_btn:
     if not content or len(content.strip()) < 50:
         st.warning("자소서 내용을 50자 이상 입력해주세요.")
@@ -389,106 +391,115 @@ if analyze_btn:
         progress_bar = st.progress(0)
         status_text = st.empty()
 
-        status_text.markdown("**1/4** 실시간 패턴 분석 중...")
-        progress_bar.progress(25)
+        status_text.markdown("**1/3** 코드 기반 채점 중 (60점)...")
+        progress_bar.progress(33)
 
         try:
-            from utils.llm_client import analyze_resume
+            from utils.llm_client import score_resume_hybrid, generate_feedback_stream
 
-            status_text.markdown("**2/4** 심리학 기반 분석 중...")
-            progress_bar.progress(50)
+            # STEP 1: 코드 채점 (이미 위에서 했지만 다시)
+            code_result = score_by_code(content, question_number)
 
-            result = analyze_resume(content, question_number, char_limit)
+            status_text.markdown("**2/3** AI 정성 채점 중 (40점)...")
+            progress_bar.progress(66)
 
-            status_text.markdown("**3/4** 피드백 구성 중...")
-            progress_bar.progress(75)
-
-            llm = result.get("llm", {})
+            # STEP 2: 하이브리드 채점 (코드 + AI)
+            result = score_resume_hybrid(content, question_number)
             st.session_state.last_analysis = result
 
             # 점수 기록
-            if "total_score" in llm:
-                st.session_state.score_history[question_number].append({
-                    "score": llm["total_score"],
-                    "time": datetime.now().strftime("%H:%M")
-                })
-                # 최대 5개만 유지
-                if len(st.session_state.score_history[question_number]) > 5:
-                    st.session_state.score_history[question_number] = st.session_state.score_history[question_number][-5:]
+            st.session_state.score_history[question_number].append({
+                "score": result["total_score"],
+                "time": datetime.now().strftime("%H:%M")
+            })
+            if len(st.session_state.score_history[question_number]) > 5:
+                st.session_state.score_history[question_number] = st.session_state.score_history[question_number][-5:]
 
-            if "error" in llm:
-                st.error(f"분석 오류: {llm['error']}")
-            else:
-                st.markdown("---")
-                st.markdown("## 📊 AI 심층 분석 결과")
+            status_text.markdown("**3/3** 피드백 생성 중...")
+            progress_bar.progress(100)
 
-                total = llm.get("total_score", 0)
-                grade = llm.get("grade", "?")
+            st.markdown("---")
+            st.markdown("## 📊 AI 분석 결과")
 
-                col1, col2, col3, col4 = st.columns(4)
-                scores = llm.get("scores", {})
+            # 총점 표시
+            total = result["total_score"]
+            grade = result["grade"]
+            grade_color = "#22c55e" if total >= 80 else "#3b82f6" if total >= 65 else "#f59e0b" if total >= 50 else "#ef4444"
 
-                with col1:
-                    st.metric("총점", f"{total}/100", grade)
-                with col2:
-                    st.metric("구조", f"{scores.get('structure', {}).get('score', 0)}/25")
-                with col3:
-                    st.metric("내용", f"{scores.get('content', {}).get('score', 0)}/35")
-                with col4:
-                    st.metric("표현", f"{scores.get('expression', {}).get('score', 0)}/25")
+            st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #f8fafc, #fff); border-radius: 20px; padding: 2rem; text-align: center; border: 2px solid #e2e8f0; margin-bottom: 1rem;">
+                <div style="font-size: 4rem; font-weight: 800; background: linear-gradient(135deg, #00256C, #0078D4); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{total}<span style="font-size: 1.5rem;">점</span></div>
+                <div style="font-size: 1.3rem; font-weight: 700; color: {grade_color};">{grade}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-                # 탈락 패턴
-                fatal = llm.get("fatal_patterns", [])
-                if fatal:
-                    st.error("🚨 **탈락 패턴 발견!**")
-                    for f in fatal:
-                        st.warning(f"❌ {f}")
+            # 항목별 점수 (깔끔하게)
+            st.markdown("### 📊 항목별 점수")
 
-                # 심리학 분석
-                st.markdown("### 🧠 심리학/행동경제학 분석")
-                psych = llm.get("psychology_analysis", {})
+            code = result["code_score"]
+            ai = result["ai_score"]
 
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.markdown(f"""
-                    <div class="analysis-card">
-                        <span class="psych-tag">앵커링</span>
-                        <p style="margin-top: 0.5rem;">{psych.get('anchoring', '-')}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    st.markdown(f"""
-                    <div class="analysis-card">
-                        <span class="psych-tag">프레이밍</span>
-                        <p style="margin-top: 0.5rem;">{psych.get('framing', '-')}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                with col2:
-                    st.markdown(f"""
-                    <div class="analysis-card">
-                        <span class="psych-tag">피크엔드</span>
-                        <p style="margin-top: 0.5rem;">{psych.get('peak_end', '-')}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    st.markdown(f"""
-                    <div class="analysis-card">
-                        <span class="psych-tag">구체성</span>
-                        <p style="margin-top: 0.5rem;">{psych.get('concreteness', '-')}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.markdown(f"""
+                <div style="background: #f0f9ff; padding: 1.2rem; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 0.9rem; color: #64748b;">구조</div>
+                    <div style="font-size: 1.8rem; font-weight: 700; color: #00256C;">{code["structure"]["score"]}<span style="font-size: 1rem; color: #94a3b8;">/{code["structure"]["max"]}</span></div>
+                </div>
+                """, unsafe_allow_html=True)
+            with col2:
+                st.markdown(f"""
+                <div style="background: #f0fdf4; padding: 1.2rem; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 0.9rem; color: #64748b;">내용</div>
+                    <div style="font-size: 1.8rem; font-weight: 700; color: #166534;">{code["content"]["score"]}<span style="font-size: 1rem; color: #94a3b8;">/{code["content"]["max"]}</span></div>
+                </div>
+                """, unsafe_allow_html=True)
+            with col3:
+                st.markdown(f"""
+                <div style="background: #fef3c7; padding: 1.2rem; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 0.9rem; color: #64748b;">표현</div>
+                    <div style="font-size: 1.8rem; font-weight: 700; color: #92400e;">{code["expression"]["score"]}<span style="font-size: 1rem; color: #94a3b8;">/{code["expression"]["max"]}</span></div>
+                </div>
+                """, unsafe_allow_html=True)
 
-                # 우선순위
-                priority = llm.get("improvement_priority", [])
-                if priority:
-                    st.markdown("### 🎯 가장 먼저 고칠 것")
-                    for i, item in enumerate(priority, 1):
-                        st.markdown(f"**{i}.** {item}")
+            col4, col5, col6 = st.columns(3)
+            with col4:
+                st.markdown(f"""
+                <div style="background: #ede9fe; padding: 1.2rem; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 0.9rem; color: #64748b;">설득력</div>
+                    <div style="font-size: 1.8rem; font-weight: 700; color: #7c3aed;">{ai["persuasion"]["score"]}<span style="font-size: 1rem; color: #94a3b8;">/{ai["persuasion"]["max"]}</span></div>
+                </div>
+                """, unsafe_allow_html=True)
+            with col5:
+                st.markdown(f"""
+                <div style="background: #fce7f3; padding: 1.2rem; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 0.9rem; color: #64748b;">차별성</div>
+                    <div style="font-size: 1.8rem; font-weight: 700; color: #be185d;">{ai["uniqueness"]["score"]}<span style="font-size: 1rem; color: #94a3b8;">/{ai["uniqueness"]["max"]}</span></div>
+                </div>
+                """, unsafe_allow_html=True)
+            with col6:
+                st.markdown(f"""
+                <div style="background: #e0f2fe; padding: 1.2rem; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 0.9rem; color: #64748b;">직무연결</div>
+                    <div style="font-size: 1.8rem; font-weight: 700; color: #0369a1;">{ai["job_relevance"]["score"]}<span style="font-size: 1rem; color: #94a3b8;">/{ai["job_relevance"]["max"]}</span></div>
+                </div>
+                """, unsafe_allow_html=True)
 
-                # 종합 평가
-                st.markdown("### 📋 종합 평가")
-                st.info(llm.get("overall_feedback", ""))
+            # 탈락 패턴/클리셰
+            fatal = code["details"].get("fatal_patterns", {}).get("triggered", [])
+            cliches = code["details"].get("cliches", {}).get("found", [])
+            if fatal:
+                st.error(f"🚨 **탈락 패턴 발견!** {', '.join(fatal)}")
+            if cliches:
+                st.warning(f"⚠️ **클리셰 발견:** {', '.join(cliches)}")
 
-                status_text.markdown("**4/4** 분석 완료!")
-                progress_bar.progress(100)
+            # 스트리밍 피드백
+            st.markdown("### 📝 개선 피드백")
+            feedback_container = st.empty()
+            full_feedback = ""
+            for chunk in generate_feedback_stream(content, question_number, result):
+                full_feedback += chunk
+                feedback_container.markdown(full_feedback)
 
         except Exception as e:
             st.error(f"분석 중 오류: {e}")
@@ -588,13 +599,13 @@ with st.sidebar:
                 st.markdown(f"**{q_num}번 문항**: {latest}점 ({change_text})")
 
     st.markdown("---")
-    st.markdown("### 🚨 탈락 패턴 5가지")
+    st.markdown("### 🚨 탈락 패턴")
     st.markdown("""
-    1. "어릴 때부터 꿈" → **-15점**
-    2. 지원동기/적합성 분리 → **-10점**
-    3. 2번: 개념만, 경험 없음 → **-15점**
-    4. 3번: 희생 미화 → **-12점**
-    5. "최선을 다하겠습니다" → **-8점**
+    1. "어릴 때부터 꿈"
+    2. 희생 미화 ("남들이 싫어해서")
+    3. "최선을 다하겠습니다"
+    4. 첫문장 "저는~" 시작
+    5. 숫자 없음
     """)
 
     st.markdown("---")

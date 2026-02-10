@@ -1,6 +1,7 @@
 """
 대한항공 채용 준비
 FlyReady Lab
+v2.0 - 비밀번호 보호 적용
 """
 
 import streamlit as st

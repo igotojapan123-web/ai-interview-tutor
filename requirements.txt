@@ -1,0 +1,14 @@
+streamlit>=1.30.0
+requests>=2.31.0
+python-dotenv>=1.0.0
+beautifulsoup4>=4.12.0
+numpy>=1.24.0
+Pillow>=10.0.0
+
+# 표정 분석 (선택)
+mediapipe>=0.10.0
+opencv-python-headless>=4.8.0
+
+# 웹캠 (선택)
+streamlit-webrtc>=0.45.0
+av>=10.0.0

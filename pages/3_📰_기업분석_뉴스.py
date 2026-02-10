@@ -10,10 +10,6 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# flyready-news-bot 경로 추가
-FLYREADY_PATH = r"C:\Users\ADMIN\flyready-news-bot"
-sys.path.insert(0, FLYREADY_PATH)
-
 from data.company_info import COMPANY_INFO, get_company_summary, get_recent_issues
 
 st.set_page_config(page_title="기업분석&뉴스 - 대한항공", page_icon="📰", layout="wide")
@@ -494,18 +490,28 @@ with tab2:
     if collect_btn:
         with st.spinner("네이버 뉴스 API로 대한항공 뉴스를 수집하는 중..."):
             try:
-                # flyready-news-bot의 NaverNewsCrawler + NewsSummarizer 사용
-                import json
-                secrets_path = os.path.join(FLYREADY_PATH, "config", "secrets.json")
-                with open(secrets_path, "r", encoding="utf-8") as f:
-                    secrets = json.load(f)
+                # API 키 가져오기 (Streamlit Cloud secrets 또는 로컬 파일)
+                try:
+                    # Streamlit Cloud secrets
+                    naver_client_id = st.secrets["naver_client_id"]
+                    naver_client_secret = st.secrets["naver_client_secret"]
+                    openai_api_key = st.secrets["openai_api_key"]
+                except:
+                    # 로컬 개발 환경 - flyready-news-bot secrets 사용
+                    import json
+                    secrets_path = r"C:\Users\ADMIN\flyready-news-bot\config\secrets.json"
+                    with open(secrets_path, "r", encoding="utf-8") as f:
+                        secrets = json.load(f)
+                    naver_client_id = secrets["naver_client_id"]
+                    naver_client_secret = secrets["naver_client_secret"]
+                    openai_api_key = secrets["openai_api_key"]
 
-                from crawlers.naver_news import NaverNewsCrawler
-                from analyzers.summarizer import NewsSummarizer
+                from utils.naver_news import NaverNewsCrawler
+                from utils.news_summarizer import NewsSummarizer
 
                 crawler = NaverNewsCrawler(
-                    client_id=secrets["naver_client_id"],
-                    client_secret=secrets["naver_client_secret"]
+                    client_id=naver_client_id,
+                    client_secret=naver_client_secret
                 )
 
                 # 대한항공 뉴스 검색 (여러 키워드로 최대한 많이 수집)
@@ -536,7 +542,7 @@ with tab2:
 
                     # 2단계: NewsSummarizer 추가 필터링
                     summarizer = NewsSummarizer(
-                        api_key=secrets["openai_api_key"],
+                        api_key=openai_api_key,
                         model="gpt-4o-mini"
                     )
                     filtered = summarizer._filter_excluded(strict_filtered)
@@ -643,15 +649,20 @@ with tab2:
         if st.button("🤖 AI가 면접 활용법 정리하기", use_container_width=True):
             with st.spinner("AI가 뉴스를 분석하고 면접 활용법을 정리하는 중..."):
                 try:
-                    import json as json_module
-                    secrets_path = os.path.join(FLYREADY_PATH, "config", "secrets.json")
-                    with open(secrets_path, "r", encoding="utf-8") as f:
-                        secrets = json_module.load(f)
+                    # API 키 가져오기
+                    try:
+                        openai_api_key = st.secrets["openai_api_key"]
+                    except:
+                        import json as json_module
+                        secrets_path = r"C:\Users\ADMIN\flyready-news-bot\config\secrets.json"
+                        with open(secrets_path, "r", encoding="utf-8") as f:
+                            secrets = json_module.load(f)
+                        openai_api_key = secrets["openai_api_key"]
 
-                    from analyzers.summarizer import NewsSummarizer
+                    from utils.news_summarizer import NewsSummarizer
 
                     summarizer = NewsSummarizer(
-                        api_key=secrets["openai_api_key"],
+                        api_key=openai_api_key,
                         model="gpt-4o-mini"
                     )
 

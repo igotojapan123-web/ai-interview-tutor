@@ -29,6 +29,12 @@ if "score_history" not in st.session_state:
 if "last_analysis" not in st.session_state:
     st.session_state.last_analysis = None
 
+# 초안 생성기에서 넘어온 데이터 처리
+if "resume_for_review" not in st.session_state:
+    st.session_state.resume_for_review = None
+if "review_question_num" not in st.session_state:
+    st.session_state.review_question_num = None
+
 # CSS
 st.markdown("""
 <style>
@@ -187,9 +193,14 @@ st.markdown("""
 prompts = get_prompts()
 prompt_options = [f"문항 {p['number']}: {p['prompt'][:35]}..." for p in prompts]
 
+# 초안 생성기에서 넘어온 경우 해당 문항 선택
+default_idx = 0
+if st.session_state.review_question_num:
+    default_idx = st.session_state.review_question_num - 1
+
 col1, col2 = st.columns([2, 1])
 with col1:
-    selected_idx = st.selectbox("문항 선택", range(len(prompt_options)), format_func=lambda x: prompt_options[x])
+    selected_idx = st.selectbox("문항 선택", range(len(prompt_options)), index=default_idx, format_func=lambda x: prompt_options[x])
 
 selected_prompt = prompts[selected_idx]
 question_number = selected_prompt["number"]
@@ -238,8 +249,19 @@ col_input, col_analysis = st.columns([1.2, 1])
 
 with col_input:
     st.markdown("### 자소서 입력")
+
+    # 초안 생성기에서 넘어온 내용이 있으면 사용
+    default_content = ""
+    if st.session_state.resume_for_review:
+        default_content = st.session_state.resume_for_review
+        st.success("초안 생성기에서 작성한 초안이 입력되었습니다!")
+        # 한 번 사용 후 초기화
+        st.session_state.resume_for_review = None
+        st.session_state.review_question_num = None
+
     content = st.text_area(
         "자소서를 입력하세요",
+        value=default_content,
         height=400,
         placeholder="자소서 내용을 붙여넣기하거나 작성하세요...\n\n작성하면서 오른쪽에서 실시간 감점 요인을 확인하세요!",
         label_visibility="collapsed",

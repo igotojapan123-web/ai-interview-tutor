@@ -260,26 +260,49 @@ def main():
     </div>
     """, unsafe_allow_html=True)
 
-    # 3가지 핵심 기능
-    st.markdown("### 핵심 기능")
+    # 자소서 시작하기 (첫 번째 위치)
+    st.markdown("### 자소서 시작하기")
 
-    col1, col2, col3 = st.columns(3)
+    col_main1, col_main2 = st.columns(2)
 
-    with col1:
+    with col_main1:
+        st.markdown("""
+        <div class="feature-card" style="background: linear-gradient(135deg, #fef3c7, #fef9c3); border: 2px solid #f59e0b;">
+            <div class="feature-icon">✍️</div>
+            <div class="feature-title">초안 생성기</div>
+            <div class="feature-desc">
+                <span style="color: #d97706; font-weight: 600;">5분 대화 → 60점 초안 완성</span><br>
+                빈 종이 앞에서 고민 끝!<br>
+                경험만 말하면 AI가 글로 만들어줍니다
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("초안 만들러 가기", use_container_width=True, key="btn_draft"):
+            st.switch_page("pages/1_✍️_초안생성기.py")
+
+    with col_main2:
         st.markdown("""
         <div class="feature-card">
             <div class="feature-icon">📝</div>
             <div class="feature-title">자소서 첨삭</div>
             <div class="feature-desc">
-                <span style="color: #ef4444; font-weight: 600;">탈락 패턴 분석</span><br>
-                면접관이 3초 만에<br>넘기는 자소서 vs 합격 자소서
+                <span style="color: #ef4444; font-weight: 600;">초안 → 80점까지 상승</span><br>
+                탈락 패턴 분석 + AI 첨삭<br>
+                면접관이 3초 만에 넘기는 자소서 vs 합격 자소서
             </div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("자소서 점검하기", use_container_width=True, key="btn1"):
+        if st.button("자소서 점검하기", use_container_width=True, key="btn_review"):
             st.switch_page("pages/2_📝_자소서첨삭.py")
 
-    with col2:
+    st.markdown("---")
+
+    # 추가 기능
+    st.markdown("### 추가 기능")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
         st.markdown("""
         <div class="feature-card">
             <div class="feature-icon">📰</div>
@@ -290,21 +313,35 @@ def main():
             </div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("필수 정보 확인", use_container_width=True, key="btn2"):
+        if st.button("필수 정보 확인", use_container_width=True, key="btn1"):
             st.switch_page("pages/3_📰_기업분석_뉴스.py")
 
-    with col3:
+    with col2:
         st.markdown("""
         <div class="feature-card">
             <div class="feature-icon">💬</div>
-            <div class="feature-title">질문하기</div>
+            <div class="feature-title">AI 코치</div>
             <div class="feature-desc">
                 <span style="color: #3b82f6; font-weight: 600;">합격자 질문 TOP 10</span><br>
                 같은 고민 했던<br>선배들의 해결법
             </div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("궁금한 거 물어보기", use_container_width=True, key="btn3"):
+        if st.button("궁금한 거 물어보기", use_container_width=True, key="btn2"):
+            st.switch_page("pages/6_💬_AI챗봇.py")
+
+    with col3:
+        st.markdown("""
+        <div class="feature-card">
+            <div class="feature-icon">📊</div>
+            <div class="feature-title">면접 팁</div>
+            <div class="feature-desc">
+                <span style="color: #22c55e; font-weight: 600;">예상 질문 + 모범 답변</span><br>
+                면접관이 진짜<br>듣고 싶은 말
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("면접 준비하기", use_container_width=True, key="btn3"):
             st.switch_page("pages/6_💬_AI챗봇.py")
 
     st.markdown("---")

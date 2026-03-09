@@ -772,6 +772,14 @@ with tab2:
     if not API_AVAILABLE:
         st.warning("️ OpenAI API가 설정되지 않아 음성 분석 기능을 사용할 수 없습니다. 자가 평가는 가능합니다.")
 
+    # 세션 상태 초기화
+    if "ann_recorded_audio" not in st.session_state:
+        st.session_state.ann_recorded_audio = None
+    if "ann_analysis_result" not in st.session_state:
+        st.session_state.ann_analysis_result = None
+    if "ann_transcript" not in st.session_state:
+        st.session_state.ann_transcript = None
+
     # 방송/언어 선택
     col1, col2 = st.columns(2)
     with col1:
@@ -794,31 +802,45 @@ with tab2:
     st.markdown("---")
 
     # 녹음
-    st.markdown("#### ️ 음성 녹음")
+    st.markdown("#### 🎙️ 음성 녹음")
     audio_value = st.audio_input("녹음하기", key="audio_rec")
 
+    # 새 녹음이 있으면 세션에 저장
     if audio_value:
-        st.audio(audio_value)
+        st.session_state.ann_recorded_audio = audio_value.getvalue()
+        st.session_state.ann_analysis_result = None  # 새 녹음 시 이전 분석 결과 초기화
+        st.session_state.ann_transcript = None
 
-        if st.button("AI 분석 받기", type="primary", use_container_width=True, key="analyze_btn"):
+    # 녹음된 오디오가 있으면 재생 버튼 표시
+    if st.session_state.ann_recorded_audio:
+        st.markdown("#### 🔊 녹음된 음성 듣기")
+        st.audio(st.session_state.ann_recorded_audio, format="audio/wav")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🗑️ 녹음 삭제", use_container_width=True, key="delete_rec"):
+                st.session_state.ann_recorded_audio = None
+                st.session_state.ann_analysis_result = None
+                st.session_state.ann_transcript = None
+                st.rerun()
+        with col2:
+            analyze_clicked = st.button("🤖 AI 분석 받기", type="primary", use_container_width=True, key="analyze_btn")
+
+        if analyze_clicked:
             if API_AVAILABLE:
                 with st.spinner("음성 분석 중... (Whisper → GPT-4o-mini)"):
-                    audio_bytes = audio_value.getvalue()
+                    audio_bytes = st.session_state.ann_recorded_audio
                     lang_code = "ko" if practice_lang == "한국어" else "en"
                     transcript = transcribe_audio(audio_bytes, lang_code)
 
-                    if transcript and not transcript.startswith("오류"):
-                        st.markdown("---")
-                        st.markdown("#### 음성 인식 결과")
-                        st.write(transcript)
+                    if transcript and not transcript.startswith("오류") and len(transcript.strip()) > 0:
+                        st.session_state.ann_transcript = transcript
 
                         # AI 분석
-                        st.markdown("---")
-                        st.markdown("#### AI 피드백")
                         feedback = analyze_announcement(script_text, transcript, practice_lang, practice_type)
 
                         if feedback:
-                            st.markdown(feedback)
+                            st.session_state.ann_analysis_result = feedback
 
                             # 점수 추출
                             score_match = re.search(r'(\d+)/100', feedback)
@@ -835,11 +857,34 @@ with tab2:
                                 "date": datetime.now().isoformat()
                             })
                             save_practice(practices)
-                            st.success("연습 기록이 저장되었습니다!")
+                            st.rerun()
+                        else:
+                            st.error("AI 분석에 실패했습니다. 잠시 후 다시 시도해주세요.")
                     else:
-                        st.error(f"음성 인식 실패: {transcript}")
+                        # 음성 인식 실패 시 더 친절한 안내
+                        if transcript and transcript.startswith("오류"):
+                            st.error(f"음성 인식 오류: {transcript}")
+                        else:
+                            st.error("음성 인식에 실패했습니다. 다음 사항을 확인해주세요:")
+                            st.markdown("""
+                            - 🎤 마이크가 제대로 작동하는지 확인하세요
+                            - 🔊 충분히 큰 목소리로 녹음하세요
+                            - ⏱️ 녹음 시간이 너무 짧지 않은지 확인하세요 (최소 3초 이상)
+                            - 🔄 녹음을 삭제하고 다시 시도해보세요
+                            """)
             else:
                 st.error("OpenAI API 키가 필요합니다.")
+
+    # 분석 결과 표시
+    if st.session_state.ann_analysis_result:
+        st.markdown("---")
+        st.markdown("#### 📝 음성 인식 결과")
+        st.info(st.session_state.ann_transcript)
+
+        st.markdown("---")
+        st.markdown("#### 💡 AI 피드백")
+        st.markdown(st.session_state.ann_analysis_result)
+        st.success("✅ 연습 기록이 저장되었습니다!")
 
     # 자가 평가
     st.markdown("---")

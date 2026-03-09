@@ -422,29 +422,77 @@ def generate_debater_response(topic: dict, position: str, history: list, user_me
 
     messages.append({"role": "user", "content": context})
 
-    try:
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        }
-        payload = {
-            "model": LLM_MODEL_NAME,
-            "messages": messages,
-            "temperature": 0.8,
-            "max_tokens": 200,
-        }
+    # 재시도 로직 추가
+    max_retries = 2
+    for attempt in range(max_retries):
+        try:
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            }
+            payload = {
+                "model": LLM_MODEL_NAME,
+                "messages": messages,
+                "temperature": 0.8 + (attempt * 0.1),  # 재시도 시 온도 약간 증가
+                "max_tokens": 200,
+            }
 
-        r = requests.post(LLM_API_URL, headers=headers, json=payload, timeout=LLM_TIMEOUT_SEC)
-        r.raise_for_status()
-        resp = r.json()
+            r = requests.post(LLM_API_URL, headers=headers, json=payload, timeout=LLM_TIMEOUT_SEC)
+            r.raise_for_status()
+            resp = r.json()
 
-        choices = resp.get("choices", [])
-        if choices:
-            return choices[0].get("message", {}).get("content", "").strip()
-        return "[응답 실패]"
+            choices = resp.get("choices", [])
+            if choices:
+                content = choices[0].get("message", {}).get("content", "").strip()
+                if content:
+                    return content
 
-    except Exception as e:
-        return f"[오류: {str(e)}]"
+            # 응답이 비어있으면 재시도
+            if attempt < max_retries - 1:
+                import time
+                time.sleep(1)
+                continue
+
+            # 마지막 시도에서도 실패하면 폴백 메시지
+            return _get_fallback_response(position)
+
+        except requests.exceptions.Timeout:
+            if attempt < max_retries - 1:
+                import time
+                time.sleep(1)
+                continue
+            return _get_fallback_response(position)
+        except Exception as e:
+            if attempt < max_retries - 1:
+                import time
+                time.sleep(1)
+                continue
+            return _get_fallback_response(position)
+
+    return _get_fallback_response(position)
+
+
+def _get_fallback_response(position: str) -> str:
+    """API 실패 시 폴백 응답"""
+    fallback_responses = {
+        "pro": [
+            "네, 그 점에 대해서는 저도 동의하는 부분이 있습니다만, 다른 관점에서 보면...",
+            "흥미로운 의견이네요. 하지만 저는 조금 다르게 생각합니다.",
+            "그 부분은 충분히 일리가 있습니다. 다만 제 입장에서는..."
+        ],
+        "con": [
+            "그 의견도 일리가 있지만, 반대 측면도 고려해야 할 것 같습니다.",
+            "네, 하지만 다른 관점에서 생각해보면 어떨까요?",
+            "좋은 지적입니다. 그런데 저는 좀 다른 시각을 가지고 있어요."
+        ],
+        "neutral": [
+            "양측 의견 모두 경청했습니다. 균형 잡힌 시각이 필요할 것 같네요.",
+            "두 분의 의견을 들어보니, 절충점을 찾아볼 수 있을 것 같습니다.",
+            "좋은 토론이네요. 서로의 입장을 더 이해하게 된 것 같습니다."
+        ]
+    }
+    import random
+    return random.choice(fallback_responses.get(position, fallback_responses["neutral"]))
 
 
 def evaluate_debate(topic: dict, user_position: str, history: list, voice_analyses: list = None) -> dict:
@@ -986,33 +1034,55 @@ elif not st.session_state.debate_completed:
             st.session_state.debate_history.append(history_entry)
 
             with st.spinner("다른 참가자들이 발언 중..."):
-                if position == "pro":
-                    opponent = "con"
-                elif position == "con":
-                    opponent = "pro"
-                else:
-                    opponent = random.choice(["pro", "con"])
+                try:
+                    if position == "pro":
+                        opponent = "con"
+                    elif position == "con":
+                        opponent = "pro"
+                    else:
+                        opponent = random.choice(["pro", "con"])
 
-                response = generate_debater_response(
-                    topic, opponent,
-                    st.session_state.debate_history,
-                    user_input
-                )
-                st.session_state.debate_history.append({
-                    "speaker": DEBATERS[opponent]["name"],
-                    "content": response,
-                    "position": opponent,
-                    "is_user": False,
-                })
-
-                if random.random() > 0.5:
-                    neutral_response = generate_debater_response(
-                        topic, "neutral",
-                        st.session_state.debate_history
+                    response = generate_debater_response(
+                        topic, opponent,
+                        st.session_state.debate_history,
+                        user_input
                     )
+
+                    # 응답이 유효한지 확인
+                    if response and not response.startswith("["):
+                        st.session_state.debate_history.append({
+                            "speaker": DEBATERS[opponent]["name"],
+                            "content": response,
+                            "position": opponent,
+                            "is_user": False,
+                        })
+
+                        # 50% 확률로 중립 참가자 발언
+                        if random.random() > 0.5:
+                            neutral_response = generate_debater_response(
+                                topic, "neutral",
+                                st.session_state.debate_history
+                            )
+                            if neutral_response and not neutral_response.startswith("["):
+                                st.session_state.debate_history.append({
+                                    "speaker": DEBATERS["neutral"]["name"],
+                                    "content": neutral_response,
+                                    "position": "neutral",
+                                    "is_user": False,
+                                })
+                    else:
+                        # 응답 생성 실패 시 폴백 사용
+                        st.session_state.debate_history.append({
+                            "speaker": DEBATERS[opponent]["name"],
+                            "content": _get_fallback_response(opponent),
+                            "position": opponent,
+                            "is_user": False,
+                        })
+                except Exception as e:
+                    # 오류 발생 시 폴백 응답 사용
                     st.session_state.debate_history.append({
-                        "speaker": DEBATERS["neutral"]["name"],
-                        "content": neutral_response,
+                        "speaker": "상대 토론자",
+                        "content": "네, 좋은 의견이네요. 계속해서 토론을 이어가 볼까요?",
                         "position": "neutral",
                         "is_user": False,
                     })

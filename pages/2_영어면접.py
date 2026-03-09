@@ -814,45 +814,54 @@ elif st.session_state.eng_mode == "mock":
             with st.spinner("전체 답변을 평가하고 있습니다..."):
                 all_feedback = {}
                 total_scores = []
-                for idx, data in st.session_state.eng_answers.items():
-                    fb = evaluate_english_answer(
-                        data["question"],
-                        data["answer"],
-                        data.get("key_points", [])
-                    )
-                    all_feedback[idx] = fb
+                try:
+                    for idx, data in st.session_state.eng_answers.items():
+                        try:
+                            fb = evaluate_english_answer(
+                                data.get("question", ""),
+                                data.get("answer", ""),
+                                data.get("key_points", [])
+                            )
+                            all_feedback[idx] = fb
 
-                    if SCORE_UTILS_AVAILABLE and "result" in fb:
-                        parsed = parse_evaluation_score(fb["result"], "영어면접")
-                        if parsed.get("total", 0) > 0:
-                            total_scores.append(parsed["total"])
+                            if SCORE_UTILS_AVAILABLE and fb and "result" in fb:
+                                parsed = parse_evaluation_score(fb["result"], "영어면접")
+                                if parsed and parsed.get("total", 0) > 0:
+                                    total_scores.append(parsed["total"])
+                        except Exception as e:
+                            all_feedback[idx] = {"error": f"평가 중 오류: {str(e)}"}
 
-                st.session_state.mock_final_feedback = all_feedback
+                    st.session_state.mock_final_feedback = all_feedback
 
-                if SCORE_UTILS_AVAILABLE and total_scores:
-                    avg_score = sum(total_scores) / len(total_scores)
-                    save_practice_score(
-                        practice_type="영어면접",
-                        total_score=round(avg_score),
-                        detailed_scores=None,
-                        scenario="모의면접 (5문항 평균)"
-                    )
+                    if SCORE_UTILS_AVAILABLE and total_scores:
+                        avg_score = sum(total_scores) / len(total_scores)
+                        save_practice_score(
+                            practice_type="영어면접",
+                            total_score=round(avg_score),
+                            detailed_scores=None,
+                            scenario="모의면접 (5문항 평균)"
+                        )
+                except Exception as e:
+                    st.error(f"답변 평가 중 오류가 발생했습니다: {e}")
+                    st.session_state.mock_final_feedback = {}
 
         # 음성 분석 (음성 데이터가 있을 때만)
-        if VOICE_AVAILABLE and st.session_state.eng_audio_bytes_list and st.session_state.eng_voice_analysis is None:
+        if VOICE_AVAILABLE and st.session_state.eng_audio_bytes_list and len(st.session_state.eng_audio_bytes_list) > 0 and st.session_state.eng_voice_analysis is None:
             with st.spinner("음성 전달력을 분석하고 있습니다..."):
                 try:
                     # 마지막 음성 데이터로 분석
                     last_audio = st.session_state.eng_audio_bytes_list[-1]
-                    voice_result = analyze_voice_complete(
-                        audio_bytes=last_audio,
-                        transcription=None,
-                        expected_duration_range=(10, 90),
-                        response_times=st.session_state.eng_response_times
-                    )
-                    st.session_state.eng_voice_analysis = voice_result
+                    if last_audio and len(last_audio) > 0:
+                        voice_result = analyze_voice_complete(
+                            audio_bytes=last_audio,
+                            transcription=None,
+                            expected_duration_range=(10, 90),
+                            response_times=st.session_state.eng_response_times
+                        )
+                        st.session_state.eng_voice_analysis = voice_result
                 except Exception as e:
                     st.warning(f"음성 분석 중 오류: {e}")
+                    st.session_state.eng_voice_analysis = {}
 
         # 종합 점수 표시
         # 텍스트 기반 평균 점수 계산 (음성 분석 없을 때 사용)
@@ -915,27 +924,31 @@ elif st.session_state.eng_mode == "mock":
                     st.caption(" 음성 녹음 모드를 사용하면 발음/음성 전달력 분석도 제공됩니다.")
 
         # PDF 다운로드 버튼
-        if REPORT_AVAILABLE:
+        if REPORT_AVAILABLE and st.session_state.eng_answers:
             st.divider()
 
-            questions_answers = [st.session_state.eng_answers[idx] for idx in sorted(st.session_state.eng_answers.keys())]
-
             try:
-                pdf_bytes = generate_english_interview_report(
-                    questions_answers=questions_answers,
-                    feedbacks=st.session_state.mock_final_feedback,
-                    voice_analysis=st.session_state.eng_voice_analysis,
-                    mode="mock",
-                    user_name="Candidate"
-                )
+                # 안전하게 정렬된 answers 리스트 생성
+                sorted_keys = sorted([k for k in st.session_state.eng_answers.keys() if isinstance(k, int)])
+                questions_answers = [st.session_state.eng_answers[idx] for idx in sorted_keys if idx in st.session_state.eng_answers]
 
-                st.download_button(
-                    label= " PDF 리포트 다운로드",
-                    data=pdf_bytes,
-                    file_name=get_english_report_filename(),
-                    mime="application/pdf",
-                    use_container_width=True
-                )
+                if questions_answers:
+                    pdf_bytes = generate_english_interview_report(
+                        questions_answers=questions_answers,
+                        feedbacks=st.session_state.get("mock_final_feedback", {}),
+                        voice_analysis=st.session_state.eng_voice_analysis,
+                        mode="mock",
+                        user_name="Candidate"
+                    )
+
+                    if pdf_bytes:
+                        st.download_button(
+                            label=" PDF 리포트 다운로드",
+                            data=pdf_bytes,
+                            file_name=get_english_report_filename(),
+                            mime="application/pdf",
+                            use_container_width=True
+                        )
             except Exception as e:
                 st.error(f"PDF 생성 오류: {e}")
 
@@ -968,18 +981,26 @@ elif st.session_state.eng_mode == "mock":
         st.divider()
         st.markdown("### 질문별 상세 결과")
 
-        for idx, data in st.session_state.eng_answers.items():
-            with st.expander(f"Q{idx+1}: {data['question']}", expanded=False):
-                st.markdown("**Your Answer:**")
-                st.write(data["answer"])
+        try:
+            for idx, data in st.session_state.eng_answers.items():
+                question_num = idx + 1 if isinstance(idx, int) else idx
+                question_text = data.get('question', '질문') if isinstance(data, dict) else str(data)
 
-                st.markdown("---")
-                st.markdown("**Feedback:**")
-                fb = st.session_state.mock_final_feedback.get(idx, {})
-                if "error" in fb:
-                    st.error(fb["error"])
-                else:
-                    st.markdown(fb.get("result", ""))
+                with st.expander(f"Q{question_num}: {question_text}", expanded=False):
+                    st.markdown("**Your Answer:**")
+                    answer_text = data.get("answer", "") if isinstance(data, dict) else ""
+                    st.write(answer_text if answer_text else "(답변 없음)")
+
+                    st.markdown("---")
+                    st.markdown("**Feedback:**")
+                    mock_feedback = st.session_state.get("mock_final_feedback", {})
+                    fb = mock_feedback.get(idx, {}) if isinstance(mock_feedback, dict) else {}
+                    if "error" in fb:
+                        st.error(fb["error"])
+                    else:
+                        st.markdown(fb.get("result", "평가 결과를 불러올 수 없습니다."))
+        except Exception as e:
+            st.error(f"결과 표시 중 오류: {e}")
 
         st.divider()
 

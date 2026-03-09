@@ -123,8 +123,11 @@ html, body, .stApp, .main, [data-testid="stAppViewContainer"] {
 """, unsafe_allow_html=True)
 st.markdown('<div translate="no" class="notranslate" lang="ko">', unsafe_allow_html=True)
 
-# CSS 스타일
-CSS_STYLES = """
+# CSS 스타일 (캐싱)
+@st.cache_resource
+def get_roleplay_css():
+    """롤플레잉 페이지 CSS (영구 캐시)"""
+    return """
 <style>
 html{translate:no}
 .emotion-gauge-container{background:#fff;border-radius:15px;padding:20px;box-shadow:0 4px 15px rgba(0,0,0,0.1);margin-bottom:20px}
@@ -139,7 +142,8 @@ html{translate:no}
 .premium-badge{background:linear-gradient(135deg,#f59e0b,#fbbf24);color:#fff;font-size:10px;padding:3px 8px;border-radius:10px;font-weight:bold}
 </style>
 """
-st.markdown(CSS_STYLES, unsafe_allow_html=True)
+
+st.markdown(get_roleplay_css(), unsafe_allow_html=True)
 
 # ----------------------------
 # 비밀번호 보호
@@ -1336,6 +1340,19 @@ else:
                         user_input,
                         st.session_state.rp_escalation_level
                     )
+
+                    # 중복 응답 체크 및 재생성
+                    last_passenger_msgs = [m["content"] for m in st.session_state.rp_messages if m["role"] == "passenger"]
+                    retry_count = 0
+                    while passenger_response in last_passenger_msgs and retry_count < 2:
+                        # 중복 발견 시 재생성 (온도 높여서)
+                        passenger_response = generate_passenger_response(
+                            scenario,
+                            st.session_state.rp_messages,
+                            user_input + " (다르게 응답해주세요)",
+                            st.session_state.rp_escalation_level
+                        )
+                        retry_count += 1
 
                 st.session_state.rp_messages.append({
                     "role": "passenger",

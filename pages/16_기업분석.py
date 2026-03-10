@@ -2,6 +2,12 @@
 # 기업분석 PDF - 관리자 업로드 + 사용자 다운로드
 # 핵심포인트 미리보기 + 열람기록 + 퀴즈연동 + NEW뱃지 + 다운로드카운터
 
+# 정식 웹사이트 이전 안내
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from redirect_to_web import show_redirect_and_stop
+show_redirect_and_stop()
+
 import streamlit as st
 import os
 import json

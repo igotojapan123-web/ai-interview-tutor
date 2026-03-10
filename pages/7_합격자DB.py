@@ -1,6 +1,12 @@
 # pages/7_합격자DB.py
 # 합격자 후기 게시판 - 전면 개편: 통계 대시보드 + 질문 DB + 좋아요/댓글
 
+# 정식 웹사이트 이전 안내
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from redirect_to_web import show_redirect_and_stop
+show_redirect_and_stop()
+
 import os
 import json
 import streamlit as st

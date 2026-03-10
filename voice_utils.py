@@ -1,6 +1,7 @@
 # voice_utils.py
 # 음성 인식 (STT) 및 음성 평가 유틸리티
 # 네이버 클로바 더빙 + OpenAI TTS 지원
+# 2026.02 비용 최적화: gpt-4o-transcribe 모델 사용 (Whisper 대비 50% 절감)
 
 from logging_config import get_logger
 
@@ -9,10 +10,88 @@ import re
 import json
 import tempfile
 import requests
+import hashlib
+from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List, Tuple
 from io import BytesIO
 
 logger = get_logger(__name__)
+
+# =========================
+# 비용 절감 설정 임포트
+# =========================
+try:
+    from config import STT_MODEL, STT_FALLBACK_MODEL, VOICE_LIMITS
+except ImportError:
+    STT_MODEL = "gpt-4o-transcribe"  # 기본값: 비용 50% 절감 모델
+    STT_FALLBACK_MODEL = "whisper-1"
+    VOICE_LIMITS = {
+        "FREE": {"max_duration_per_answer": 60, "monthly_voice_calls": 30, "daily_voice_calls": 5},
+        "STANDARD": {"max_duration_per_answer": 90, "monthly_voice_calls": -1, "daily_voice_calls": -1},
+        "PREMIUM": {"max_duration_per_answer": 120, "monthly_voice_calls": -1, "daily_voice_calls": -1},
+    }
+
+# =========================
+# 음성 사용량 추적 (비용 절감)
+# =========================
+_voice_usage_cache = {}  # {user_id: {"date": "2026-02-11", "daily_count": 5, "monthly_count": 30}}
+
+def get_voice_usage(user_id: str = "default") -> Dict[str, Any]:
+    """사용자 음성 사용량 조회"""
+    today = datetime.now().strftime("%Y-%m-%d")
+    this_month = datetime.now().strftime("%Y-%m")
+
+    if user_id not in _voice_usage_cache:
+        _voice_usage_cache[user_id] = {
+            "date": today,
+            "month": this_month,
+            "daily_count": 0,
+            "monthly_count": 0,
+        }
+
+    usage = _voice_usage_cache[user_id]
+
+    # 날짜 변경 시 리셋
+    if usage.get("date") != today:
+        usage["date"] = today
+        usage["daily_count"] = 0
+
+    # 월 변경 시 리셋
+    if usage.get("month") != this_month:
+        usage["month"] = this_month
+        usage["monthly_count"] = 0
+
+    return usage
+
+def check_voice_limit(user_tier: str = "FREE", user_id: str = "default") -> Tuple[bool, str]:
+    """
+    음성 사용 제한 확인 (비용 절감)
+
+    Returns:
+        (allowed: bool, message: str)
+    """
+    limits = VOICE_LIMITS.get(user_tier, VOICE_LIMITS["FREE"])
+    usage = get_voice_usage(user_id)
+
+    daily_limit = limits.get("daily_voice_calls", -1)
+    monthly_limit = limits.get("monthly_voice_calls", -1)
+
+    # 일일 제한 확인
+    if daily_limit > 0 and usage["daily_count"] >= daily_limit:
+        return False, f"오늘 음성 인식 횟수({daily_limit}회)를 모두 사용했습니다. 텍스트 입력을 이용해주세요."
+
+    # 월간 제한 확인
+    if monthly_limit > 0 and usage["monthly_count"] >= monthly_limit:
+        return False, f"이번 달 음성 인식 횟수({monthly_limit}회)를 모두 사용했습니다. 요금제를 업그레이드하거나 텍스트 입력을 이용해주세요."
+
+    return True, "OK"
+
+def increment_voice_usage(user_id: str = "default"):
+    """음성 사용량 증가"""
+    usage = get_voice_usage(user_id)
+    usage["daily_count"] += 1
+    usage["monthly_count"] += 1
+    _voice_usage_cache[user_id] = usage
 
 # OpenAI API 설정
 OPENAI_API_URL = "https://api.openai.com/v1"
@@ -311,39 +390,66 @@ def get_openai_api_key() -> str:
     )
 
 
-def transcribe_audio(audio_bytes: bytes, language: str = "ko") -> Optional[Dict[str, Any]]:
+def transcribe_audio(
+    audio_bytes: bytes,
+    language: str = "ko",
+    user_tier: str = "FREE",
+    user_id: str = "default",
+    max_duration: int = None,
+) -> Optional[Dict[str, Any]]:
     """
-    OpenAI Whisper API로 음성을 텍스트로 변환
+    OpenAI STT API로 음성을 텍스트로 변환
+    2026.02 비용 최적화: gpt-4o-transcribe 모델 사용 (Whisper 대비 50% 절감)
 
     Args:
         audio_bytes: 오디오 바이트 데이터
         language: 언어 코드 (ko, en)
+        user_tier: 사용자 요금제 (FREE/STANDARD/PREMIUM)
+        user_id: 사용자 ID (사용량 추적용)
+        max_duration: 최대 처리 시간 (초) - None이면 티어별 기본값 사용
 
     Returns:
         {
             "text": "인식된 텍스트",
             "duration": 10.5,  # 초 단위
-            "words": [{"word": "안녕", "start": 0.0, "end": 0.5}, ...]
+            "words": [{"word": "안녕", "start": 0.0, "end": 0.5}, ...],
+            "model_used": "gpt-4o-transcribe",  # 사용된 모델
+            "cost_saved": True  # 비용 절감 모델 사용 여부
         }
     """
+    # 1. 사용량 제한 확인 (비용 절감)
+    allowed, limit_msg = check_voice_limit(user_tier, user_id)
+    if not allowed:
+        print(f"[STT] 사용량 제한: {limit_msg}")
+        return {"error": "limit_exceeded", "message": limit_msg}
+
     api_key = get_openai_api_key()
     if not api_key:
-        print("[Whisper] API 키 없음")
+        print("[STT] API 키 없음")
         return None
 
     # 최소 오디오 크기 체크 (1KB 미만은 유효하지 않음)
     if not audio_bytes or len(audio_bytes) < 1000:
-        print(f"[Whisper] 오디오 데이터 부족: {len(audio_bytes) if audio_bytes else 0} bytes")
+        print(f"[STT] 오디오 데이터 부족: {len(audio_bytes) if audio_bytes else 0} bytes")
         return None
 
     headers = {
         "Authorization": f"Bearer {api_key}",
     }
 
+    # 2. 티어별 최대 시간 제한 적용
+    if max_duration is None:
+        tier_limits = VOICE_LIMITS.get(user_tier, VOICE_LIMITS["FREE"])
+        max_duration = tier_limits.get("max_duration_per_answer", 60)
+
     # 임시 파일로 저장
     with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as f:
         f.write(audio_bytes)
         temp_path = f.name
+
+    # 3. 모델 선택: gpt-4o-transcribe 우선 (50% 비용 절감)
+    model_to_use = STT_MODEL  # gpt-4o-transcribe (기본값)
+    cost_saved = True
 
     try:
         with open(temp_path, "rb") as audio_file:
@@ -351,7 +457,7 @@ def transcribe_audio(audio_bytes: bytes, language: str = "ko") -> Optional[Dict[
                 "file": ("audio.webm", audio_file, "audio/webm"),
             }
             data = {
-                "model": "whisper-1",
+                "model": model_to_use,
                 "language": language,
                 "response_format": "verbose_json",
                 "timestamp_granularities": ["word"],
@@ -362,8 +468,28 @@ def transcribe_audio(audio_bytes: bytes, language: str = "ko") -> Optional[Dict[
                 headers=headers,
                 files=files,
                 data=data,
-                timeout=90  # 타임아웃 90초로 증가
+                timeout=90
             )
+
+            # 4. gpt-4o-transcribe 실패 시 whisper-1 폴백
+            if r.status_code != 200 and model_to_use != STT_FALLBACK_MODEL:
+                logger.warning(f"[STT] {model_to_use} 실패, {STT_FALLBACK_MODEL}로 폴백")
+                model_to_use = STT_FALLBACK_MODEL
+                cost_saved = False
+
+                with open(temp_path, "rb") as audio_file_retry:
+                    files_retry = {
+                        "file": ("audio.webm", audio_file_retry, "audio/webm"),
+                    }
+                    data["model"] = model_to_use
+                    r = requests.post(
+                        f"{OPENAI_API_URL}/audio/transcriptions",
+                        headers=headers,
+                        files=files_retry,
+                        data=data,
+                        timeout=90
+                    )
+
             r.raise_for_status()
             result = r.json()
 
@@ -372,24 +498,40 @@ def transcribe_audio(audio_bytes: bytes, language: str = "ko") -> Optional[Dict[
 
             # 인식된 텍스트가 너무 짧으면 실패로 간주하지 않음 (빈 문자열만 제외)
             if not text:
-                print("[Whisper] 인식된 텍스트 없음 (무음 또는 너무 짧은 녹음)")
+                print("[STT] 인식된 텍스트 없음 (무음 또는 너무 짧은 녹음)")
                 return None
+
+            # 5. 사용량 증가 (성공 시에만)
+            increment_voice_usage(user_id)
+
+            # 6. 시간 제한 초과 경고 (비용 절감 안내)
+            if duration > max_duration:
+                logger.info(f"[STT] 녹음 시간 {duration:.1f}초 (권장: {max_duration}초 이하)")
 
             return {
                 "text": text,
                 "duration": duration,
                 "words": result.get("words", []),
                 "language": result.get("language", language),
+                "model_used": model_to_use,
+                "cost_saved": cost_saved,
             }
 
     except requests.exceptions.Timeout:
-        print("[Whisper] API 타임아웃 (90초 초과)")
+        print("[STT] API 타임아웃 (90초 초과)")
         return None
     except requests.exceptions.HTTPError as e:
-        print(f"[Whisper] HTTP 오류: {e.response.status_code if e.response else 'unknown'}")
+        error_code = e.response.status_code if e.response else 'unknown'
+        print(f"[STT] HTTP 오류: {error_code}")
+        # 모델 미지원 오류 시 폴백 시도
+        if error_code == 400 and model_to_use != STT_FALLBACK_MODEL:
+            logger.warning(f"[STT] {model_to_use} 미지원, {STT_FALLBACK_MODEL}로 폴백 재시도")
+            return transcribe_audio(
+                audio_bytes, language, user_tier, user_id, max_duration
+            )
         return None
     except Exception as e:
-        print(f"[Whisper] API 오류: {e}")
+        print(f"[STT] API 오류: {e}")
         return None
 
     finally:

@@ -1,6 +1,12 @@
 # pages/5_토론면접.py
 # 그룹 토론면접 시뮬레이션 - 아바타/음성 기능 추가
 
+# 정식 웹사이트 이전 안내
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from redirect_to_web import show_redirect_and_stop
+show_redirect_and_stop()
+
 import os
 import hashlib
 

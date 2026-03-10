@@ -1,6 +1,12 @@
 # pages/24_에어로케이.py
 # 에어로케이 전용 채용 가이드 - 경험 포트폴리오 컨설팅
 
+# 정식 웹사이트 이전 안내
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from redirect_to_web import show_redirect_and_stop
+show_redirect_and_stop()
+
 import os
 import sys
 import json

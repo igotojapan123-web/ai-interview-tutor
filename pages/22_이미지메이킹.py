@@ -2,6 +2,12 @@
 # 항공사 면접 이미지메이킹 가이드
 # 셀프체크 + 타임라인 + NG사례 + 항공사비교 + 계절별팁
 
+# 정식 웹사이트 이전 안내
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from redirect_to_web import show_redirect_and_stop
+show_redirect_and_stop()
+
 import streamlit as st
 import os
 import sys

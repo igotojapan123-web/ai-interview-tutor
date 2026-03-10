@@ -15,8 +15,26 @@ ENHANCEMENT_AVAILABLE = False
 MODULES_AVAILABLE = {}
 
 
+@st.cache_resource
+def get_notranslate_css():
+    """구글 번역 방지 CSS (영구 캐시)"""
+    return """
+<meta name="google" content="notranslate">
+<meta http-equiv="Content-Language" content="ko">
+<style>
+html, body, .stApp, .main, [data-testid="stAppViewContainer"] {
+    translate: no !important;
+}
+.notranslate, [translate="no"] {
+    translate: no !important;
+}
+</style>
+"""
+
+
+@st.cache_resource
 def get_simple_css():
-    """Simple, reliable CSS without complex f-string issues."""
+    """Simple, reliable CSS without complex f-string issues. (캐시됨)"""
     return """
     <style>
     /* Hide Streamlit defaults */

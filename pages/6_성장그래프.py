@@ -1,6 +1,12 @@
 # pages/6_성장그래프.py
 # 성장 그래프 - 종합 대시보드 (Premium 기능 포함)
 
+# 정식 웹사이트 이전 안내
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from redirect_to_web import show_redirect_and_stop
+show_redirect_and_stop()
+
 import os
 import json
 from datetime import datetime, timedelta
@@ -27,6 +33,14 @@ try:
     GROWTH_REPORT_AVAILABLE = True
 except ImportError:
     GROWTH_REPORT_AVAILABLE = False
+
+# 면접 히스토리 연동
+try:
+    from interview_history_utils import get_all_sessions, get_total_stats
+    from interview_review_service import get_weekly_recommendation, get_readiness_score
+    INTERVIEW_HISTORY_AVAILABLE = True
+except ImportError:
+    INTERVIEW_HISTORY_AVAILABLE = False
 
 # Phase 3: 벤치마킹 시스템
 try:
@@ -137,6 +151,29 @@ def get_all_scores():
             "score": h.get("score", 0),
             "detail": get_scenario_title(scenario_id)
         })
+
+    # interview_history.json (면접 히스토리 연동)
+    if INTERVIEW_HISTORY_AVAILABLE:
+        try:
+            sessions = get_all_sessions(limit=100)
+            for session in sessions:
+                created_at = session.get("created_at", "")
+                date_str = created_at[:10] if created_at else ""
+                time_str = created_at[11:16] if len(created_at) > 11 else ""
+                scores = session.get("scores", {})
+                total_score = scores.get("total", 0)
+                interview_type = session.get("type", "모의면접")
+                airline = session.get("airline", "")
+
+                all_scores.append({
+                    "date": date_str,
+                    "time": time_str,
+                    "type": interview_type,
+                    "score": total_score,
+                    "detail": f"{airline} {interview_type}" if airline else interview_type
+                })
+        except Exception as e:
+            logger.warning(f"면접 히스토리 로드 실패: {e}")
 
     all_scores.sort(key=lambda x: (x.get("date", ""), x.get("time", "")))
     return all_scores
@@ -549,6 +586,72 @@ st.markdown("""
 
 st.title("성장 그래프")
 st.caption("나의 면접 준비 현황을 한눈에 확인하세요")
+
+# ========== 오늘의 최근 세션 결과 (면접에서 넘어온 경우) ==========
+if INTERVIEW_HISTORY_AVAILABLE:
+    try:
+        # 최근 세션 조회
+        recent_sessions = get_all_sessions(limit=1)
+        if recent_sessions:
+            last_session = recent_sessions[0]
+            created_at = last_session.get("created_at", "")
+
+            # 오늘 세션인지 확인
+            from datetime import datetime
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            session_date = created_at[:10] if created_at else ""
+
+            if session_date == today_str:
+                scores = last_session.get("scores", {})
+                total_score = scores.get("total", 0)
+                voice_avg = scores.get("voice_avg", 0)
+                content_avg = scores.get("content_avg", 0)
+                airline = last_session.get("airline", "")
+                interview_type = last_session.get("type", "면접")
+                question_count = last_session.get("question_count", 0)
+
+                if total_score > 0:
+                    # 점수에 따른 색상
+                    if total_score >= 80:
+                        grade_color = "#10b981"
+                        grade_text = "우수"
+                        grade_icon = "🌟"
+                    elif total_score >= 70:
+                        grade_color = "#3b82f6"
+                        grade_text = "양호"
+                        grade_icon = "👍"
+                    elif total_score >= 60:
+                        grade_color = "#f59e0b"
+                        grade_text = "보통"
+                        grade_icon = "📈"
+                    else:
+                        grade_color = "#ef4444"
+                        grade_text = "노력 필요"
+                        grade_icon = "💪"
+
+                    st.markdown(f"""
+                    <div style="background: linear-gradient(135deg, {grade_color}15 0%, {grade_color}05 100%);
+                                border: 2px solid {grade_color}40; border-radius: 16px;
+                                padding: 20px; margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-size: 0.9rem; color: #666;">오늘의 연습 결과</div>
+                                <div style="font-size: 1.2rem; font-weight: 700;">{airline} {interview_type}</div>
+                                <div style="font-size: 0.85rem; color: #888;">{question_count}개 질문 완료</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 3rem;">{grade_icon}</div>
+                                <div style="font-size: 2.5rem; font-weight: 800; color: {grade_color};">{total_score}점</div>
+                                <div style="font-size: 0.9rem; color: {grade_color};">{grade_text}</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 0.85rem; color: #666;">음성 {voice_avg}점 | 내용 {content_avg}점</div>
+                            </div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+    except Exception as e:
+        pass  # 오류 시 표시 안 함
 
 # 데이터 로드
 all_scores = get_all_scores()
@@ -1249,16 +1352,88 @@ with report_col2:
 
 st.markdown("---")
 
+# ========== 면접 히스토리 연동 ==========
+if INTERVIEW_HISTORY_AVAILABLE:
+    st.markdown("### 면접 준비도")
+
+    try:
+        readiness = get_readiness_score()
+        recommendation = get_weekly_recommendation()
+
+        ready_col1, ready_col2 = st.columns([1, 2])
+
+        with ready_col1:
+            score = readiness.get("score", 0)
+            grade = readiness.get("grade", "-")
+            level = readiness.get("level", "시작 전")
+
+            # 점수에 따른 색상
+            if score >= 80:
+                color = "#10b981"
+            elif score >= 60:
+                color = "#f59e0b"
+            else:
+                color = "#667eea"
+
+            st.markdown(f"""
+            <div style="
+                background: linear-gradient(135deg, {color}20 0%, {color}10 100%);
+                border: 2px solid {color};
+                border-radius: 16px;
+                padding: 24px;
+                text-align: center;
+            ">
+                <div style="font-size: 0.9rem; color: #666;">면접 준비도</div>
+                <div style="font-size: 3rem; font-weight: 800; color: {color};">{score:.0f}</div>
+                <div style="font-size: 1.2rem; font-weight: 600;">{grade} · {level}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with ready_col2:
+            # AI 추천
+            if recommendation.get("has_data"):
+                message = recommendation.get("message", "")
+                weak_areas = recommendation.get("weak_areas", [])
+                focus_tip = recommendation.get("focus_tip", "")
+
+                st.markdown(f"""
+                <div style="
+                    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+                    border-radius: 12px;
+                    padding: 16px;
+                    margin-bottom: 12px;
+                ">
+                    <div style="font-weight: 700; color: #1e40af; margin-bottom: 8px;">🎯 이번 주 추천</div>
+                    <div style="color: #1e3a5f;">{message}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                if weak_areas:
+                    st.markdown(f"**집중 연습 영역:** {', '.join(weak_areas)}")
+
+                st.markdown(f"💡 _{focus_tip}_")
+
+                # 히스토리 페이지로 이동
+                st.page_link("pages/25_면접히스토리.py", label="📚 면접 기록 상세보기", use_container_width=True)
+            else:
+                st.info("모의면접을 진행하면 AI가 맞춤 추천을 해드려요!")
+                st.page_link("pages/4_모의면접.py", label="🎙️ 모의면접 시작하기", use_container_width=True)
+
+    except Exception as e:
+        logger.warning(f"준비도 점수 로드 실패: {e}")
+
+    st.markdown("---")
+
 # ========== 빠른 시작 ==========
 st.markdown("### 바로 연습하기")
 
 quick_cols = st.columns(4)
 
 with quick_cols[0]:
-    st.page_link("pages/1_롤플레잉.py", label= " 롤플레잉", use_container_width=True)
+    st.page_link("pages/1_롤플레잉.py", label=" 롤플레잉", use_container_width=True)
 with quick_cols[1]:
-    st.page_link("pages/2_영어면접.py", label= " 영어면접", use_container_width=True)
+    st.page_link("pages/2_영어면접.py", label=" 영어면접", use_container_width=True)
 with quick_cols[2]:
-    st.page_link("pages/4_모의면접.py", label= " 모의면접", use_container_width=True)
+    st.page_link("pages/4_모의면접.py", label=" 모의면접", use_container_width=True)
 with quick_cols[3]:
-    st.page_link("pages/5_토론면접.py", label= " 토론면접", use_container_width=True)
+    st.page_link("pages/5_토론면접.py", label=" 토론면접", use_container_width=True)

@@ -34,10 +34,10 @@ except ImportError:
 
 class InterviewerType(Enum):
     """면접관 유형"""
-    WARM = "warm"              # 온화한 면접관
-    NEUTRAL = "neutral"        # 중립적 면접관
-    SHARP = "sharp"            # 날카로운 면접관
-    PRESSURE = "pressure"      # 압박 면접관
+    WARM = "warm"              # 온화형 - 격려하며 장점 발견
+    NEUTRAL = "neutral"        # 정석형 - 표준적인 면접 진행
+    SHARP = "sharp"            # 분석형 - 답변을 깊이 분석
+    PRESSURE = "pressure"      # 압박형 - 한계를 테스트
 
 
 @dataclass
@@ -68,7 +68,7 @@ INTERVIEWER_CHARACTERS = {
     InterviewerType.NEUTRAL: InterviewerCharacter(
         type=InterviewerType.NEUTRAL,
         name="박서연 부장",
-        personality="공정하고 객관적. 표준적인 면접 진행",
+        personality="정석형 - 표준적인 면접 진행. 공정하고 객관적",
         speaking_style="명확하고 전문적인 어조. 중립적 표정.",
         feedback_style="객관적으로 장단점을 균형있게 제시",
         pressure_level=5,
@@ -78,7 +78,7 @@ INTERVIEWER_CHARACTERS = {
     InterviewerType.SHARP: InterviewerCharacter(
         type=InterviewerType.SHARP,
         name="이정훈 상무",
-        personality="분석적이고 날카로움. 답변의 논리적 허점을 파고듦",
+        personality="분석형 - 답변을 깊이 분석. 논리적 허점을 파고듦",
         speaking_style="간결하고 직접적인 어조. 진지한 표정.",
         feedback_style="개선점을 직접적으로 지적. 구체적인 근거 요구",
         pressure_level=7,
@@ -153,34 +153,68 @@ class FollowUpQuestionGenerator:
         Returns:
             (should_ask, reason)
         """
-        # 기본 확률
+        # 기본 확률 (면접관 성향 기반)
         base_probability = interviewer.follow_up_tendency
 
-        # 점수에 따른 조정
-        if answer_score < 50:
-            base_probability += 0.2  # 부족한 답변에 더 질문
-        elif answer_score > 80:
-            base_probability -= 0.1  # 좋은 답변에는 덜 질문
+        reasons = []
+
+        # 점수에 따른 조정 (부족한 답변 더 적극적으로 탐색)
+        if answer_score < 40:
+            base_probability += 0.35
+            reasons.append("답변 보완 필요")
+        elif answer_score < 60:
+            base_probability += 0.2
+            reasons.append("추가 설명 필요")
+        elif answer_score > 85:
+            base_probability -= 0.1
+            # 잘한 답변도 깊이 탐색할 수 있음
 
         # 답변 길이에 따른 조정
-        if len(answer) < 100:
-            base_probability += 0.3  # 짧은 답변에 더 질문
-            reason = "답변이 짧아서 추가 설명 필요"
-        elif len(answer) > 500:
-            base_probability -= 0.1  # 긴 답변에는 덜 질문
-            reason = "충분히 상세한 답변"
-        else:
-            reason = "추가 정보 확인 필요"
+        if len(answer) < 80:
+            base_probability += 0.4
+            reasons.append("답변이 매우 짧음")
+        elif len(answer) < 150:
+            base_probability += 0.25
+            reasons.append("구체성 부족")
+        elif len(answer) > 600:
+            base_probability -= 0.15
 
-        # 키워드 체크 (STAR 구조 부족 시)
+        # 내용 분석: 추측성/모호한 표현
+        vague_expressions = ["것 같습니다", "생각합니다", "아마", "대체로", "보통", "일반적으로"]
+        vague_count = sum(1 for exp in vague_expressions if exp in answer)
+        if vague_count >= 2:
+            base_probability += 0.25
+            reasons.append("구체적 근거 확인 필요")
+
+        # 내용 분석: 결과/성과 누락
+        result_keywords = ["결과", "성과", "덕분에", "달성", "개선", "배운", "느낀", "변화"]
+        if not any(kw in answer for kw in result_keywords):
+            base_probability += 0.2
+            reasons.append("결과/성과 확인 필요")
+
+        # 내용 분석: 행동의 구체성 부족
+        action_keywords = ["했습니다", "노력했", "시도했", "실행했", "조치했", "대응했"]
+        action_count = sum(1 for kw in action_keywords if kw in answer)
+        if action_count < 1 and len(answer) > 100:
+            base_probability += 0.2
+            reasons.append("구체적 행동 확인 필요")
+
+        # STAR 구조 체크
         star_keywords = ["상황", "과제", "행동", "결과", "그래서", "때문에", "덕분에"]
         keyword_count = sum(1 for kw in star_keywords if kw in answer)
         if keyword_count < 2:
             base_probability += 0.2
-            reason = "STAR 구조 보완 필요"
+            reasons.append("STAR 구조 보완 필요")
 
-        # 최종 결정
-        should_ask = random.random() < min(base_probability, 0.95)
+        # 최종 이유 결정
+        if reasons:
+            reason = reasons[0]  # 가장 중요한 이유
+        else:
+            reason = "심층 탐색"
+
+        # 최종 결정 (최소 확률 보장)
+        final_probability = max(0.3, min(base_probability, 0.95))  # 최소 30% 확률 보장
+        should_ask = random.random() < final_probability
 
         return should_ask, reason
 
@@ -297,20 +331,96 @@ class FollowUpQuestionGenerator:
         return random.choice(preferences)
 
     def _generate_fallback_follow_up(self, question: str, answer: str) -> Dict[str, Any]:
-        """API 없을 때 기본 꼬리질문"""
-        fallback_questions = [
-            f"그 상황에서 가장 어려웠던 점은 무엇이었나요?",
-            f"그 경험에서 구체적으로 어떤 교훈을 얻었나요?",
-            f"다시 그 상황이 된다면 어떻게 다르게 하시겠습니까?",
-            f"그 결과가 팀이나 조직에 어떤 영향을 미쳤나요?",
-            f"그때 배운 것을 승무원 업무에 어떻게 적용하시겠습니까?",
-        ]
+        """질문 유형에 맞는 구체적 꼬리질문 생성"""
+
+        # 질문 유형별 꼬리질문 세트
+        question_type_follow_ups = {
+            "경험": [
+                "그 상황에서 가장 어려웠던 점은 무엇이었나요?",
+                "그때 본인이 취한 행동의 결정적인 이유는 무엇이었나요?",
+                "다시 그 상황이 된다면 어떻게 다르게 하시겠습니까?",
+                "그 경험이 본인의 성장에 어떤 영향을 미쳤나요?",
+                "그 과정에서 협업한 사람들의 반응은 어땠나요?",
+            ],
+            "갈등": [
+                "그 갈등이 발생한 근본적인 원인은 무엇이라고 생각하시나요?",
+                "상대방의 입장에서는 어떻게 느꼈을 것 같나요?",
+                "갈등 해결 후 그 관계는 어떻게 변화했나요?",
+                "비슷한 갈등을 예방하기 위해 어떤 노력을 하시나요?",
+            ],
+            "서비스": [
+                "그 고객의 불만이 발생한 근본 원인은 무엇이었나요?",
+                "고객이 만족하셨다는 것을 어떻게 확인하셨나요?",
+                "같은 상황에서 더 나은 서비스를 위해 무엇을 하시겠습니까?",
+                "그 경험이 서비스에 대한 관점을 어떻게 바꿨나요?",
+            ],
+            "팀워크": [
+                "팀에서 본인은 주로 어떤 역할을 맡으시나요?",
+                "팀원과 의견이 다를 때 어떻게 조율하시나요?",
+                "그 팀의 성과에서 본인의 기여도는 어느 정도였나요?",
+                "팀워크에서 가장 중요하게 생각하는 가치는 무엇인가요?",
+            ],
+            "지원동기": [
+                "다른 항공사가 아닌 우리 항공사를 선택한 구체적인 이유가 있나요?",
+                "승무원이 되면 가장 먼저 도전하고 싶은 것은 무엇인가요?",
+                "이 꿈을 위해 구체적으로 어떤 준비를 해오셨나요?",
+                "5년 후 어떤 승무원이 되어있길 원하시나요?",
+            ],
+            "자기소개": [
+                "본인의 강점이 승무원 업무에 어떻게 도움이 될까요?",
+                "주변 사람들은 본인을 어떤 사람이라고 말하나요?",
+                "지금까지 경험 중 가장 자랑스러운 순간은 언제였나요?",
+            ],
+            "default": [
+                "그 상황에서 가장 어려웠던 점은 무엇이었나요?",
+                "그 경험에서 구체적으로 어떤 교훈을 얻었나요?",
+                "다시 그 상황이 된다면 어떻게 다르게 하시겠습니까?",
+                "그 결과가 팀이나 조직에 어떤 영향을 미쳤나요?",
+                "그때 배운 것을 승무원 업무에 어떻게 적용하시겠습니까?",
+            ],
+        }
+
+        # 질문 유형 감지
+        detected_type = "default"
+        type_keywords = {
+            "경험": ["경험", "사례", "기억", "있었", "해본"],
+            "갈등": ["갈등", "마찰", "다툼", "충돌", "불화"],
+            "서비스": ["서비스", "고객", "응대", "불만"],
+            "팀워크": ["팀", "협업", "협력", "함께"],
+            "지원동기": ["지원", "왜", "이유", "동기"],
+            "자기소개": ["자기소개", "소개", "본인"],
+        }
+
+        for q_type, keywords in type_keywords.items():
+            if any(kw in question for kw in keywords):
+                detected_type = q_type
+                break
+
+        # 답변 내용에 따른 추가 조정
+        answer_based_follow_ups = []
+        if len(answer) < 100:
+            answer_based_follow_ups = [
+                "좀 더 구체적으로 설명해주실 수 있나요?",
+                "그 상황을 더 자세히 말씀해주시겠어요?",
+            ]
+        elif "생각합니다" in answer or "것 같습니다" in answer:
+            answer_based_follow_ups = [
+                "왜 그렇게 생각하시나요? 근거가 있으신가요?",
+                "그것을 실제로 경험하신 적이 있나요?",
+            ]
+
+        # 최종 질문 선택
+        available_questions = question_type_follow_ups.get(detected_type, question_type_follow_ups["default"])
+        if answer_based_follow_ups and random.random() < 0.3:
+            selected_question = random.choice(answer_based_follow_ups)
+        else:
+            selected_question = random.choice(available_questions)
 
         return {
-            "follow_up_question": random.choice(fallback_questions),
-            "question_type": "example",
-            "purpose": "구체적인 경험 확인",
-            "expected_elements": ["구체적 상황", "본인의 역할", "결과"]
+            "follow_up_question": selected_question,
+            "question_type": detected_type,
+            "purpose": "구체적인 경험 확인 및 심층 탐색",
+            "expected_elements": ["구체적 상황", "본인의 역할", "결과와 교훈"]
         }
 
 
@@ -367,6 +477,37 @@ class KeywordAnalyzer:
         "result": ["결과", "성과", "덕분에", "달성", "개선", "배운", "느낀"],
     }
 
+    # 질문 유형별 STAR 비중 (합계 100)
+    # 경험 기반 질문: Action 중심 (S:10, T:10, A:50, R:30)
+    # 지원동기/가치관 질문: Result 중심 (S:15, T:20, A:25, R:40)
+    # 상황대처 질문: Action 중심 (S:15, T:15, A:45, R:25)
+    # 자기소개: 균등 배분 (S:25, T:25, A:25, R:25)
+    STAR_WEIGHTS_BY_TYPE = {
+        "경험": {"situation": 10, "task": 10, "action": 50, "result": 30},
+        "지원동기": {"situation": 15, "task": 20, "action": 25, "result": 40},
+        "가치관": {"situation": 15, "task": 20, "action": 25, "result": 40},
+        "상황대처": {"situation": 15, "task": 15, "action": 45, "result": 25},
+        "갈등해결": {"situation": 15, "task": 15, "action": 45, "result": 25},
+        "팀워크": {"situation": 10, "task": 10, "action": 50, "result": 30},
+        "서비스": {"situation": 15, "task": 15, "action": 40, "result": 30},
+        "자기소개": {"situation": 25, "task": 25, "action": 25, "result": 25},
+        "강점약점": {"situation": 20, "task": 15, "action": 35, "result": 30},
+        "default": {"situation": 20, "task": 20, "action": 35, "result": 25},
+    }
+
+    # 질문 유형 감지 키워드
+    QUESTION_TYPE_KEYWORDS = {
+        "경험": ["경험", "기억에 남는", "사례", "있었던", "해본", "겪은"],
+        "지원동기": ["지원동기", "왜", "이유", "선택", "되고 싶"],
+        "가치관": ["가치관", "인생관", "중요하게 생각", "신념", "철학"],
+        "상황대처": ["어떻게 대처", "어떻게 할", "~한다면", "상황에서"],
+        "갈등해결": ["갈등", "마찰", "의견 충돌", "불화", "다툼"],
+        "팀워크": ["팀워크", "협업", "팀에서", "함께", "협력"],
+        "서비스": ["서비스", "고객", "응대", "불만"],
+        "자기소개": ["자기소개", "소개해", "본인을"],
+        "강점약점": ["강점", "약점", "장점", "단점"],
+    }
+
     # 면접 필수 키워드
     INTERVIEW_ESSENTIAL_KEYWORDS = {
         "자기소개": ["저는", "경험", "강점", "지원", "준비"],
@@ -386,7 +527,7 @@ class KeywordAnalyzer:
         """키워드 분석 수행"""
         result = {
             "airline_keywords": self._check_airline_keywords(answer, airline),
-            "star_structure": self._check_star_structure(answer),
+            "star_structure": self._check_star_structure(answer, question),
             "question_relevance": self._check_question_keywords(answer, question),
             "missing_keywords": [],
             "strength_keywords": [],
@@ -440,21 +581,39 @@ class KeywordAnalyzer:
             "score": score,
         }
 
-    def _check_star_structure(self, answer: str) -> Dict:
-        """STAR 구조 체크"""
+    def _detect_question_type(self, question: str) -> str:
+        """질문 유형 감지"""
+        for q_type, keywords in self.QUESTION_TYPE_KEYWORDS.items():
+            if any(kw in question for kw in keywords):
+                return q_type
+        return "default"
+
+    def _check_star_structure(self, answer: str, question: str = "") -> Dict:
+        """STAR 구조 체크 (질문 유형별 가중치 적용)"""
         found = {}
 
         for component, keywords in self.STAR_KEYWORDS.items():
             found[component] = any(kw in answer for kw in keywords)
 
+        # 질문 유형 감지 및 가중치 적용
+        question_type = self._detect_question_type(question)
+        weights = self.STAR_WEIGHTS_BY_TYPE.get(question_type, self.STAR_WEIGHTS_BY_TYPE["default"])
+
+        # 가중치 기반 점수 계산
+        weighted_score = 0
+        for component, is_found in found.items():
+            if is_found:
+                weighted_score += weights.get(component, 25)
+
         complete_count = sum(1 for v in found.values() if v)
-        score = int((complete_count / 4) * 100)
 
         return {
             "components": found,
             "complete_count": complete_count,
-            "score": score,
+            "score": weighted_score,
             "is_complete": complete_count >= 3,
+            "question_type": question_type,
+            "weights": weights,
         }
 
     def _check_question_keywords(self, answer: str, question: str) -> Dict:

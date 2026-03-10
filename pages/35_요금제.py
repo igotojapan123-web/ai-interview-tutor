@@ -1,4 +1,11 @@
 # 35_요금제.py
+
+# 정식 웹사이트 이전 안내
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from redirect_to_web import show_redirect_and_stop
+show_redirect_and_stop()
+
 import streamlit as st
 
 st.set_page_config(

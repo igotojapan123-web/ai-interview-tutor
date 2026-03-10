@@ -2,6 +2,12 @@
 # D-Day 캘린더 - 채용 일정 종합 관리
 # 기능: 대시보드, 월간 캘린더, 일정관리(템플릿), 일일 체크리스트, 목표, D-Day 가이드
 
+# 정식 웹사이트 이전 안내
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from redirect_to_web import show_redirect_and_stop
+show_redirect_and_stop()
+
 import streamlit as st
 import os
 import sys

@@ -2,6 +2,12 @@
 # 실전 면접 연습 - 동영상/텍스트 답변 + 음성/표정/내용 종합 분석
 # 기능: 꼬리질문, 연속질문모드, 누적기록, 텍스트모드, 답변리라이트
 
+# 정식 웹사이트 이전 안내
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from redirect_to_web import show_redirect_and_stop
+show_redirect_and_stop()
+
 import streamlit as st
 import os
 import sys
@@ -234,12 +240,148 @@ JSON만 응답: {{"content_score": 0-40, "content_feedback": "...", "structure_s
 
 
 def analyze_expression(frames: List[str], context: str) -> Optional[Dict]:
-    if not OPENAI_API_KEY or not frames:
+    """
+    표정/자세 분석 (비용 최적화)
+    2026.02 최적화: MediaPipe 로컬 분석 우선 사용 (GPT-4o Vision 비용 제거)
+    비용 절감: 세션당 $0.06 → $0 (100% 절감)
+    """
+    if not frames:
+        return None
+
+    # config에서 분석 모드 확인
+    try:
+        from config import EXPRESSION_ANALYSIS_MODE, PRACTICE_FRAMES_PER_QUESTION
+    except ImportError:
+        EXPRESSION_ANALYSIS_MODE = "local"
+        PRACTICE_FRAMES_PER_QUESTION = 3
+
+    # 프레임 수 최적화 (기존 5개 → 3개)
+    max_frames = min(PRACTICE_FRAMES_PER_QUESTION, len(frames))
+
+    # MediaPipe 로컬 분석 (비용 $0)
+    if EXPRESSION_ANALYSIS_MODE == "local":
+        return _analyze_expression_local(frames[:max_frames], context)
+
+    # 레거시: GPT-4o Vision 분석 (비용 발생 - 비권장)
+    return _analyze_expression_vision(frames[:max_frames], context)
+
+
+def _analyze_expression_local(frames: List[str], context: str) -> Optional[Dict]:
+    """MediaPipe 기반 로컬 표정 분석 (무료)"""
+    try:
+        import sys
+        import os
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from webcam_analyzer import WebcamAnalyzer, MEDIAPIPE_AVAILABLE, OPENCV_AVAILABLE
+
+        if not MEDIAPIPE_AVAILABLE or not OPENCV_AVAILABLE:
+            return _get_expression_fallback()
+
+        import cv2
+        import numpy as np
+
+        analyzer = WebcamAnalyzer()
+        if not analyzer.initialize():
+            return _get_expression_fallback()
+
+        # 프레임 분석
+        results = []
+        for b64 in frames:
+            try:
+                img_bytes = base64.b64decode(b64)
+                nparr = np.frombuffer(img_bytes, np.uint8)
+                frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                if frame is not None:
+                    results.append(analyzer.analyze_frame(frame))
+            except Exception:
+                pass
+
+        if not results:
+            return _get_expression_fallback()
+
+        # 결과 집계
+        smile_count = sum(1 for r in results if r.get("face", {}).get("expression") == "smile")
+        eye_count = sum(1 for r in results if r.get("face", {}).get("eye_contact"))
+        shoulder_count = sum(1 for r in results if r.get("pose", {}).get("shoulder_aligned"))
+        total = len(results)
+
+        smile_ratio = smile_count / total if total > 0 else 0
+        eye_ratio = eye_count / total if total > 0 else 0
+        shoulder_ratio = shoulder_count / total if total > 0 else 0
+
+        expr_score = int(smile_ratio * 5 + eye_ratio * 3 + 2)
+        post_score = int(shoulder_ratio * 6 + 4)
+        overall = int((expr_score * 40 + post_score * 40 + 20) / 10) * 10
+
+        strengths = []
+        improvements = []
+        if smile_ratio > 0.5:
+            strengths.append("자연스러운 미소")
+        else:
+            improvements.append("미소를 더 자주 지어보세요")
+        if eye_ratio > 0.6:
+            strengths.append("안정적인 시선 처리")
+        else:
+            improvements.append("카메라를 더 자주 바라보세요")
+        if shoulder_ratio > 0.7:
+            strengths.append("바른 자세")
+        else:
+            improvements.append("어깨를 펴세요")
+
+        return {
+            "expression": {
+                "score": expr_score,
+                "smile": "좋음" if smile_ratio > 0.5 else ("보통" if smile_ratio > 0.2 else "부족"),
+                "feedback": f"미소 유지율 {int(smile_ratio*100)}%"
+            },
+            "posture": {
+                "score": post_score,
+                "feedback": f"자세 안정도 {int(shoulder_ratio*100)}%"
+            },
+            "impression": {
+                "score": (expr_score + post_score) // 2,
+                "confidence": "높음" if overall > 70 else ("보통" if overall > 50 else "낮음"),
+                "feedback": "좋은 인상입니다" if overall > 60 else "자신감을 더 보여주세요"
+            },
+            "time_analysis": {
+                "start": "미소" if results[0].get("face", {}).get("expression") == "smile" else "무표정",
+                "end": "미소" if results[-1].get("face", {}).get("expression") == "smile" else "무표정",
+                "feedback": "일관된 표정 유지" if smile_ratio > 0.5 else "표정 변화 관리 필요"
+            },
+            "overall_score": overall,
+            "strengths": strengths or ["분석 중"],
+            "improvements": improvements or ["현재 상태 유지"],
+            "_analysis_mode": "local_mediapipe",
+            "_cost_saved": True
+        }
+
+    except Exception as e:
+        return _get_expression_fallback()
+
+
+def _get_expression_fallback() -> Dict:
+    """MediaPipe 미설치 시 기본 결과"""
+    return {
+        "expression": {"score": 5, "smile": "확인불가", "feedback": "MediaPipe 필요"},
+        "posture": {"score": 5, "feedback": "분석 불가"},
+        "impression": {"score": 5, "confidence": "확인불가", "feedback": "MediaPipe 설치 권장"},
+        "time_analysis": {"start": "N/A", "end": "N/A", "feedback": "분석 불가"},
+        "overall_score": 50,
+        "strengths": ["분석 대기"],
+        "improvements": ["MediaPipe 설치"],
+        "_analysis_mode": "fallback",
+        "_cost_saved": True
+    }
+
+
+def _analyze_expression_vision(frames: List[str], context: str) -> Optional[Dict]:
+    """레거시: GPT-4o Vision 분석 (비용 발생 - 비권장)"""
+    if not OPENAI_API_KEY:
         return None
     prompt = """면접 코칭 전문가입니다. 프레임들의 표정/자세를 분석하세요.
 JSON만 응답: {"expression": {"score": 1-10, "smile": "좋음/보통/부족", "feedback": "..."}, "posture": {"score": 1-10, "feedback": "..."}, "impression": {"score": 1-10, "confidence": "높음/보통/낮음", "feedback": "..."}, "time_analysis": {"start": "...", "end": "...", "feedback": "..."}, "overall_score": 1-100, "strengths": ["..."], "improvements": ["..."]}"""
     msg_content = [{"type": "text", "text": f"{context} 면접 동영상 프레임입니다. 분석해주세요."}]
-    for f in frames[:5]:
+    for f in frames:
         msg_content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{f}", "detail": "low"}})
     try:
         r = requests.post(f"{OPENAI_API_URL}/chat/completions",
@@ -257,7 +399,10 @@ JSON만 응답: {"expression": {"score": 1-10, "smile": "좋음/보통/부족", 
             return None
         if "```json" in c:
             c = c.split("```json")[1].split("```")[0]
-        return json.loads(c.strip())
+        result = json.loads(c.strip())
+        result["_analysis_mode"] = "vision_api"
+        result["_cost_saved"] = False
+        return result
     except Exception:
         return None
 

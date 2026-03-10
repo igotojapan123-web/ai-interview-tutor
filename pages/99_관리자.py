@@ -2,6 +2,12 @@
 # 관리자 전용 페이지 - 채용 관리 + 합격자 DB 관리 + 시스템 모니터링
 # Stage 4: Enterprise Admin Dashboard
 
+# 정식 웹사이트 이전 안내
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from redirect_to_web import show_redirect_and_stop
+show_redirect_and_stop()
+
 import os
 import json
 from datetime import datetime, date

@@ -1,6 +1,12 @@
 # pages/17_자소서기반질문.py
 # 자소서 기반 면접 질문 생성 페이지
 
+# 정식 웹사이트 이전 안내
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from redirect_to_web import show_redirect_and_stop
+show_redirect_and_stop()
+
 import re
 import time
 import hashlib
@@ -1672,6 +1678,22 @@ def _fallback_questions_fixed_slots_item(
     intent2 = "문항 질문과 답변의 쌍을 근거로, 평가자가 보는 포인트를 다른 각도에서 검증하기 위한 질문입니다."
     intent3 = "2번 질문과 동일 문항의 평가 주제를 유지하면서, 답변을 가정하지 않고 독립적으로 검증하기 위한 질문입니다."
 
+    # Q2/Q3 타입 결정: 돌발 fallback > 직무연결 > 자소서 기반
+    use_surprise = st.session_state.get("_use_surprise_fallback", False)
+    is_job_connection = st.session_state.get("_is_job_connection_q2", False)
+
+    if use_surprise:
+        q2_type_label = "돌발 확장"
+        q3_type_label = "돌발 꼬리"
+        intent2 = "CLOVA 분석 서비스 일시적 장애로 돌발질문을 제공합니다. 압박 상황에서의 판단력을 검증합니다."
+        intent3 = "돌발질문에 대한 사고 깊이와 실행 가능성을 검증하는 꼬리 질문입니다."
+    elif is_job_connection:
+        q2_type_label = "직무연결 질문"
+        q3_type_label = "직무연결 꼬리"
+    else:
+        q2_type_label = "심층(자소서 기반)"
+        q3_type_label = "꼬리 질문"
+
     return {
         "q1": {
             "type": "공통 질문",
@@ -1680,13 +1702,13 @@ def _fallback_questions_fixed_slots_item(
             "anchor": "",
         },
         "q2": {
-            "type": "직무연결 질문" if st.session_state.get("_is_job_connection_q2", False) else "심층(자소서 기반)",
+            "type": q2_type_label,
             "question": q2,
             "basis": build_basis_text(summary=basis_summary, intent=intent2),
             "anchor": fmt_anchor_text(anchor),
         },
         "q3": {
-            "type": "직무연결 꼬리" if st.session_state.get("_is_job_connection_q2", False) else "꼬리 질문",
+            "type": q3_type_label,
             "question": q3,
             "basis": build_basis_text(summary=_trim_no_ellipsis(f"문항 {item.get('index', 1)} 평가 주제 유지 / 상황: {situation}", 180), intent=intent3),
             "anchor": fmt_anchor_text(anchor),
@@ -1789,14 +1811,20 @@ def generate_questions(essay: str, airline: str, version: int) -> Dict[str, Dict
                 flyready_result = engine.analyze(item2_question, item2_answer, item_num=2)
                 st.session_state[flyready_cache_key] = flyready_result
                 logger.debug(f"[DEBUG Q2] FLYREADY Engine generated {len(flyready_result.get('questions', []))} questions")
+                # CLOVA 성공 시 장애 플래그 초기화
+                st.session_state["_clova_api_failed"] = False
+                st.session_state["_use_surprise_fallback"] = False
             else:
                 logger.debug("[DEBUG Q2] Item2 data insufficient, skipping FLYREADY engine")
                 st.session_state[flyready_cache_key] = None
         except Exception as e:
-            logger.debug(f"[DEBUG Q2] FLYREADY Engine error: {e}")
+            logger.debug(f"[DEBUG Q2] FLYREADY Engine error (CLOVA API 장애): {e}")
             import traceback
             traceback.print_exc()
             st.session_state[flyready_cache_key] = None
+            # CLOVA API 장애 플래그 설정 - 돌발질문 fallback 사용
+            st.session_state["_clova_api_failed"] = True
+            logger.debug("[DEBUG Q2] CLOVA API 장애 감지 - 돌발질문 fallback 활성화")
 
     # ============================================
     # Q2 질문 풀: 자소서 품질에 따른 동적 분기
@@ -1884,16 +1912,41 @@ def generate_questions(essay: str, airline: str, version: int) -> Dict[str, Dict
         logger.debug(f"[DEBUG Q2 v4.0] 질문: {q2_text[:50]}..." if q2_text else "[DEBUG Q2 v4.0] 질문 없음")
 
     # 질문이 없으면 폴백
+    use_surprise_fallback = False  # 돌발질문 fallback 사용 여부
     if not q2_text:
-        logger.debug(f"[DEBUG Q2 v4.0] 질문 없음 - 폴백 사용")
-        fallback_idx = (base + version) % len(Q2_RESUME_FALLBACK)
-        selected_fallback = Q2_RESUME_FALLBACK[fallback_idx]
-        q2_text = selected_fallback.get("question", "")
-        q2_source_sentence = selected_fallback.get("intent", "")
-        followup = selected_fallback.get("followup", "그래서 결과가 뭡니까?")
+        # CLOVA API 장애 시 돌발질문 사용, 아니면 일반 폴백
+        clova_failed = st.session_state.get("_clova_api_failed", False)
 
-    # 직무연결 질문 여부 저장 (라벨 표시용)
+        if clova_failed:
+            # CLOVA 장애: 돌발질문 DB에서 가져오기
+            logger.debug(f"[DEBUG Q2 v4.0] CLOVA 장애 - 돌발질문 fallback 사용")
+            all_surprise = get_all_surprise_questions()
+            if all_surprise:
+                surprise_idx = (base + version) % len(all_surprise)
+                q2_text = all_surprise[surprise_idx]
+                q2_source_sentence = "CLOVA 분석 서비스 일시적 장애로 돌발질문 제공"
+                followup = "왜 그렇게 생각합니까?"
+                use_surprise_fallback = True
+                logger.debug(f"[DEBUG Q2 v4.0] 돌발질문 선택: {q2_text[:50]}...")
+            else:
+                # 돌발질문도 없으면 기존 폴백
+                fallback_idx = (base + version) % len(Q2_RESUME_FALLBACK)
+                selected_fallback = Q2_RESUME_FALLBACK[fallback_idx]
+                q2_text = selected_fallback.get("question", "")
+                q2_source_sentence = selected_fallback.get("intent", "")
+                followup = selected_fallback.get("followup", "그래서 결과가 뭡니까?")
+        else:
+            # 일반 폴백 (CLOVA 정상이지만 질문 생성 실패)
+            logger.debug(f"[DEBUG Q2 v4.0] 질문 없음 - 일반 폴백 사용")
+            fallback_idx = (base + version) % len(Q2_RESUME_FALLBACK)
+            selected_fallback = Q2_RESUME_FALLBACK[fallback_idx]
+            q2_text = selected_fallback.get("question", "")
+            q2_source_sentence = selected_fallback.get("intent", "")
+            followup = selected_fallback.get("followup", "그래서 결과가 뭡니까?")
+
+    # 직무연결 질문 여부 및 돌발 fallback 여부 저장 (라벨 표시용)
     st.session_state["_is_job_connection_q2"] = use_job_connection
+    st.session_state["_use_surprise_fallback"] = use_surprise_fallback
 
     logger.debug(f"[DEBUG Q2 v4.0] Final: {q2_text[:50]}... (직무연결: {use_job_connection})")
 
@@ -2002,6 +2055,22 @@ def generate_questions(essay: str, airline: str, version: int) -> Dict[str, Dict
     intent2 = "자소서의 이상적 표현이나 취약 지점을 공격하여 지원자의 신념을 검증하는 질문입니다."
     intent3 = "Q2의 답변을 전제하지 않고, 재현성과 판단 기준을 독립적으로 검증하는 꼬리 질문입니다."
 
+    # Q2/Q3 타입 결정: 돌발 fallback > 직무연결 > 자소서 기반
+    use_surprise = st.session_state.get("_use_surprise_fallback", False)
+    is_job_connection = st.session_state.get("_is_job_connection_q2", False)
+
+    if use_surprise:
+        q2_type_label = "돌발 확장"
+        q3_type_label = "돌발 꼬리"
+        intent2 = "CLOVA 분석 서비스 일시적 장애로 돌발질문을 제공합니다. 압박 상황에서의 판단력을 검증합니다."
+        intent3 = "돌발질문에 대한 사고 깊이와 실행 가능성을 검증하는 꼬리 질문입니다."
+    elif is_job_connection:
+        q2_type_label = "직무연결 질문"
+        q3_type_label = "직무연결 꼬리"
+    else:
+        q2_type_label = "심층(자소서 기반)"
+        q3_type_label = "꼬리 질문"
+
     out: Dict[str, Dict[str, str]] = {
         "q1": {
             "type": "공통 질문",
@@ -2010,13 +2079,13 @@ def generate_questions(essay: str, airline: str, version: int) -> Dict[str, Dict
             "anchor": "",
         },
         "q2": {
-            "type": "직무연결 질문" if st.session_state.get("_is_job_connection_q2", False) else "심층(자소서 기반)",
+            "type": q2_type_label,
             "question": q2_text,
             "basis": build_basis_text(summary=basis_summary, intent=intent2),
             "anchor": anchor,
         },
         "q3": {
-            "type": "직무연결 꼬리" if st.session_state.get("_is_job_connection_q2", False) else "꼬리 질문",
+            "type": q3_type_label,
             "question": q3_text,
             "basis": build_basis_text(summary=_trim_no_ellipsis(f"문항 {item.get('index', 1)} 평가 주제 유지 / 상황: {situation}", 180), intent=intent3),
             "anchor": anchor,
@@ -2631,6 +2700,17 @@ if regen_step45:
 if st.session_state.questions:
     logger.debug(f"[DEBUG DISPLAY] Displaying Q2 from session_state: {st.session_state.questions.get('q2', {}).get('question', '')[:50]}...")
     st.caption(f"현재 버전: {st.session_state.question_version} / 버튼을 눌러 다른 각도의 질문을 받아보세요")
+
+    # CLOVA API 장애 시 사용자 안내 메시지
+    if st.session_state.get("_clova_api_failed", False) and st.session_state.get("_use_surprise_fallback", False):
+        st.warning(
+            "**CLOVA 분석 서비스 일시적 장애 안내**  \n"
+            "현재 자소서 분석 서비스(CLOVA)에 일시적인 장애가 발생하여, "
+            "Q2/Q3 질문을 **돌발질문**으로 대체하여 제공합니다.  \n"
+            "돌발질문도 실제 면접에서 자주 나오는 중요한 질문입니다. 서비스 복구 후 다시 시도해주세요.",
+            icon="⚠️"
+        )
+
     for key in ["q1", "q2", "q3", "q4", "q5"]:
         qobj = st.session_state.questions.get(key, {})
         qtype = qobj.get("type", "")
@@ -2732,6 +2812,71 @@ if st.session_state.questions:
                     height=120,
                     key=f"ans_{rkey}",
                 )
+
+    st.divider()
+
+    # ============================================================
+    # 자소서 질문 → 모의면접 연결
+    # ============================================================
+    st.subheader("이 질문들로 모의면접 연습하기")
+
+    # 생성된 질문 수집
+    generated_questions = []
+    for key in ["q1", "q2", "q3", "q4", "q5"]:
+        qobj = st.session_state.questions.get(key, {})
+        qtext = qobj.get("question", "")
+        if qtext and qtext.strip():
+            generated_questions.append({
+                "key": key,
+                "question": qtext,
+                "type": qobj.get("type", ""),
+                "basis": qobj.get("basis", ""),
+                "anchor": qobj.get("anchor", ""),
+            })
+
+    # 이력서 기반 질문도 추가
+    for i, rq in enumerate(st.session_state.get("resume_questions", []), 1):
+        if rq and rq.strip():
+            generated_questions.append({
+                "key": f"r{i}",
+                "question": rq,
+                "type": "이력서검증",
+                "basis": "이력서 정보 기반",
+                "anchor": "",
+            })
+
+    if generated_questions:
+        st.info(f"총 {len(generated_questions)}개 질문이 생성되었습니다. 이 질문들로 바로 모의면접을 시작할 수 있어요!")
+
+        mock_col1, mock_col2 = st.columns(2)
+
+        with mock_col1:
+            if st.button("전체 질문으로 모의면접 시작", use_container_width=True, type="primary"):
+                # session_state에 자소서 기반 질문 저장
+                st.session_state["resume_based_questions"] = generated_questions
+                st.session_state["resume_based_airline"] = airline
+                st.session_state["from_resume_questions"] = True
+                st.switch_page("pages/4_모의면접.py")
+
+        with mock_col2:
+            # 개별 질문 선택
+            selected_indices = st.multiselect(
+                "특정 질문만 선택",
+                options=list(range(len(generated_questions))),
+                format_func=lambda i: f"{generated_questions[i]['key'].upper()}: {generated_questions[i]['question'][:30]}...",
+                key="select_questions_for_mock"
+            )
+
+            if selected_indices and st.button("선택한 질문으로 모의면접", use_container_width=True):
+                selected_questions = [generated_questions[i] for i in selected_indices]
+                st.session_state["resume_based_questions"] = selected_questions
+                st.session_state["resume_based_airline"] = airline
+                st.session_state["from_resume_questions"] = True
+                st.switch_page("pages/4_모의면접.py")
+
+        st.caption("모의면접에서 AI 면접관이 이 질문들을 바탕으로 실전처럼 면접을 진행합니다.")
+    else:
+        st.warning("먼저 질문을 생성해주세요. 'STEP 4) 질문 생성/갱신' 버튼을 눌러주세요.")
 
     st.divider()
     st.subheader("STEP 6~7) 사실 기반 피드백 & 리포트")

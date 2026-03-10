@@ -9,52 +9,37 @@ import json
 import os
 from pathlib import Path
 from datetime import datetime, timedelta
-from collections import defaultdict
 
-# Sentry 에러 모니터링 초기화
-try:
-    import sentry_sdk
-    from dotenv import load_dotenv
-    load_dotenv()
+# Sentry 초기화 (1회만 실행)
+@st.cache_resource
+def _init_sentry():
+    try:
+        import sentry_sdk
+        from dotenv import load_dotenv
+        load_dotenv()
+        sentry_dsn = os.getenv("SENTRY_DSN")
+        if sentry_dsn:
+            sentry_sdk.init(dsn=sentry_dsn, traces_sample_rate=0.1, send_default_pii=False)
+    except ImportError:
+        pass
 
-    sentry_dsn = os.getenv("SENTRY_DSN")
-    if sentry_dsn:
-        sentry_sdk.init(
-            dsn=sentry_dsn,
-            traces_sample_rate=0.1,
-            send_default_pii=False,
-        )
-except ImportError:
-    pass
-
-from logging_config import get_logger
+_init_sentry()
 
 # A-G 개선사항 통합 모듈 - 안정성 문제로 비활성화
 ENHANCEMENT_AVAILABLE = False
 MODULES_AVAILABLE = {}
 
 # 로거 설정
-logger = get_logger(__name__)
-
-# 공통 유틸리티 import
 try:
-    from safe_utils import safe_divide, safe_percentage, safe_average
+    from logging_config import get_logger
+    logger = get_logger(__name__)
 except ImportError:
-    pass
-
-try:
-    from sidebar_common import render_sidebar
-except ImportError:
-    pass
-
-try:
-    from auth_utils import is_authenticated, require_auth
-except ImportError:
-    pass
+    import logging
+    logger = logging.getLogger(__name__)
 
 # 디자인 시스템 import
 try:
-    from ui_config import COLORS, get_base_css, MAIN_PAGE_CARDS
+    from ui_config import get_base_css
     UI_CONFIG_AVAILABLE = True
 except ImportError:
     UI_CONFIG_AVAILABLE = False
@@ -78,19 +63,167 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 세션 시간 초기화
-try:
-    from motivation import init_session_time, check_and_show_motivation
-    init_session_time()
-    if check_and_show_motivation():
-        st.rerun()
-    if st.session_state.get("show_motivation_popup", False):
-        from motivation import show_motivation_popup
-        show_motivation_popup()
-except ImportError:
-    logger.debug("motivation 모듈 없음 - 동기부여 기능 비활성화")
-except Exception as e:
-    logger.warning(f"동기부여 모듈 초기화 실패: {e}")
+# ===== 정식 웹사이트로 이전 안내 =====
+st.markdown("""
+<style>
+    /* 사이드바 숨기기 */
+    [data-testid="stSidebar"] { display: none !important; }
+    [data-testid="collapsedControl"] { display: none !important; }
+
+    /* 전체 화면 오버레이 */
+    .redirect-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+
+    .redirect-card {
+        background: white;
+        border-radius: 24px;
+        padding: 48px;
+        max-width: 500px;
+        text-align: center;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        animation: fadeInUp 0.5s ease-out;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .redirect-icon {
+        font-size: 64px;
+        margin-bottom: 24px;
+    }
+
+    .redirect-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1e1b4b;
+        margin-bottom: 16px;
+    }
+
+    .redirect-subtitle {
+        font-size: 16px;
+        color: #64748b;
+        margin-bottom: 32px;
+        line-height: 1.6;
+    }
+
+    .redirect-features {
+        text-align: left;
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 32px;
+    }
+
+    .redirect-features li {
+        color: #475569;
+        margin: 8px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .redirect-btn {
+        display: inline-block;
+        background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+        color: white !important;
+        padding: 16px 48px;
+        border-radius: 12px;
+        font-size: 18px;
+        font-weight: 600;
+        text-decoration: none !important;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);
+    }
+
+    .redirect-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(124, 58, 237, 0.5);
+    }
+
+    .redirect-note {
+        margin-top: 24px;
+        font-size: 14px;
+        color: #94a3b8;
+    }
+
+    /* Streamlit 기본 요소 숨기기 */
+    .stApp > header { display: none !important; }
+    footer { display: none !important; }
+    #MainMenu { display: none !important; }
+</style>
+
+<div class="redirect-overlay">
+    <div class="redirect-card">
+        <div class="redirect-icon">✈️</div>
+        <div class="redirect-title">FLYREADY 정식 버전 출시!</div>
+        <div class="redirect-subtitle">
+            베타 테스트가 종료되었습니다.<br>
+            더 강력해진 정식 버전에서 만나요!
+        </div>
+
+        <div class="redirect-features">
+            <ul style="list-style: none; padding: 0; margin: 0;">
+                <li>✓ 3일간 프리미엄+ 무료 체험</li>
+                <li>✓ AI 모의면접 무제한</li>
+                <li>✓ 자소서 분석 & 첨삭</li>
+                <li>✓ 영어/토론/롤플레이 면접</li>
+                <li>✓ 1:1 AI 맞춤 코칭</li>
+            </ul>
+        </div>
+
+        <a href="https://flyready.co.kr" class="redirect-btn">
+            정식 버전 바로가기 →
+        </a>
+
+        <div class="redirect-note">
+            구글 계정으로 3초 만에 시작하세요
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# 여기서 실행 중단 - 이후 코드 실행 안 함
+st.stop()
+
+# ===== 아래 코드는 실행되지 않음 =====
+
+# 세션 시간 초기화 (lazy loading)
+def _init_motivation():
+    """motivation 모듈 초기화 (lazy)"""
+    try:
+        from motivation import init_session_time, check_and_show_motivation
+        init_session_time()
+        if check_and_show_motivation():
+            st.rerun()
+        if st.session_state.get("show_motivation_popup", False):
+            from motivation import show_motivation_popup
+            show_motivation_popup()
+    except ImportError:
+        pass
+    except Exception:
+        pass
+
+# 동기부여 팝업은 필요할 때만 실행
+if st.session_state.get("show_motivation_popup", False):
+    _init_motivation()
 
 # =====================
 # 데이터 로드 함수
@@ -98,10 +231,10 @@ except Exception as e:
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 
-def load_json(filepath, default=None):
-    """JSON 파일을 안전하게 로드"""
-    if default is None:
-        default = {}
+@st.cache_data(ttl=30)
+def load_json(filepath, default_type="dict"):
+    """JSON 파일을 안전하게 로드 (30초 캐시)"""
+    default = {} if default_type == "dict" else []
     if os.path.exists(filepath):
         try:
             with open(filepath, "r", encoding="utf-8") as f:
@@ -116,14 +249,14 @@ def load_json(filepath, default=None):
 def get_dashboard_data():
     """대시보드에 필요한 모든 데이터 수집 (60초 캐시)"""
     data = {}
-    cal_data = load_json(os.path.join(DATA_DIR, "my_calendar.json"), {"events": [], "goals": [], "daily_todos": {}})
+    cal_data = load_json(os.path.join(DATA_DIR, "my_calendar.json"))
     data["events"] = cal_data.get("events", [])
     data["goals"] = cal_data.get("goals", [])
     data["daily_todos"] = cal_data.get("daily_todos", {})
-    data["scores"] = load_json(os.path.join(BASE_DIR, "user_scores.json"), {"scores": [], "detailed_scores": []})
-    data["progress"] = load_json(os.path.join(BASE_DIR, "user_progress.json"), {})
-    data["broadcast"] = load_json(os.path.join(DATA_DIR, "broadcast_practice.json"), {"records": []})
-    data["roleplay"] = load_json(os.path.join(BASE_DIR, "roleplay_progress.json"), {})
+    data["scores"] = load_json(os.path.join(BASE_DIR, "user_scores.json"))
+    data["progress"] = load_json(os.path.join(BASE_DIR, "user_progress.json"))
+    data["broadcast"] = load_json(os.path.join(DATA_DIR, "broadcast_practice.json"))
+    data["roleplay"] = load_json(os.path.join(BASE_DIR, "roleplay_progress.json"))
     return data
 
 def get_upcoming_events(events, limit=3):
@@ -337,8 +470,11 @@ else:
     </style>
     """, unsafe_allow_html=True)
 
-# 추가 스타일 + 링크 동작 수정
-st.markdown("""
+# 추가 스타일 + 링크 동작 수정 (캐싱)
+@st.cache_resource
+def get_home_css():
+    """홈페이지 전용 CSS (영구 캐시)"""
+    return """
 <base target="_self">
 <script>
 document.addEventListener('click', function(e) {
@@ -1225,7 +1361,9 @@ html {
 }
 
 </style>
-""", unsafe_allow_html=True)
+"""
+
+st.markdown(get_home_css(), unsafe_allow_html=True)
 
 # =====================
 # 헤더

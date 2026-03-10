@@ -1,6 +1,12 @@
 # pages/3_진도관리.py
 # 학습 진도 관리 - 자동 연동, AI 추천, 시각적 성취감
 
+# 정식 웹사이트 이전 안내
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from redirect_to_web import show_redirect_and_stop
+show_redirect_and_stop()
+
 import os
 import json
 from datetime import datetime, timedelta

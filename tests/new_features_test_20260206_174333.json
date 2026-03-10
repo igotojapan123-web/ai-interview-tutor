@@ -1,0 +1,203 @@
+{
+  "summary": {
+    "total": 32,
+    "passed": 31,
+    "failed": 0,
+    "warnings": 1,
+    "pass_rate": "96.9%"
+  },
+  "tests": [
+    {
+      "name": "구문: interview_report_system.py",
+      "status": "PASS",
+      "message": "",
+      "details": ""
+    },
+    {
+      "name": "구문: 40_면접제보.py",
+      "status": "PASS",
+      "message": "",
+      "details": ""
+    },
+    {
+      "name": "구문: 41_면접예측.py",
+      "status": "PASS",
+      "message": "",
+      "details": ""
+    },
+    {
+      "name": "구문: 42_자소서뉴스연계.py",
+      "status": "PASS",
+      "message": "",
+      "details": ""
+    },
+    {
+      "name": "Import: interview_report_system",
+      "status": "PASS",
+      "message": "9개 함수 모두 import 성공",
+      "details": ""
+    },
+    {
+      "name": "Import: config.AIRLINES",
+      "status": "PASS",
+      "message": "11개 항공사",
+      "details": ""
+    },
+    {
+      "name": "Import: sidebar_common",
+      "status": "PASS",
+      "message": "",
+      "details": ""
+    },
+    {
+      "name": "보상계산: 8개 질문 + 꼬리질문 + 상세 → 14일",
+      "status": "PASS",
+      "message": "결과: premium_14days",
+      "details": ""
+    },
+    {
+      "name": "보상계산: 5개 질문 + 상세 → 7일",
+      "status": "PASS",
+      "message": "결과: premium_7days",
+      "details": ""
+    },
+    {
+      "name": "보상계산: 3개 질문 → 3일",
+      "status": "PASS",
+      "message": "결과: premium_3days",
+      "details": ""
+    },
+    {
+      "name": "보상계산: 1개 질문 → 1일",
+      "status": "PASS",
+      "message": "결과: premium_1day",
+      "details": ""
+    },
+    {
+      "name": "보상계산: 0개 질문 → None",
+      "status": "PASS",
+      "message": "결과: None",
+      "details": ""
+    },
+    {
+      "name": "보상표시: premium_14days",
+      "status": "PASS",
+      "message": "라벨: 프리미엄 14일, 일수: 14",
+      "details": ""
+    },
+    {
+      "name": "보상표시: premium_7days",
+      "status": "PASS",
+      "message": "라벨: 프리미엄 7일, 일수: 7",
+      "details": ""
+    },
+    {
+      "name": "보상표시: premium_3days",
+      "status": "PASS",
+      "message": "라벨: 프리미엄 3일, 일수: 3",
+      "details": ""
+    },
+    {
+      "name": "보상표시: premium_1day",
+      "status": "PASS",
+      "message": "라벨: 프리미엄 1일, 일수: 1",
+      "details": ""
+    },
+    {
+      "name": "보상표시: invalid",
+      "status": "PASS",
+      "message": "라벨: 보상 없음, 일수: 0",
+      "details": ""
+    },
+    {
+      "name": "해시: 동일 세션 → 동일 해시",
+      "status": "PASS",
+      "message": "해시: 694740495c68ba52",
+      "details": ""
+    },
+    {
+      "name": "해시: 다른 세션 → 다른 해시",
+      "status": "PASS",
+      "message": "",
+      "details": ""
+    },
+    {
+      "name": "제보수: 대한항공",
+      "status": "PASS",
+      "message": "0건",
+      "details": ""
+    },
+    {
+      "name": "제보수: 아시아나항공",
+      "status": "PASS",
+      "message": "0건",
+      "details": ""
+    },
+    {
+      "name": "제보수: 제주항공",
+      "status": "PASS",
+      "message": "0건",
+      "details": ""
+    },
+    {
+      "name": "통계: 대한항공",
+      "status": "WARN",
+      "message": "부족 - 10건 더 필요",
+      "details": ""
+    },
+    {
+      "name": "디렉토리: data/interview_reports",
+      "status": "PASS",
+      "message": "",
+      "details": ""
+    },
+    {
+      "name": "뉴스 데이터: airline_news.json",
+      "status": "PASS",
+      "message": "총 1042건, 항공사: 4개",
+      "details": ""
+    },
+    {
+      "name": "제보 데이터: reports.json",
+      "status": "PASS",
+      "message": "아직 제보 없음 (정상)",
+      "details": ""
+    },
+    {
+      "name": "원칙: 데이터 부족 시 AI 생성 금지",
+      "status": "PASS",
+      "message": "데이터 부족 처리 로직 있음",
+      "details": ""
+    },
+    {
+      "name": "원칙: 출처 명시 (N건 중 M건)",
+      "status": "PASS",
+      "message": "출처 표시 로직 있음",
+      "details": ""
+    },
+    {
+      "name": "원칙: 매칭 실패 시 억지 매칭 금지",
+      "status": "PASS",
+      "message": "None 반환 로직 있음",
+      "details": ""
+    },
+    {
+      "name": "원칙: 최소 2개 키워드 매칭",
+      "status": "PASS",
+      "message": "최소 2개 매칭 로직 있음",
+      "details": ""
+    },
+    {
+      "name": "원칙: 24시간 내 중복 제보 방지",
+      "status": "PASS",
+      "message": "중복 확인 로직 있음",
+      "details": ""
+    },
+    {
+      "name": "원칙: 유사 질문 경고",
+      "status": "PASS",
+      "message": "유사도 체크 로직 있음",
+      "details": ""
+    }
+  ]
+}

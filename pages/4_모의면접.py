@@ -1,6 +1,12 @@
 # pages/4_모의면접.py
 # 실전 모의면접 - AI 영상 면접관 + 음성 답변 + 음성/내용 평가
 
+# 정식 웹사이트 이전 안내
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from redirect_to_web import show_redirect_and_stop
+show_redirect_and_stop()
+
 import os
 import time
 import random
@@ -94,6 +100,24 @@ try:
 except ImportError:
     BENCHMARK_AVAILABLE = False
 
+# 면접 히스토리 저장
+try:
+    from interview_history_utils import save_interview_session
+    HISTORY_UTILS_AVAILABLE = True
+except ImportError:
+    HISTORY_UTILS_AVAILABLE = False
+
+# 비교 피드백 서비스
+try:
+    from comparison_feedback_service import (
+        get_previous_feedback_context,
+        generate_comparison_feedback,
+        render_comparison_feedback_ui,
+    )
+    COMPARISON_FEEDBACK_AVAILABLE = True
+except ImportError:
+    COMPARISON_FEEDBACK_AVAILABLE = False
+
 # 항공사별 맞춤 질문 import
 try:
     from airline_questions import (
@@ -156,8 +180,11 @@ init_page(
 
 
 
-# 구글 번역 방지 + 복사/붙여넣기 허용
-st.markdown("""
+# 구글 번역 방지 + 복사/붙여넣기 허용 (캐싱)
+@st.cache_resource
+def get_interview_css():
+    """모의면접 페이지 CSS (영구 캐시)"""
+    return """
 <meta name="google" content="notranslate">
 <meta http-equiv="Content-Language" content="ko">
 <style>
@@ -167,8 +194,6 @@ html, body, .stApp, .main, [data-testid="stAppViewContainer"] {
 .notranslate, [translate="no"] {
     translate: no !important;
 }
-
-/* 모든 입력 필드에서 복사/붙여넣기 허용 - 강화된 선택자 */
 textarea, input, [contenteditable="true"],
 .stTextArea textarea, .stTextInput input,
 [data-testid="stTextArea"] textarea,
@@ -182,22 +207,20 @@ div[data-baseweb="input"] input {
     -webkit-user-drag: none !important;
     pointer-events: auto !important;
 }
-
-/* 전체 문서에서 텍스트 선택 허용 */
-* {
+html, body, div, span, p, h1, h2, h3, h4, h5, h6, label {
     -webkit-user-select: text !important;
     -moz-user-select: text !important;
     -ms-user-select: text !important;
     user-select: text !important;
 }
-
-/* 버튼과 특수 요소는 제외 */
 button, .stButton, [role="button"] {
     -webkit-user-select: none !important;
     user-select: none !important;
 }
 </style>
-""", unsafe_allow_html=True)
+"""
+
+st.markdown(get_interview_css(), unsafe_allow_html=True)
 st.markdown('<div translate="no" class="notranslate" lang="ko">', unsafe_allow_html=True)
 
 # ----------------------------
@@ -334,12 +357,110 @@ STAR_HINTS = {
         "tip": "구체적인 루틴 + 실제 효과",
         "example_star": "S: 시험+아르바이트 병행 / T: 체력 한계 / A: 운동 루틴+수면시간 확보 / R: 스트레스 50% 감소"
     },
+    # 강점/약점
+    "본인의 강점과 약점을 말씀해주세요.": {
+        "intent": "자기 인식 + 성장 가능성",
+        "star_focus": "A (구체적 사례) 50%, R (개선 노력) 40%",
+        "tip": "강점은 사례로 증명, 약점은 개선 노력과 함께 언급",
+        "example_star": "S: 팀 프로젝트 경험 / T: 역할 분담 필요 / A: 소통으로 조율 (강점), 완벽주의→우선순위 정하기 (약점 개선) / R: 효율 30% 향상"
+    },
+    # 승무원 자질
+    "승무원에게 가장 중요한 자질은 무엇이라고 생각하시나요?": {
+        "intent": "직무 이해도 + 가치관",
+        "star_focus": "T (자질 정의) 40%, A (본인 사례) 40%, R 20%",
+        "tip": "안전/서비스/팀워크 중 하나 + 본인 경험 연결",
+        "example_star": "T: 안전 의식이 가장 중요 / A: 카페 근무 중 위생 교육 철저 / R: 1년간 무사고"
+    },
+    # 서비스 철학
+    "본인만의 서비스 철학이 있다면 말씀해주세요.": {
+        "intent": "서비스 마인드 + 차별화",
+        "star_focus": "T (철학) 30%, A (실천 사례) 50%, R 20%",
+        "tip": "한 문장 철학 + 실제 적용 경험",
+        "example_star": "T: '기대 이상의 한 걸음' / A: 손님 생일 기억→깜짝 서비스 / R: 5점 리뷰 + 단골 확보"
+    },
+    # 목표
+    "이 직업을 통해 이루고 싶은 목표는 무엇인가요?": {
+        "intent": "비전 + 성장 의지",
+        "star_focus": "T (목표) 40%, A (준비 과정) 40%, R (기대 결과) 20%",
+        "tip": "단기 목표(3년) + 장기 목표(10년) 구분",
+        "example_star": "T: 3년 내 국제선 전문성, 10년 후 트레이너 / A: 영어 공부, 서비스 경험 / R: 후배 양성 기여"
+    },
+    # 서비스 감동 경험
+    "서비스업에서 감동을 받았던 경험이 있나요?": {
+        "intent": "서비스 감수성 + 적용 의지",
+        "star_focus": "S (상황) 30%, A (인상 깊었던 점) 40%, R (본인 적용) 30%",
+        "tip": "구체적 장면 묘사 + 왜 감동받았는지 + 본인 서비스에 적용 방법",
+        "example_star": "S: 호텔 체크인 중 / A: 직원이 이름 기억하며 환영 / R: 나도 단골 손님 이름 외우기 실천"
+    },
+    # 예상치 못한 상황 대처
+    "예상치 못한 상황에 대처한 경험을 말씀해주세요.": {
+        "intent": "순발력 + 침착함",
+        "star_focus": "A (행동) 60%, R (결과) 30%",
+        "tip": "갑작스러운 상황 + 빠른 판단 + 대응 과정",
+        "example_star": "S: 행사 당일 MC 불참 / T: 30분 내 대체 필요 / A: 직접 대본 숙지→진행 / R: 행사 성공, 칭찬"
+    },
+    # 다문화 환경
+    "다문화 환경에서 소통한 경험이 있나요?": {
+        "intent": "글로벌 역량 + 소통 능력",
+        "star_focus": "S (상황) 30%, A (소통 방법) 50%, R 20%",
+        "tip": "언어 장벽 극복 + 문화 이해 노력",
+        "example_star": "S: 외국인 관광객 응대 / T: 언어 소통 어려움 / A: 번역앱+제스처+친절한 태도 / R: 감사 인사와 팁"
+    },
+    # 규정 vs 고객 만족
+    "규정을 지키면서 고객을 만족시킨 경험이 있나요?": {
+        "intent": "원칙 + 유연성 균형",
+        "star_focus": "A (대처 방법) 60%, R (결과) 30%",
+        "tip": "규정 설명 + 대안 제시로 만족 이끌어냄",
+        "example_star": "S: 환불 규정 밖 요청 / T: 규정 지키며 만족 / A: 정중히 설명→포인트 적립 제안 / R: 고객 이해, 재방문"
+    },
+    # 10년 후
+    "10년 후 본인의 모습은 어떨 것 같나요?": {
+        "intent": "비전 + 회사 기여 의지",
+        "star_focus": "T (목표) 40%, A (계획) 40%, R 20%",
+        "tip": "단계별 목표 + 회사와 함께 성장 강조",
+        "example_star": "T: 10년 후 선임 승무원으로 후배 양성 / A: 꾸준한 자기계발+리더십 경험 / R: 항공사 대표 서비스인"
+    },
+    # 직업의 어려움
+    "이 직업의 어려운 점은 무엇이라고 생각하시나요?": {
+        "intent": "현실 인식 + 극복 의지",
+        "star_focus": "T (어려움 인식) 30%, A (대비 방법) 50%, R 20%",
+        "tip": "솔직한 인정 + 구체적인 대비책",
+        "example_star": "T: 불규칙한 생활 패턴 / A: 수면 관리 루틴+체력 운동 / R: 컨디션 유지 자신"
+    },
+    # 체력 관리
+    "체력 관리는 어떻게 하고 계신가요?": {
+        "intent": "자기 관리 능력",
+        "star_focus": "A (관리 방법) 60%, R (효과) 30%",
+        "tip": "구체적 운동 루틴 + 실제 효과",
+        "example_star": "A: 주 3회 수영+매일 스트레칭 / R: 1년간 감기 없음, 활력 유지"
+    },
+    # 외국어
+    "외국어 능력은 어느 정도이며, 어떻게 준비하셨나요?": {
+        "intent": "글로벌 역량 + 자기계발",
+        "star_focus": "S (현재 수준) 30%, A (학습 방법) 50%, R 20%",
+        "tip": "객관적 수준 + 구체적 학습법 + 활용 계획",
+        "example_star": "S: 토익 850, 회화 중급 / A: 매일 30분 쉐도잉+주 1회 화상영어 / R: 외국인 응대 자신감"
+    },
+    # 불규칙 근무
+    "불규칙한 근무에 대해 어떻게 생각하시나요?": {
+        "intent": "직무 이해 + 적응력",
+        "star_focus": "T (인식) 30%, A (대비) 50%, R 20%",
+        "tip": "현실 인정 + 적응 경험/계획",
+        "example_star": "T: 가족과 일정 맞추기 어려움 인지 / A: 미리 가족과 소통+개인 루틴 유지 / R: 아르바이트 교대근무 성공 경험"
+    },
+    # 동료 의견 충돌
+    "동료와 의견 충돌이 생기면 어떻게 하시겠습니까?": {
+        "intent": "갈등 관리 + 협업",
+        "star_focus": "A (대처 방법) 65%, R 25%",
+        "tip": "경청 → 공통점 찾기 → 합의 도출",
+        "example_star": "T: 발표 방식 의견 충돌 / A: 상대 의견 경청→장단점 비교→절충안 / R: 둘 다 만족, 좋은 결과"
+    },
     # 기본 힌트 (매칭 안 되는 질문용)
     "_default": {
-        "intent": "면접관은 구체성과 진정성을 봅니다",
+        "intent": "면접관은 구체성과 진정성을 평가합니다",
         "star_focus": "S 20%, T 20%, A 40%, R 20%",
-        "tip": "숫자로 증명 + 배운 점 마무리",
-        "example_star": "S: 구체적 상황(언제, 어디서, 몇 명) / T: 해결할 문제 / A: 3단계 행동 / R: 숫자 결과 + 배움"
+        "tip": "구체적인 상황 + 본인의 행동 + 결과와 배움을 중심으로 답변",
+        "example_star": "S: 구체적 상황(언제, 어디서) / T: 해결할 과제 / A: 본인이 취한 행동 / R: 결과와 배운 점"
     }
 }
 
@@ -435,6 +556,37 @@ list_keys = ["mock_questions", "mock_answers", "mock_transcriptions", "mock_time
 for key in list_keys:
     if st.session_state.get(key) is None:
         st.session_state[key] = []
+
+# =====================
+# 자소서 기반 질문 모드 처리
+# =====================
+
+# 자소서기반질문 페이지에서 넘어왔는지 확인
+if st.session_state.get("from_resume_questions", False):
+    resume_questions = st.session_state.get("resume_based_questions", [])
+    resume_airline = st.session_state.get("resume_based_airline", "")
+
+    if resume_questions and resume_airline:
+        # 자소서 기반 질문 모드로 세션 설정
+        st.session_state["resume_question_mode"] = True
+        st.session_state["resume_question_list"] = resume_questions
+        st.session_state["resume_question_airline"] = resume_airline
+
+        # 플래그 초기화 (중복 방지)
+        st.session_state["from_resume_questions"] = False
+        st.session_state["resume_based_questions"] = []
+        st.session_state["resume_based_airline"] = ""
+
+        # 알림 표시
+        st.toast(f"자소서 기반 {len(resume_questions)}개 질문으로 모의면접을 시작합니다!", icon="📝")
+
+# 자소서 기반 질문 모드 초기화 (없으면)
+if "resume_question_mode" not in st.session_state:
+    st.session_state["resume_question_mode"] = False
+if "resume_question_list" not in st.session_state:
+    st.session_state["resume_question_list"] = []
+if "resume_question_airline" not in st.session_state:
+    st.session_state["resume_question_airline"] = ""
 
 
 # =====================
@@ -577,6 +729,25 @@ def evaluate_interview_combined(
         }
 
         r = requests.post(LLM_API_URL, headers=headers, json=payload, timeout=60)
+
+        # 401 오류 처리 (API 키 문제)
+        if r.status_code == 401:
+            return {
+                "error": "API 인증 오류 (401): API 키를 확인해주세요.",
+                "avg_voice": avg_voice,
+                "avg_content": avg_content,
+                "api_error": True
+            }
+
+        # 429 오류 처리 (Rate limit)
+        if r.status_code == 429:
+            return {
+                "error": "API 요청 한도 초과 (429): 잠시 후 다시 시도해주세요.",
+                "avg_voice": avg_voice,
+                "avg_content": avg_content,
+                "api_error": True
+            }
+
         r.raise_for_status()
         resp = r.json()
 
@@ -587,10 +758,14 @@ def evaluate_interview_combined(
                 "avg_voice": avg_voice,
                 "avg_content": avg_content,
             }
-        return {"error": "평가 생성 실패"}
+        return {"error": "평가 생성 실패", "avg_voice": avg_voice, "avg_content": avg_content}
 
+    except requests.exceptions.Timeout:
+        return {"error": "API 요청 시간 초과: 다시 시도해주세요.", "avg_voice": avg_voice, "avg_content": avg_content}
+    except requests.exceptions.RequestException as e:
+        return {"error": f"API 연결 오류: {str(e)}", "avg_voice": avg_voice, "avg_content": avg_content}
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": str(e), "avg_voice": avg_voice, "avg_content": avg_content}
 
 
 # =====================
@@ -653,9 +828,12 @@ if not st.session_state.mock_started:
     with col3:
         answer_mode = st.radio(
             "답변 방식",
-            ["텍스트 입력", "음성 녹음"],
-            help="음성 녹음 시 마이크 권한이 필요합니다"
+            ["음성 녹음 (추천)", "텍스트 입력"],
+            index=0,  # 기본값: 음성 녹음
+            help="실제 면접처럼 말로 연습하면 효과 2배!"
         )
+        if answer_mode == "음성 녹음 (추천)":
+            st.caption("실제 면접처럼 말하면서 연습해요!")
 
     # Phase B1: 면접관 캐릭터 선택
     if INTERVIEW_ENHANCER_AVAILABLE:
@@ -663,17 +841,17 @@ if not st.session_state.mock_started:
         st.markdown("**면접관 스타일 선택**")
         interviewer_options = {
             "warm": "온화한 면접관 (김민지 팀장) - 격려하고 장점을 찾아줌",
-            "neutral": "중립적 면접관 (박서연 부장) - 공정하고 객관적",
-            "sharp": "날카로운 면접관 (이정훈 상무) - 논리적 허점 파악",
+            "neutral": "정석 면접관 (박서연 부장) - 표준적인 면접 진행",
+            "sharp": "분석 면접관 (이정훈 상무) - 답변을 깊이 분석",
             "pressure": "압박 면접관 (최현우 전무) - 한계를 테스트",
         }
 
-        # 한국어 표시용 매핑
+        # 한국어 표시용 매핑 (뉘앙스 포함)
         interviewer_labels = {
-            "warm": "온화형",
-            "neutral": "중립형",
-            "sharp": "날카로움형",
-            "pressure": "압박형",
+            "warm": "온화형 - 격려하며 장점 발견",
+            "neutral": "정석형 - 표준적인 면접 진행",
+            "sharp": "분석형 - 답변을 깊이 분석",
+            "pressure": "압박형 - 한계를 테스트",
         }
 
         col_int1, col_int2 = st.columns([1, 2])
@@ -700,7 +878,7 @@ if not st.session_state.mock_started:
     st.divider()
 
     # 안내 박스
-    if answer_mode == "음성 녹음":
+    if answer_mode == "음성 녹음 (추천)":
         st.info("""
         **음성 모의면접 안내**
         1. AI 면접관이 질문을 읽어줍니다
@@ -712,19 +890,57 @@ if not st.session_state.mock_started:
     else:
         st.info("""
         **텍스트 모의면접 안내**
-        1. 질문이 표시되면 타이머가 시작됩니다
-        2. 실제 면접처럼 60-90초 내에 답변하세요
-        3. 내용 분석: STAR 구조, 구체성, 논리성 평가
+        1. 질문을 읽고 답변을 작성하세요
+        2. 내용 분석: STAR 구조, 구체성, 논리성 평가
+        3. 답변을 완료하면 AI가 피드백을 제공합니다
         """)
 
     # 남은 사용량 표시
 
+    # 자소서 기반 질문 모드 표시
+    if st.session_state.get("resume_question_mode", False):
+        resume_q_list = st.session_state.get("resume_question_list", [])
+        resume_q_airline = st.session_state.get("resume_question_airline", "")
+
+        st.success(f"📝 **자소서 기반 질문 모드** - {len(resume_q_list)}개 질문이 준비되었습니다!")
+
+        with st.expander("자소서 기반 질문 목록 미리보기", expanded=False):
+            for i, q in enumerate(resume_q_list, 1):
+                q_text = q.get("question", "") if isinstance(q, dict) else q
+                st.markdown(f"**{i}.** {q_text[:80]}...")
+
+        # 항공사가 지정되어 있으면 자동 선택
+        if resume_q_airline and resume_q_airline != airline:
+            st.info(f"자소서 분석 시 선택한 항공사: **{resume_q_airline}** (위에서 변경 가능)")
+
+        # 일반 모드로 전환 옵션
+        if st.button("일반 모드로 전환 (자소서 질문 취소)", type="secondary"):
+            st.session_state["resume_question_mode"] = False
+            st.session_state["resume_question_list"] = []
+            st.session_state["resume_question_airline"] = ""
+            st.rerun()
+
     # 시작 버튼
-    if st.button("모의면접 시작", type="primary", use_container_width=True):
+    start_btn_label = "자소서 질문으로 모의면접 시작" if st.session_state.get("resume_question_mode") else "모의면접 시작"
+    if st.button(start_btn_label, type="primary", use_container_width=True):
         # 사용량 체크
 
         st.session_state.mock_started = True
-        st.session_state.mock_questions = generate_questions(airline, question_count)
+
+        # 자소서 기반 질문 모드인 경우
+        if st.session_state.get("resume_question_mode", False):
+            resume_q_list = st.session_state.get("resume_question_list", [])
+            # 질문 텍스트만 추출
+            st.session_state.mock_questions = [
+                q.get("question", "") if isinstance(q, dict) else q
+                for q in resume_q_list
+            ]
+            # 자소서 질문 모드 플래그 리셋 (다음 시작 시 일반 모드)
+            st.session_state["resume_question_mode"] = False
+            st.session_state["resume_question_list"] = []
+        else:
+            # 일반 모드: 질문 생성
+            st.session_state.mock_questions = generate_questions(airline, question_count)
         st.session_state.mock_current_idx = 0
         st.session_state.mock_answers = []
         st.session_state.mock_transcriptions = []
@@ -733,7 +949,7 @@ if not st.session_state.mock_started:
         st.session_state.mock_content_analyses = []
         st.session_state.mock_completed = False
         st.session_state.mock_airline = airline
-        st.session_state.mock_mode = "voice" if answer_mode == "음성 녹음" else "text"
+        st.session_state.mock_mode = "voice" if answer_mode == "음성 녹음 (추천)" else "text"
         st.session_state.mock_evaluation = None
         st.session_state.answer_start_time = None
         st.session_state.timer_running = False
@@ -1126,8 +1342,8 @@ elif not st.session_state.mock_completed:
         if st.button("이 질문 패스", use_container_width=True):
             st.session_state.mock_answers.append("[답변 못함]")
             st.session_state.mock_times.append(0)
-            st.session_state.mock_voice_analyses.append({"total_score": 0})
-            st.session_state.mock_content_analyses.append({"total_score": 0})
+            st.session_state.mock_voice_analyses.append({"total_score": 0, "skipped": True})
+            st.session_state.mock_content_analyses.append({"total_score": 0, "skipped": True})
             # 패스 시 기본 분석 데이터 추가
             st.session_state.mock_advanced_analyses.append({
                 "overall": {"voice_score": 0, "strengths": [], "improvements": ["질문을 패스했습니다"]},
@@ -1154,148 +1370,119 @@ elif not st.session_state.mock_completed:
             st.rerun()
 
     else:
-        # 텍스트 입력 모드 (기존 방식)
-        if not st.session_state.timer_running:
-            st.info("준비가 되면 '답변 시작' 버튼을 눌러주세요.")
+        # 텍스트 입력 모드 (타이머 없이 바로 입력)
+        # 답변 시작 시간 자동 기록 (첫 로드 시)
+        if st.session_state.answer_start_time is None:
+            st.session_state.answer_start_time = time.time()
 
-            if st.button("답변 시작", type="primary", use_container_width=True):
-                st.session_state.timer_running = True
-                st.session_state.answer_start_time = time.time()
+        answer = st.text_area(
+            "답변을 입력하세요",
+            height=200,
+            key=f"answer_{current_idx}",
+            placeholder="실제 면접에서 말하듯이 작성해주세요..."
+        )
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if st.button("답변 제출", type="primary", disabled=not answer.strip(), use_container_width=True):
+                elapsed = int(time.time() - st.session_state.answer_start_time) if st.session_state.answer_start_time else 0
+
+                # 내용 분석
+                if VIDEO_UTILS_AVAILABLE:
+                    with st.spinner("답변 분석 중..."):
+                        content_analysis = evaluate_answer_content(
+                            question, answer.strip(), airline, airline_type
+                        )
+                else:
+                    content_analysis = {"total_score": 0}
+
+                # Phase B1: 강화된 분석 수행
+                if INTERVIEW_ENHANCER_AVAILABLE:
+                    try:
+                        interviewer_type = st.session_state.get("mock_interviewer_type", "neutral")
+                        enhanced_analysis = analyze_interview_answer(
+                            question=question,
+                            answer=answer.strip(),
+                            elapsed_seconds=elapsed,
+                            airline=airline,
+                            interviewer_type=interviewer_type
+                        )
+                        st.session_state.mock_enhanced_analyses.append(enhanced_analysis)
+                        st.session_state.mock_keyword_scores.append(
+                            enhanced_analysis.get("keyword_analysis", {}).get("keyword_score", 0)
+                        )
+                        if enhanced_analysis.get("should_follow_up") and enhanced_analysis.get("follow_up"):
+                            st.session_state.mock_follow_up_questions.append({
+                                "question_idx": current_idx,
+                                "follow_up": enhanced_analysis["follow_up"]
+                            })
+                    except Exception as e:
+                        st.session_state.mock_enhanced_analyses.append({"error": str(e)})
+                        st.session_state.mock_keyword_scores.append(0)
+                else:
+                    st.session_state.mock_enhanced_analyses.append({})
+                    st.session_state.mock_keyword_scores.append(0)
+
+                st.session_state.mock_answers.append(answer.strip())
+                st.session_state.mock_times.append(elapsed)
+                st.session_state.mock_voice_analyses.append({})  # 텍스트 모드는 음성 분석 없음
+                st.session_state.mock_content_analyses.append(content_analysis)
+                # 텍스트 모드는 고도화 음성/감정 분석 없음 - 빈 데이터 추가
+                st.session_state.mock_advanced_analyses.append({
+                    "overall": {"voice_score": 0, "strengths": [], "improvements": []},
+                    "speech_rate": {}, "filler_analysis": {}, "energy_analysis": {},
+                    "pronunciation": {}, "structure_analysis": {}
+                })
+                st.session_state.mock_emotion_analyses.append({
+                    "confidence_score": 5.0, "stress_level": 5.0,
+                    "engagement_level": 5.0, "emotion_stability": 5.0,
+                    "primary_emotion": "neutral"
+                })
+                st.session_state.mock_confidence_timeline.append(5.0)
+                st.session_state.mock_stress_timeline.append(5.0)
+                st.session_state.timer_running = False
+                st.session_state.answer_start_time = None
+
+                if current_idx + 1 >= total:
+                    st.session_state.mock_completed = True
+                else:
+                    st.session_state.mock_current_idx += 1
+
                 st.rerun()
 
-        else:
-            # 타이머 실행 중
-            start_time = st.session_state.answer_start_time
+        with col2:
+            if st.button("패스 (답변 못함)", use_container_width=True):
+                elapsed = int(time.time() - st.session_state.answer_start_time) if st.session_state.answer_start_time else 0
+                st.session_state.mock_answers.append("[답변 못함]")
+                st.session_state.mock_times.append(elapsed)
+                st.session_state.mock_voice_analyses.append({"total_score": 0, "skipped": True})
+                st.session_state.mock_content_analyses.append({"total_score": 0, "skipped": True})
+                # 패스 시 기본 분석 데이터 추가
+                st.session_state.mock_advanced_analyses.append({
+                    "overall": {"voice_score": 0, "strengths": [], "improvements": ["질문을 패스했습니다"]},
+                    "speech_rate": {}, "filler_analysis": {}, "energy_analysis": {},
+                    "pronunciation": {}, "structure_analysis": {}
+                })
+                st.session_state.mock_emotion_analyses.append({
+                    "confidence_score": 5.0, "stress_level": 5.0,
+                    "engagement_level": 5.0, "emotion_stability": 5.0,
+                    "primary_emotion": "neutral"
+                })
+                st.session_state.mock_confidence_timeline.append(5.0)
+                st.session_state.mock_stress_timeline.append(5.0)
+                # Phase B1: 강화 분석 빈 데이터 추가
+                st.session_state.mock_enhanced_analyses.append({"skipped": True})
+                st.session_state.mock_keyword_scores.append(0)
+                st.session_state.timer_running = False
+                st.session_state.answer_start_time = None
 
-            timer_html = f"""
-            <div style="text-align: center; margin: 20px 0;">
-                <div id="timer" style="font-size: 48px; font-weight: bold; color: #28a745;">00:00</div>
-                <div style="font-size: 14px; color: #666; margin-top: 5px;">적정 답변 시간: 60~90초</div>
-            </div>
-            <script>
-                const startTime = {start_time * 1000};
-                function updateTimer() {{
-                    const elapsed = Math.floor((Date.now() - startTime) / 1000);
-                    const mins = Math.floor(elapsed / 60);
-                    const secs = elapsed % 60;
-                    const el = document.getElementById('timer');
-                    if (el) {{
-                        el.textContent = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
-                        el.style.color = elapsed < 60 ? '#28a745' : elapsed < 90 ? '#ffc107' : '#dc3545';
-                    }}
-                }}
-                updateTimer();
-                setInterval(updateTimer, 1000);
-            </script>
-            """
-            components.html(timer_html, height=120)
+                if current_idx + 1 >= total:
+                    st.session_state.mock_completed = True
+                else:
+                    st.session_state.mock_current_idx += 1
 
-            answer = st.text_area(
-                "답변을 입력하세요",
-                height=200,
-                key=f"answer_{current_idx}",
-                placeholder="실제 면접에서 말하듯이 작성해주세요..."
-            )
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                if st.button("답변 제출", type="primary", disabled=not answer.strip(), use_container_width=True):
-                    elapsed = int(time.time() - st.session_state.answer_start_time)
-
-                    # 내용 분석
-                    if VIDEO_UTILS_AVAILABLE:
-                        with st.spinner("답변 분석 중..."):
-                            content_analysis = evaluate_answer_content(
-                                question, answer.strip(), airline, airline_type
-                            )
-                    else:
-                        content_analysis = {"total_score": 0}
-
-                    # Phase B1: 강화된 분석 수행
-                    if INTERVIEW_ENHANCER_AVAILABLE:
-                        try:
-                            interviewer_type = st.session_state.get("mock_interviewer_type", "neutral")
-                            enhanced_analysis = analyze_interview_answer(
-                                question=question,
-                                answer=answer.strip(),
-                                elapsed_seconds=elapsed,
-                                airline=airline,
-                                interviewer_type=interviewer_type
-                            )
-                            st.session_state.mock_enhanced_analyses.append(enhanced_analysis)
-                            st.session_state.mock_keyword_scores.append(
-                                enhanced_analysis.get("keyword_analysis", {}).get("keyword_score", 0)
-                            )
-                            if enhanced_analysis.get("should_follow_up") and enhanced_analysis.get("follow_up"):
-                                st.session_state.mock_follow_up_questions.append({
-                                    "question_idx": current_idx,
-                                    "follow_up": enhanced_analysis["follow_up"]
-                                })
-                        except Exception as e:
-                            st.session_state.mock_enhanced_analyses.append({"error": str(e)})
-                            st.session_state.mock_keyword_scores.append(0)
-                    else:
-                        st.session_state.mock_enhanced_analyses.append({})
-                        st.session_state.mock_keyword_scores.append(0)
-
-                    st.session_state.mock_answers.append(answer.strip())
-                    st.session_state.mock_times.append(elapsed)
-                    st.session_state.mock_voice_analyses.append({})  # 텍스트 모드는 음성 분석 없음
-                    st.session_state.mock_content_analyses.append(content_analysis)
-                    # 텍스트 모드는 고도화 음성/감정 분석 없음 - 빈 데이터 추가
-                    st.session_state.mock_advanced_analyses.append({
-                        "overall": {"voice_score": 0, "strengths": [], "improvements": []},
-                        "speech_rate": {}, "filler_analysis": {}, "energy_analysis": {},
-                        "pronunciation": {}, "structure_analysis": {}
-                    })
-                    st.session_state.mock_emotion_analyses.append({
-                        "confidence_score": 5.0, "stress_level": 5.0,
-                        "engagement_level": 5.0, "emotion_stability": 5.0,
-                        "primary_emotion": "neutral"
-                    })
-                    st.session_state.mock_confidence_timeline.append(5.0)
-                    st.session_state.mock_stress_timeline.append(5.0)
-                    st.session_state.timer_running = False
-
-                    if current_idx + 1 >= total:
-                        st.session_state.mock_completed = True
-                    else:
-                        st.session_state.mock_current_idx += 1
-
-                    st.rerun()
-
-            with col2:
-                if st.button("패스 (답변 못함)", use_container_width=True):
-                    elapsed = int(time.time() - st.session_state.answer_start_time)
-                    st.session_state.mock_answers.append("[답변 못함]")
-                    st.session_state.mock_times.append(elapsed)
-                    st.session_state.mock_voice_analyses.append({})
-                    st.session_state.mock_content_analyses.append({"total_score": 0})
-                    # 패스 시 기본 분석 데이터 추가
-                    st.session_state.mock_advanced_analyses.append({
-                        "overall": {"voice_score": 0, "strengths": [], "improvements": ["질문을 패스했습니다"]},
-                        "speech_rate": {}, "filler_analysis": {}, "energy_analysis": {},
-                        "pronunciation": {}, "structure_analysis": {}
-                    })
-                    st.session_state.mock_emotion_analyses.append({
-                        "confidence_score": 5.0, "stress_level": 5.0,
-                        "engagement_level": 5.0, "emotion_stability": 5.0,
-                        "primary_emotion": "neutral"
-                    })
-                    st.session_state.mock_confidence_timeline.append(5.0)
-                    st.session_state.mock_stress_timeline.append(5.0)
-                    # Phase B1: 강화 분석 빈 데이터 추가
-                    st.session_state.mock_enhanced_analyses.append({"skipped": True})
-                    st.session_state.mock_keyword_scores.append(0)
-                    st.session_state.timer_running = False
-
-                    if current_idx + 1 >= total:
-                        st.session_state.mock_completed = True
-                    else:
-                        st.session_state.mock_current_idx += 1
-
-                    st.rerun()
+                st.rerun()
 
 
 else:
@@ -2189,9 +2376,9 @@ else:
             keyword_scores = st.session_state.get("mock_keyword_scores", [])
             follow_ups = st.session_state.get("mock_follow_up_questions", [])
 
-            # 평균 키워드 점수 계산
-            valid_scores = [s for s in keyword_scores if s > 0]
-            avg_keyword_score = sum(valid_scores) / len(valid_scores) if valid_scores else 0
+            # 평균 키워드 점수 계산 (패스한 질문의 0점도 포함)
+            # 패스/건너뛴 질문도 0점으로 평균에 반영하여 페널티 부여
+            avg_keyword_score = sum(keyword_scores) / len(keyword_scores) if keyword_scores else 0
 
             # 등급 계산
             if avg_keyword_score >= 80:
@@ -2357,8 +2544,8 @@ else:
                 )
                 st.session_state.mock_evaluation = evaluation
 
-                # 자동 점수 저장
-                if SCORE_UTILS_AVAILABLE and "error" not in evaluation:
+                # 자동 점수 저장 (API 오류가 없을 때만)
+                if SCORE_UTILS_AVAILABLE and "error" not in evaluation and not evaluation.get("api_error"):
                     # 평가 결과에서 점수 파싱 시도
                     if "result" in evaluation:
                         parsed = parse_evaluation_score(evaluation["result"], "모의면접")
@@ -2402,6 +2589,62 @@ else:
                                 )
                             except Exception as e:
                                 pass  # 벤치마크 저장 실패해도 면접 결과에는 영향 없음
+
+                        # 면접 히스토리 저장 (C안 - 풀 구현)
+                        if HISTORY_UTILS_AVAILABLE:
+                            try:
+                                # 질문별 데이터 구조화
+                                questions_data = []
+                                for i, q in enumerate(st.session_state.mock_questions):
+                                    q_data = {
+                                        "index": i,
+                                        "category": "common" if i == 0 else "experience",
+                                        "question_text": q,
+                                        "answer_text": st.session_state.mock_answers[i] if i < len(st.session_state.mock_answers) else "",
+                                        "answer_duration_sec": st.session_state.mock_times[i] if i < len(st.session_state.mock_times) else 0,
+                                        "voice_analysis": st.session_state.mock_voice_analyses[i] if i < len(st.session_state.mock_voice_analyses) else {},
+                                        "content_analysis": st.session_state.mock_content_analyses[i] if i < len(st.session_state.mock_content_analyses) else {},
+                                        "feedback": {
+                                            "strengths": [],
+                                            "improvements": [],
+                                            "ai_comment": ""
+                                        }
+                                    }
+                                    # content_analysis에서 피드백 추출
+                                    if q_data["content_analysis"]:
+                                        ca = q_data["content_analysis"]
+                                        q_data["feedback"]["strengths"] = ca.get("strengths", [])
+                                        q_data["feedback"]["improvements"] = ca.get("improvements", [])
+                                        q_data["feedback"]["ai_comment"] = ca.get("feedback", "")
+                                    questions_data.append(q_data)
+
+                                # 세션 데이터 구성
+                                session_data = {
+                                    "type": "모의면접",
+                                    "airline": st.session_state.mock_airline,
+                                    "mode": st.session_state.mock_mode,
+                                    "question_count": len(st.session_state.mock_questions),
+                                    "total_duration_sec": sum(st.session_state.mock_times) if st.session_state.mock_times else 0,
+                                    "scores": {
+                                        "total": total_score,
+                                        "voice_avg": evaluation.get("avg_voice", 0),
+                                        "content_avg": evaluation.get("avg_content", 0)
+                                    },
+                                    "questions": questions_data,
+                                    "evaluation": {
+                                        "overall_feedback": evaluation.get("result", ""),
+                                        "strengths": [],
+                                        "weaknesses": [],
+                                        "recommendations": []
+                                    }
+                                }
+
+                                # 히스토리 저장
+                                session_id = save_interview_session(session_data)
+                                if session_id:
+                                    st.session_state["_last_saved_session_id"] = session_id
+                            except Exception as e:
+                                pass  # 히스토리 저장 실패해도 면접 결과에는 영향 없음
             st.rerun()
         else:
             eval_result = st.session_state.mock_evaluation
@@ -2420,6 +2663,35 @@ else:
                         st.metric("종합 점수", f"{combined}/100")
 
                 st.markdown("---")
+
+                # 비교 피드백 (이전 세션 대비 성장 분석)
+                if COMPARISON_FEEDBACK_AVAILABLE:
+                    try:
+                        # 이전 피드백 컨텍스트 조회
+                        prev_context = get_previous_feedback_context(
+                            airline=st.session_state.mock_airline,
+                            max_sessions=3
+                        )
+
+                        if prev_context.get("has_history") and prev_context.get("sessions_referenced", 0) > 0:
+                            combined = (eval_result['avg_voice'] + eval_result['avg_content']) // 2
+
+                            # 비교 피드백 생성
+                            comparison_result = generate_comparison_feedback(
+                                current_answer=" ".join(st.session_state.mock_answers[:3]),
+                                current_score=combined,
+                                previous_context=prev_context,
+                            )
+
+                            # UI 렌더링
+                            comparison_html = render_comparison_feedback_ui(comparison_result)
+                            if comparison_html:
+                                st.markdown("### 이전 세션 대비 성장 분석")
+                                st.markdown(comparison_html, unsafe_allow_html=True)
+                                st.markdown("---")
+                    except Exception as e:
+                        pass  # 비교 피드백 실패해도 기본 평가는 표시
+
                 st.markdown(eval_result.get("result", ""))
 
     # =====================
@@ -2459,8 +2731,12 @@ else:
 
     st.divider()
 
-    col1, col2 = st.columns(2)
-    with col1:
+    # 결과 확인 및 이동 버튼
+    st.subheader("다음 단계")
+
+    result_col1, result_col2, result_col3, result_col4 = st.columns(4)
+
+    with result_col1:
         if st.button("다시 도전하기", type="primary", use_container_width=True):
             st.session_state.mock_started = False
             st.session_state.mock_evaluation = None
@@ -2471,8 +2747,30 @@ else:
             st.session_state.mock_response_times = []
             st.rerun()
 
-    with col2:
+    with result_col2:
         if st.button("처음으로", use_container_width=True):
             for key in defaults:
                 st.session_state[key] = defaults[key]
             st.rerun()
+
+    with result_col3:
+        # 성장그래프로 이동 (대시보드)
+        st.page_link("pages/6_성장그래프.py", label="성장그래프 보기", use_container_width=True)
+
+    with result_col4:
+        # 면접 히스토리로 이동
+        st.page_link("pages/25_면접히스토리.py", label="면접 기록 보기", use_container_width=True)
+
+    # 약점 기반 추천
+    if st.session_state.mock_evaluation and "avg_content" in st.session_state.mock_evaluation:
+        avg_content = st.session_state.mock_evaluation.get("avg_content", 0)
+        if avg_content < 70:
+            st.markdown("---")
+            st.markdown("### 추천 연습")
+            weak_col1, weak_col2 = st.columns(2)
+            with weak_col1:
+                st.warning("내용 점수가 70점 미만이에요. 자소서 기반 질문으로 연습해보세요!")
+                st.page_link("pages/17_자소서기반질문.py", label="자소서 기반 질문 연습", use_container_width=True)
+            with weak_col2:
+                st.info("롤플레잉으로 실전 감각을 키워보세요!")
+                st.page_link("pages/1_롤플레잉.py", label="롤플레잉 연습", use_container_width=True)

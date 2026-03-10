@@ -1,6 +1,12 @@
 # pages/8_면접꿀팁.py
 # 면접 꿀팁 모음 페이지 - 2026 채용 트렌드 및 합격 노하우 + 자가진단
 
+# 정식 웹사이트 이전 안내
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from redirect_to_web import show_redirect_and_stop
+show_redirect_and_stop()
+
 import streamlit as st
 import os
 import sys

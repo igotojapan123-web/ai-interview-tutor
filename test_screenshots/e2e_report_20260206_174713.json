@@ -1,0 +1,441 @@
+{
+  "timestamp": "2026-02-06T17:47:13.162182",
+  "base_url": "http://localhost:8501",
+  "mode": "basic",
+  "summary": {
+    "total": 24,
+    "passed": 21,
+    "warned": 3,
+    "failed": 0
+  },
+  "results": [
+    {
+      "name": "사이드바 탐색",
+      "path": "/",
+      "status": "warn",
+      "errors": [],
+      "warnings": [
+        "사이드바를 찾을 수 없음"
+      ],
+      "details": []
+    },
+    {
+      "name": "홈",
+      "path": "/",
+      "priority": "A",
+      "status": "pass",
+      "load_time": 0.62,
+      "errors": [],
+      "warnings": [],
+      "elements_found": {
+        "buttons": 0,
+        "selectbox": 0,
+        "radio": 0,
+        "textarea": 0,
+        "expander": 0,
+        "tabs": 0
+      },
+      "screenshot": "test_screenshots\\홈.png"
+    },
+    {
+      "name": "모의면접",
+      "path": "/모의면접",
+      "priority": "A",
+      "status": "pass",
+      "load_time": 0.71,
+      "errors": [],
+      "warnings": [],
+      "elements_found": {
+        "buttons": 0,
+        "selectbox": 0,
+        "radio": 0,
+        "textarea": 0,
+        "expander": 0,
+        "tabs": 0
+      },
+      "screenshot": "test_screenshots\\모의면접.png"
+    },
+    {
+      "name": "롤플레잉",
+      "path": "/롤플레잉",
+      "priority": "A",
+      "status": "pass",
+      "load_time": 1.28,
+      "errors": [],
+      "warnings": [],
+      "elements_found": {
+        "buttons": 77,
+        "selectbox": 2,
+        "radio": 0,
+        "textarea": 0,
+        "expander": 5,
+        "tabs": 0
+      },
+      "screenshot": "test_screenshots\\롤플레잉.png"
+    },
+    {
+      "name": "영어면접",
+      "path": "/영어면접",
+      "priority": "A",
+      "status": "pass",
+      "load_time": 0.71,
+      "errors": [],
+      "warnings": [],
+      "elements_found": {
+        "buttons": 2,
+        "selectbox": 0,
+        "radio": 0,
+        "textarea": 0,
+        "expander": 1,
+        "tabs": 0
+      },
+      "screenshot": "test_screenshots\\영어면접.png"
+    },
+    {
+      "name": "시작하기",
+      "path": "/시작하기",
+      "priority": "B",
+      "status": "pass",
+      "load_time": 0.7,
+      "errors": [],
+      "warnings": [],
+      "elements_found": {
+        "buttons": 1,
+        "selectbox": 0,
+        "radio": 0,
+        "textarea": 0,
+        "expander": 0,
+        "tabs": 0
+      },
+      "screenshot": "test_screenshots\\시작하기.png"
+    },
+    {
+      "name": "토론면접",
+      "path": "/토론면접",
+      "priority": "B",
+      "status": "pass",
+      "load_time": 0.71,
+      "errors": [],
+      "warnings": [],
+      "elements_found": {
+        "buttons": 45,
+        "selectbox": 0,
+        "radio": 0,
+        "textarea": 0,
+        "expander": 40,
+        "tabs": 0
+      },
+      "screenshot": "test_screenshots\\토론면접.png"
+    },
+    {
+      "name": "진도관리",
+      "path": "/진도관리",
+      "priority": "B",
+      "status": "pass",
+      "load_time": 0.85,
+      "errors": [],
+      "warnings": [],
+      "elements_found": {
+        "buttons": 1,
+        "selectbox": 0,
+        "radio": 0,
+        "textarea": 0,
+        "expander": 6,
+        "tabs": 0
+      },
+      "screenshot": "test_screenshots\\진도관리.png"
+    },
+    {
+      "name": "성장그래프",
+      "path": "/성장그래프",
+      "priority": "B",
+      "status": "pass",
+      "load_time": 1.01,
+      "errors": [],
+      "warnings": [],
+      "elements_found": {
+        "buttons": 8,
+        "selectbox": 3,
+        "radio": 0,
+        "textarea": 0,
+        "expander": 1,
+        "tabs": 3
+      },
+      "screenshot": "test_screenshots\\성장그래프.png"
+    },
+    {
+      "name": "합격자DB",
+      "path": "/합격자DB",
+      "priority": "B",
+      "status": "pass",
+      "load_time": 2.53,
+      "errors": [],
+      "warnings": [],
+      "elements_found": {
+        "buttons": 7,
+        "selectbox": 4,
+        "radio": 0,
+        "textarea": 1,
+        "expander": 0,
+        "tabs": 5
+      },
+      "screenshot": "test_screenshots\\합격자DB.png"
+    },
+    {
+      "name": "면접꿀팁",
+      "path": "/면접꿀팁",
+      "priority": "B",
+      "status": "pass",
+      "load_time": 0.89,
+      "errors": [],
+      "warnings": [],
+      "elements_found": {
+        "buttons": 16,
+        "selectbox": 0,
+        "radio": 0,
+        "textarea": 0,
+        "expander": 20,
+        "tabs": 16
+      },
+      "screenshot": "test_screenshots\\면접꿀팁.png"
+    },
+    {
+      "name": "채용알림",
+      "path": "/채용알림",
+      "priority": "B",
+      "status": "pass",
+      "load_time": 0.86,
+      "errors": [],
+      "warnings": [],
+      "elements_found": {
+        "buttons": 12,
+        "selectbox": 0,
+        "radio": 0,
+        "textarea": 0,
+        "expander": 7,
+        "tabs": 8
+      },
+      "screenshot": "test_screenshots\\채용알림.png"
+    },
+    {
+      "name": "항공사가이드",
+      "path": "/항공사가이드",
+      "priority": "B",
+      "status": "pass",
+      "load_time": 0.89,
+      "errors": [],
+      "warnings": [],
+      "elements_found": {
+        "buttons": 11,
+        "selectbox": 2,
+        "radio": 0,
+        "textarea": 0,
+        "expander": 2,
+        "tabs": 10
+      },
+      "screenshot": "test_screenshots\\항공사가이드.png"
+    },
+    {
+      "name": "표정연습",
+      "path": "/표정연습",
+      "priority": "B",
+      "status": "warn",
+      "load_time": 0.74,
+      "errors": [],
+      "warnings": [
+        "페이지 콘텐츠가 거의 없음"
+      ],
+      "elements_found": {
+        "buttons": 0,
+        "selectbox": 0,
+        "radio": 0,
+        "textarea": 0,
+        "expander": 0,
+        "tabs": 0
+      },
+      "screenshot": "test_screenshots\\표정연습.png"
+    },
+    {
+      "name": "항공사퀴즈",
+      "path": "/항공사퀴즈",
+      "priority": "B",
+      "status": "pass",
+      "load_time": 0.88,
+      "errors": [],
+      "warnings": [],
+      "elements_found": {
+        "buttons": 3,
+        "selectbox": 0,
+        "radio": 0,
+        "textarea": 0,
+        "expander": 1,
+        "tabs": 0
+      },
+      "screenshot": "test_screenshots\\항공사퀴즈.png"
+    },
+    {
+      "name": "기업분석",
+      "path": "/기업분석",
+      "priority": "C",
+      "status": "pass",
+      "load_time": 0.84,
+      "errors": [],
+      "warnings": [],
+      "elements_found": {
+        "buttons": 3,
+        "selectbox": 0,
+        "radio": 0,
+        "textarea": 0,
+        "expander": 0,
+        "tabs": 1
+      },
+      "screenshot": "test_screenshots\\기업분석.png"
+    },
+    {
+      "name": "자소서작성",
+      "path": "/자소서작성",
+      "priority": "C",
+      "status": "pass",
+      "load_time": 1.08,
+      "errors": [],
+      "warnings": [],
+      "elements_found": {
+        "buttons": 2,
+        "selectbox": 1,
+        "radio": 0,
+        "textarea": 0,
+        "expander": 1,
+        "tabs": 0
+      },
+      "screenshot": "test_screenshots\\자소서작성.png"
+    },
+    {
+      "name": "자소서첨삭",
+      "path": "/자소서첨삭",
+      "priority": "C",
+      "status": "pass",
+      "load_time": 1.37,
+      "errors": [],
+      "warnings": [],
+      "elements_found": {
+        "buttons": 8,
+        "selectbox": 3,
+        "radio": 0,
+        "textarea": 2,
+        "expander": 8,
+        "tabs": 5
+      },
+      "screenshot": "test_screenshots\\자소서첨삭.png"
+    },
+    {
+      "name": "자소서기반질문",
+      "path": "/자소서기반질문",
+      "priority": "C",
+      "status": "pass",
+      "load_time": 2.06,
+      "errors": [],
+      "warnings": [],
+      "elements_found": {
+        "buttons": 6,
+        "selectbox": 1,
+        "radio": 0,
+        "textarea": 1,
+        "expander": 0,
+        "tabs": 0
+      },
+      "screenshot": "test_screenshots\\자소서기반질문.png"
+    },
+    {
+      "name": "기내방송연습",
+      "path": "/기내방송연습",
+      "priority": "C",
+      "status": "pass",
+      "load_time": 1.34,
+      "errors": [],
+      "warnings": [],
+      "elements_found": {
+        "buttons": 0,
+        "selectbox": 0,
+        "radio": 0,
+        "textarea": 0,
+        "expander": 0,
+        "tabs": 0
+      },
+      "screenshot": "test_screenshots\\기내방송연습.png"
+    },
+    {
+      "name": "D-Day캘린더",
+      "path": "/D-Day캘린더",
+      "priority": "C",
+      "status": "pass",
+      "load_time": 1.07,
+      "errors": [],
+      "warnings": [],
+      "elements_found": {
+        "buttons": 9,
+        "selectbox": 8,
+        "radio": 0,
+        "textarea": 0,
+        "expander": 10,
+        "tabs": 9
+      },
+      "screenshot": "test_screenshots\\D-Day캘린더.png"
+    },
+    {
+      "name": "요금제",
+      "path": "/요금제",
+      "priority": "C",
+      "status": "pass",
+      "load_time": 0.74,
+      "errors": [],
+      "warnings": [],
+      "elements_found": {
+        "buttons": 0,
+        "selectbox": 0,
+        "radio": 0,
+        "textarea": 0,
+        "expander": 0,
+        "tabs": 0
+      },
+      "screenshot": "test_screenshots\\요금제.png"
+    },
+    {
+      "name": "그룹면접",
+      "path": "/그룹면접",
+      "priority": "C",
+      "status": "pass",
+      "load_time": 0.71,
+      "errors": [],
+      "warnings": [],
+      "elements_found": {
+        "buttons": 6,
+        "selectbox": 2,
+        "radio": 0,
+        "textarea": 0,
+        "expander": 0,
+        "tabs": 0
+      },
+      "screenshot": "test_screenshots\\그룹면접.png"
+    },
+    {
+      "name": "오늘 수정사항 확인",
+      "checks": [
+        {
+          "item": "정석형 라벨",
+          "status": "pass"
+        },
+        {
+          "item": "분석형 라벨",
+          "status": "fail"
+        },
+        {
+          "item": "타이머 제거 (텍스트)",
+          "status": "pass"
+        }
+      ],
+      "errors": [],
+      "status": "warn"
+    }
+  ],
+  "interactions": []
+}

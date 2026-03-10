@@ -1,6 +1,10 @@
 # pages/0_시작하기.py
 # FlyReady Lab 시작 가이드 - 간결하고 핵심만
 
+# 정식 웹사이트 이전 안내
+from redirect_to_web import show_redirect_and_stop
+show_redirect_and_stop()
+
 import streamlit as st
 import os
 import sys
@@ -9,11 +13,28 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sidebar_common import init_page, end_page
 
+# 튜토리얼 컴포넌트
+try:
+    from tutorial_component import (
+        render_tutorial_if_needed,
+        is_tutorial_completed,
+        show_tutorial_button,
+        show_tutorial,
+    )
+    TUTORIAL_AVAILABLE = True
+except ImportError:
+    TUTORIAL_AVAILABLE = False
+
 init_page(
     title="시작하기",
     current_page="시작하기",
     wide_layout=True
 )
+
+# 첫 방문 시 튜토리얼 표시
+if TUTORIAL_AVAILABLE:
+    if render_tutorial_if_needed():
+        st.stop()  # 튜토리얼 진행 중에는 아래 내용 표시 안 함
 
 # CSS
 st.markdown("""
@@ -231,5 +252,12 @@ with st.expander("FlyReady Lab 200% 활용 팁", expanded=False):
 
 # 진도관리 링크
 st.info("**학습 기록은 자동 저장됩니다.** 진도 확인: [진도관리 페이지](/진도관리)")
+
+# 튜토리얼 다시 보기
+if TUTORIAL_AVAILABLE:
+    st.markdown("---")
+    col1, col2, col3 = st.columns([2, 1, 2])
+    with col2:
+        show_tutorial_button()
 
 end_page()

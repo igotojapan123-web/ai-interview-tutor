@@ -1,0 +1,596 @@
+{
+  "summary": {
+    "total": 73,
+    "passed": 73,
+    "failed": 0,
+    "warnings": 0,
+    "pass_rate": "100.0%"
+  },
+  "elapsed_seconds": 11.129333019256592,
+  "tests": [
+    {
+      "category": "구문검사",
+      "name": "4_모의면접.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.420661"
+    },
+    {
+      "category": "구문검사",
+      "name": "interview_enhancer.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.429970"
+    },
+    {
+      "category": "구문검사",
+      "name": "airline_questions.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.435562"
+    },
+    {
+      "category": "구문검사",
+      "name": "content_enhancer.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.440708"
+    },
+    {
+      "category": "구문검사",
+      "name": "realism_enhancer.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.447379"
+    },
+    {
+      "category": "구문검사",
+      "name": "config.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.458912"
+    },
+    {
+      "category": "구문검사",
+      "name": "sidebar_common.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.461108"
+    },
+    {
+      "category": "구문검사",
+      "name": "0_시작하기.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.462502"
+    },
+    {
+      "category": "구문검사",
+      "name": "10_채용알림.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.477322"
+    },
+    {
+      "category": "구문검사",
+      "name": "11_항공사가이드.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.490071"
+    },
+    {
+      "category": "구문검사",
+      "name": "12_표정연습.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.501433"
+    },
+    {
+      "category": "구문검사",
+      "name": "13_실전연습.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.518874"
+    },
+    {
+      "category": "구문검사",
+      "name": "14_항공사퀴즈.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.531623"
+    },
+    {
+      "category": "구문검사",
+      "name": "15_국민체력.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.548113"
+    },
+    {
+      "category": "구문검사",
+      "name": "16_기업분석.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.554480"
+    },
+    {
+      "category": "구문검사",
+      "name": "17_자소서기반질문.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.610468"
+    },
+    {
+      "category": "구문검사",
+      "name": "19_자소서작성.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.614555"
+    },
+    {
+      "category": "구문검사",
+      "name": "1_롤플레잉.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.640443"
+    },
+    {
+      "category": "구문검사",
+      "name": "20_자소서첨삭.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.653721"
+    },
+    {
+      "category": "구문검사",
+      "name": "21_자소서템플릿.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.656540"
+    },
+    {
+      "category": "구문검사",
+      "name": "22_이미지메이킹.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.663591"
+    },
+    {
+      "category": "구문검사",
+      "name": "23_D-Day캘린더.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.680421"
+    },
+    {
+      "category": "구문검사",
+      "name": "24_QnA게시판.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.683632"
+    },
+    {
+      "category": "구문검사",
+      "name": "24_에어로케이.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.689949"
+    },
+    {
+      "category": "구문검사",
+      "name": "25_면접히스토리.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.695424"
+    },
+    {
+      "category": "구문검사",
+      "name": "26_기내방송연습.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.706797"
+    },
+    {
+      "category": "구문검사",
+      "name": "2_영어면접.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.718502"
+    },
+    {
+      "category": "구문검사",
+      "name": "30_로그인.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.719550"
+    },
+    {
+      "category": "구문검사",
+      "name": "31_구독.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.720588"
+    },
+    {
+      "category": "구문검사",
+      "name": "32_멘토찾기.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.722767"
+    },
+    {
+      "category": "구문검사",
+      "name": "34_스킬분석.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.725014"
+    },
+    {
+      "category": "구문검사",
+      "name": "35_요금제.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.725601"
+    },
+    {
+      "category": "구문검사",
+      "name": "36_AI코칭.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.736448"
+    },
+    {
+      "category": "구문검사",
+      "name": "37_그룹면접.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.758092"
+    },
+    {
+      "category": "구문검사",
+      "name": "3_진도관리.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.768064"
+    },
+    {
+      "category": "구문검사",
+      "name": "40_면접제보.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.771428"
+    },
+    {
+      "category": "구문검사",
+      "name": "41_면접예측.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.775127"
+    },
+    {
+      "category": "구문검사",
+      "name": "42_자소서뉴스연계.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.779006"
+    },
+    {
+      "category": "구문검사",
+      "name": "5_토론면접.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.803534"
+    },
+    {
+      "category": "구문검사",
+      "name": "6_성장그래프.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.824778"
+    },
+    {
+      "category": "구문검사",
+      "name": "7_합격자DB.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.847664"
+    },
+    {
+      "category": "구문검사",
+      "name": "8_면접꿀팁.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.877655"
+    },
+    {
+      "category": "구문검사",
+      "name": "99_관리자.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.894500"
+    },
+    {
+      "category": "Import",
+      "name": "interview_enhancer",
+      "status": "PASS",
+      "message": "5개 항목 확인",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.902730"
+    },
+    {
+      "category": "Import",
+      "name": "airline_questions",
+      "status": "PASS",
+      "message": "3개 항목 확인",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.903787"
+    },
+    {
+      "category": "Import",
+      "name": "config",
+      "status": "PASS",
+      "message": "2개 항목 확인",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.903805"
+    },
+    {
+      "category": "수정확인",
+      "name": "면접관 유형: 정석형",
+      "status": "PASS",
+      "message": "이름: 박서연 부장",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.903857"
+    },
+    {
+      "category": "수정확인",
+      "name": "면접관 유형: 분석형",
+      "status": "PASS",
+      "message": "이름: 이정훈 상무",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.903877"
+    },
+    {
+      "category": "수정확인",
+      "name": "STAR 비중: 경험형",
+      "status": "PASS",
+      "message": "A=50%",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.903890"
+    },
+    {
+      "category": "수정확인",
+      "name": "STAR 질문유형 감지",
+      "status": "PASS",
+      "message": "감지: 경험",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.903902"
+    },
+    {
+      "category": "수정확인",
+      "name": "꼬리질문: 갈등을 해결한 경험이 있나요...",
+      "status": "PASS",
+      "message": "그 과정에서 협업한 사람들의 반응은 어땠나요?",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.903929"
+    },
+    {
+      "category": "수정확인",
+      "name": "꼬리질문: 지원동기를 말씀해주세요...",
+      "status": "PASS",
+      "message": "그 상황을 더 자세히 말씀해주시겠어요?",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.903954"
+    },
+    {
+      "category": "수정확인",
+      "name": "꼬리질문: 팀워크 경험을 말씀해주세요...",
+      "status": "PASS",
+      "message": "좀 더 구체적으로 설명해주실 수 있나요?",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.903968"
+    },
+    {
+      "category": "수정확인",
+      "name": "점수: 패스 시 0점+skipped",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.905088"
+    },
+    {
+      "category": "수정확인",
+      "name": "점수: 0점 평균 포함",
+      "status": "PASS",
+      "message": "패스도 평균에 반영",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.905163"
+    },
+    {
+      "category": "수정확인",
+      "name": "텍스트모드: 타이머 제거",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.906380"
+    },
+    {
+      "category": "수정확인",
+      "name": "텍스트모드: 시작버튼 제거",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.906391"
+    },
+    {
+      "category": "수정확인",
+      "name": "질문 말투: 자연스러움",
+      "status": "PASS",
+      "message": "자연스러운 종결어 20개",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.906513"
+    },
+    {
+      "category": "수정확인",
+      "name": "신규질문: pressure",
+      "status": "PASS",
+      "message": "12개 질문",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.906523"
+    },
+    {
+      "category": "수정확인",
+      "name": "신규질문: trend_2025",
+      "status": "PASS",
+      "message": "12개 질문",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.906530"
+    },
+    {
+      "category": "수정확인",
+      "name": "신규질문: real_interview",
+      "status": "PASS",
+      "message": "10개 질문",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:13.906535"
+    },
+    {
+      "category": "어색함",
+      "name": "짧은 답변 테스트",
+      "status": "PASS",
+      "message": "발견: 4개 문제, 심각도: high",
+      "details": "답변 길이가 너무 짧음, 구체성이 부족함",
+      "timestamp": "2026-02-06T17:43:17.336590"
+    },
+    {
+      "category": "어색함",
+      "name": "추측성 답변 테스트",
+      "status": "PASS",
+      "message": "발견: 5개 문제, 심각도: high",
+      "details": "답변이 너무 짧음, 구체성이 부족하며 STAR 구조 미비",
+      "timestamp": "2026-02-06T17:43:20.665118"
+    },
+    {
+      "category": "어색함",
+      "name": "구체성 부족 테스트",
+      "status": "PASS",
+      "message": "발견: 4개 문제, 심각도: high",
+      "details": "답변이 너무 짧아서 구체적인 상황 설명이 부족함, STAR 구조가 부족하여 상황, 과제, 행동, 결과를 명확히 설명하지 않음",
+      "timestamp": "2026-02-06T17:43:24.502517"
+    },
+    {
+      "category": "런타임",
+      "name": "질문생성: 대한항공",
+      "status": "PASS",
+      "message": "6개 생성",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:24.502658"
+    },
+    {
+      "category": "런타임",
+      "name": "질문생성: 아시아나항공",
+      "status": "PASS",
+      "message": "6개 생성",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:24.502710"
+    },
+    {
+      "category": "런타임",
+      "name": "질문생성: 제주항공",
+      "status": "PASS",
+      "message": "6개 생성",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:24.502745"
+    },
+    {
+      "category": "런타임",
+      "name": "질문생성: 진에어",
+      "status": "PASS",
+      "message": "6개 생성",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:24.502781"
+    },
+    {
+      "category": "런타임",
+      "name": "키워드분석",
+      "status": "PASS",
+      "message": "점수: 41, STAR: 2/4",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:24.502907"
+    },
+    {
+      "category": "런타임",
+      "name": "꼬리질문 결정: 짧은답변",
+      "status": "PASS",
+      "message": "사유: 답변 보완 필요",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:24.502951"
+    },
+    {
+      "category": "데이터",
+      "name": "config.py",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:24.503227"
+    },
+    {
+      "category": "데이터",
+      "name": ".env",
+      "status": "PASS",
+      "message": "",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:24.503353"
+    },
+    {
+      "category": "데이터",
+      "name": "항공사 목록",
+      "status": "PASS",
+      "message": "11개",
+      "details": "",
+      "timestamp": "2026-02-06T17:43:24.503369"
+    }
+  ]
+}

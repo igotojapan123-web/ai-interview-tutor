@@ -2,6 +2,12 @@
 # FlyReady Lab - AI 1:1 코칭 대시보드
 # Phase 4 모듈 통합: ai_coach, learning_path, progress_tracker
 
+# 정식 웹사이트 이전 안내
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from redirect_to_web import show_redirect_and_stop
+show_redirect_and_stop()
+
 import streamlit as st
 import os
 import sys

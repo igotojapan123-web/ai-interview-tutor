@@ -1,0 +1,212 @@
+{
+  "timestamp": "2026-02-04T17:21:58.634244",
+  "base_url": "http://localhost:8501",
+  "summary": {
+    "total": 22,
+    "passed": 21,
+    "warned": 1,
+    "failed": 0
+  },
+  "results": [
+    {
+      "name": "홈",
+      "path": "/",
+      "status": "warn",
+      "load_time": 0.68,
+      "errors": [],
+      "warnings": [
+        "'FlyReady' 텍스트 없음"
+      ],
+      "screenshot": "test_screenshots\\홈.png"
+    },
+    {
+      "name": "시작하기",
+      "path": "/시작하기",
+      "status": "pass",
+      "load_time": 0.68,
+      "errors": [],
+      "warnings": [],
+      "screenshot": "test_screenshots\\시작하기.png"
+    },
+    {
+      "name": "모의면접",
+      "path": "/모의면접",
+      "status": "pass",
+      "load_time": 0.65,
+      "errors": [],
+      "warnings": [],
+      "screenshot": "test_screenshots\\모의면접.png"
+    },
+    {
+      "name": "롤플레잉",
+      "path": "/롤플레잉",
+      "status": "pass",
+      "load_time": 0.78,
+      "errors": [],
+      "warnings": [],
+      "screenshot": "test_screenshots\\롤플레잉.png"
+    },
+    {
+      "name": "영어면접",
+      "path": "/영어면접",
+      "status": "pass",
+      "load_time": 0.75,
+      "errors": [],
+      "warnings": [],
+      "screenshot": "test_screenshots\\영어면접.png"
+    },
+    {
+      "name": "토론면접",
+      "path": "/토론면접",
+      "status": "pass",
+      "load_time": 0.83,
+      "errors": [],
+      "warnings": [],
+      "screenshot": "test_screenshots\\토론면접.png"
+    },
+    {
+      "name": "진도관리",
+      "path": "/진도관리",
+      "status": "pass",
+      "load_time": 2.31,
+      "errors": [],
+      "warnings": [],
+      "screenshot": "test_screenshots\\진도관리.png"
+    },
+    {
+      "name": "성장그래프",
+      "path": "/성장그래프",
+      "status": "pass",
+      "load_time": 3.15,
+      "errors": [],
+      "warnings": [],
+      "screenshot": "test_screenshots\\성장그래프.png"
+    },
+    {
+      "name": "합격자DB",
+      "path": "/합격자DB",
+      "status": "pass",
+      "load_time": 0.72,
+      "errors": [],
+      "warnings": [],
+      "screenshot": "test_screenshots\\합격자DB.png"
+    },
+    {
+      "name": "면접꿀팁",
+      "path": "/면접꿀팁",
+      "status": "pass",
+      "load_time": 0.72,
+      "errors": [],
+      "warnings": [],
+      "screenshot": "test_screenshots\\면접꿀팁.png"
+    },
+    {
+      "name": "채용알림",
+      "path": "/채용알림",
+      "status": "pass",
+      "load_time": 0.73,
+      "errors": [],
+      "warnings": [],
+      "screenshot": "test_screenshots\\채용알림.png"
+    },
+    {
+      "name": "항공사가이드",
+      "path": "/항공사가이드",
+      "status": "pass",
+      "load_time": 0.64,
+      "errors": [],
+      "warnings": [],
+      "screenshot": "test_screenshots\\항공사가이드.png"
+    },
+    {
+      "name": "표정연습",
+      "path": "/표정연습",
+      "status": "pass",
+      "load_time": 0.67,
+      "errors": [],
+      "warnings": [],
+      "screenshot": "test_screenshots\\표정연습.png"
+    },
+    {
+      "name": "항공사퀴즈",
+      "path": "/항공사퀴즈",
+      "status": "pass",
+      "load_time": 0.66,
+      "errors": [],
+      "warnings": [],
+      "screenshot": "test_screenshots\\항공사퀴즈.png"
+    },
+    {
+      "name": "기업분석",
+      "path": "/기업분석",
+      "status": "pass",
+      "load_time": 0.69,
+      "errors": [],
+      "warnings": [],
+      "screenshot": "test_screenshots\\기업분석.png"
+    },
+    {
+      "name": "자소서작성",
+      "path": "/자소서작성",
+      "status": "pass",
+      "load_time": 0.69,
+      "errors": [],
+      "warnings": [],
+      "screenshot": "test_screenshots\\자소서작성.png"
+    },
+    {
+      "name": "자소서첨삭",
+      "path": "/자소서첨삭",
+      "status": "pass",
+      "load_time": 0.74,
+      "errors": [],
+      "warnings": [],
+      "screenshot": "test_screenshots\\자소서첨삭.png"
+    },
+    {
+      "name": "자소서기반질문",
+      "path": "/자소서기반질문",
+      "status": "pass",
+      "load_time": 0.66,
+      "errors": [],
+      "warnings": [],
+      "screenshot": "test_screenshots\\자소서기반질문.png"
+    },
+    {
+      "name": "기내방송연습",
+      "path": "/기내방송연습",
+      "status": "pass",
+      "load_time": 0.65,
+      "errors": [],
+      "warnings": [],
+      "screenshot": "test_screenshots\\기내방송연습.png"
+    },
+    {
+      "name": "D-Day캘린더",
+      "path": "/D-Day캘린더",
+      "status": "pass",
+      "load_time": 0.73,
+      "errors": [],
+      "warnings": [],
+      "screenshot": "test_screenshots\\D-Day캘린더.png"
+    },
+    {
+      "name": "요금제",
+      "path": "/요금제",
+      "status": "pass",
+      "load_time": 0.65,
+      "errors": [],
+      "warnings": [],
+      "screenshot": "test_screenshots\\요금제.png"
+    },
+    {
+      "name": "그룹면접",
+      "path": "/그룹면접",
+      "status": "pass",
+      "load_time": 0.74,
+      "errors": [],
+      "warnings": [],
+      "screenshot": "test_screenshots\\그룹면접.png"
+    }
+  ]
+}

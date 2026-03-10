@@ -476,6 +476,49 @@ def get_user_payments(user_id: str) -> List[Payment]:
     return [Payment(p) for p in payments if p["user_id"] == user_id]
 
 
+def get_subscription_remaining_days(user_id: str) -> Dict[str, Any]:
+    """구독 남은 일수 조회
+
+    Returns:
+        Dict with keys:
+        - has_subscription: bool
+        - tier: str (free/standard/premium)
+        - remaining_days: int (남은 일수, 만료시 0)
+        - end_date: str (종료 날짜)
+        - is_active: bool
+    """
+    sub = get_user_subscription(user_id)
+
+    if not sub or not sub.get("is_active"):
+        return {
+            "has_subscription": False,
+            "tier": "free",
+            "remaining_days": 0,
+            "end_date": None,
+            "is_active": False,
+        }
+
+    try:
+        end_date = datetime.fromisoformat(sub["end_date"])
+        remaining = (end_date - datetime.now()).days
+
+        return {
+            "has_subscription": True,
+            "tier": sub.get("tier", "standard"),
+            "remaining_days": max(0, remaining),
+            "end_date": sub["end_date"],
+            "is_active": remaining > 0,
+        }
+    except Exception:
+        return {
+            "has_subscription": False,
+            "tier": "free",
+            "remaining_days": 0,
+            "end_date": None,
+            "is_active": False,
+        }
+
+
 # ============================================
 # 카카오페이 결제 플로우
 # ============================================

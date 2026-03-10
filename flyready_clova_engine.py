@@ -3,17 +3,103 @@
 # 취약점 기반 강/약 판단 + 질문 버전 자동 분배
 # 1회 호출로 분석 + 6버전 질문 모두 생성
 # v4.1: 디버그 로깅 + 질문 검증 + Few-shot 예시 추가
+# 2026.02 비용 최적화: 동일 자소서 캐싱 추가
 
 import os
 import re
 import json
 import time
+import hashlib
 import requests
 from typing import Dict, List, Optional, Tuple
-from datetime import datetime
+from datetime import datetime, timedelta
 from logging_config import get_logger
 
 logger = get_logger(__name__)
+
+# =========================
+# 비용 절감: CLOVA 캐싱
+# =========================
+try:
+    from config import CACHE_RESUME_ANALYSIS, CACHE_RESUME_TTL_HOURS
+except ImportError:
+    CACHE_RESUME_ANALYSIS = True
+    CACHE_RESUME_TTL_HOURS = 24
+
+_CLOVA_CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache", "clova_analysis")
+
+
+def _ensure_clova_cache_dir():
+    """CLOVA 캐시 디렉토리 생성"""
+    if not os.path.exists(_CLOVA_CACHE_DIR):
+        os.makedirs(_CLOVA_CACHE_DIR, exist_ok=True)
+
+
+def _get_clova_cache_hash(question: str, answer: str) -> str:
+    """CLOVA 분석용 해시 생성"""
+    content = f"Q:{question}\nA:{answer}"
+    return hashlib.sha256(content.encode('utf-8')).hexdigest()
+
+
+def get_cached_clova_analysis(question: str, answer: str) -> Optional[Dict]:
+    """CLOVA 분석 결과 캐시 조회"""
+    if not CACHE_RESUME_ANALYSIS:
+        return None
+
+    try:
+        _ensure_clova_cache_dir()
+        cache_hash = _get_clova_cache_hash(question, answer)
+        cache_path = os.path.join(_CLOVA_CACHE_DIR, f"{cache_hash[:16]}.json")
+
+        if not os.path.exists(cache_path):
+            return None
+
+        with open(cache_path, 'r', encoding='utf-8') as f:
+            cached = json.load(f)
+
+        # TTL 확인
+        cached_time = cached.get("_cached_at", "")
+        if cached_time:
+            try:
+                cached_dt = datetime.fromisoformat(cached_time)
+                if datetime.now() - cached_dt > timedelta(hours=CACHE_RESUME_TTL_HOURS):
+                    logger.info(f"[CLOVA 캐시] TTL 만료")
+                    os.remove(cache_path)
+                    return None
+            except (ValueError, TypeError):
+                pass
+
+        logger.info(f"[CLOVA 캐시] 적중! API 비용 절감")
+        return cached.get("result")
+
+    except Exception as e:
+        logger.debug(f"[CLOVA 캐시] 조회 실패: {e}")
+        return None
+
+
+def save_clova_cache(question: str, answer: str, result: Dict):
+    """CLOVA 분석 결과 캐시 저장"""
+    if not CACHE_RESUME_ANALYSIS:
+        return
+
+    try:
+        _ensure_clova_cache_dir()
+        cache_hash = _get_clova_cache_hash(question, answer)
+        cache_path = os.path.join(_CLOVA_CACHE_DIR, f"{cache_hash[:16]}.json")
+
+        cache_data = {
+            "_cached_at": datetime.now().isoformat(),
+            "_hash": cache_hash,
+            "result": result
+        }
+
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            json.dump(cache_data, f, ensure_ascii=False, indent=2)
+
+        logger.info(f"[CLOVA 캐시] 저장 완료")
+
+    except Exception as e:
+        logger.debug(f"[CLOVA 캐시] 저장 실패: {e}")
 
 # ===========================================
 # v4.1 디버그 설정
@@ -783,6 +869,7 @@ class FlyreadyClovaEngine:
     def analyze(self, question: str, answer: str, item_num: int = 2) -> dict:
         """
         메인 분석 함수 (1회 호출로 분석 + 6버전 질문 생성)
+        2026.02 비용 최적화: 동일 자소서 캐싱 지원
 
         Args:
             question: 자소서 문항
@@ -802,8 +889,16 @@ class FlyreadyClovaEngine:
                 "raw_response": "원본 응답"
             }
         """
-        print(f"\n[FLYREADY v4.0] 분석 시작 (항공사: {self.airline})")
+        print(f"\n[FLYREADY v4.1] 분석 시작 (항공사: {self.airline})")
         start_time = time.time()
+
+        # 캐시 확인 (비용 절감)
+        cached_result = get_cached_clova_analysis(question, answer)
+        if cached_result:
+            print("[FLYREADY v4.1] 캐시 적중! API 호출 생략 (비용 절감)")
+            cached_result["_from_cache"] = True
+            cached_result["processing_time"] = time.time() - start_time
+            return cached_result
 
         # 1회 호출로 전체 분석 + 6버전 질문 생성
         print("[CLOVA 호출] 7단계 분석 + 6버전 질문 생성 중...")
@@ -851,6 +946,10 @@ class FlyreadyClovaEngine:
         # 결과에 원본 응답 추가
         parsed["raw_response"] = raw_response
         parsed["processing_time"] = total_time
+        parsed["_from_cache"] = False
+
+        # 캐시 저장 (비용 절감: 다음 동일 요청 시 API 호출 생략)
+        save_clova_cache(question, answer, parsed)
 
         return parsed
 

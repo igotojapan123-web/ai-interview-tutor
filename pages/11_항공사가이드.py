@@ -2,6 +2,12 @@
 # 항공사별 면접 가이드 - 사실 기반 정보 (국내 11개 항공사)
 # 전면 개편: 기업 정체성, 최신 이슈, FSC vs LCC 질문 패턴 추가
 
+# 정식 웹사이트 이전 안내
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from redirect_to_web import show_redirect_and_stop
+show_redirect_and_stop()
+
 import streamlit as st
 import os
 import sys

@@ -1,6 +1,12 @@
 # pages/26_기내방송연습.py
 # 기내방송 연습 - 스크립트 확장 + 쉐도잉 + TTS + 대시보드 + 속도코치
 
+# 정식 웹사이트 이전 안내
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from redirect_to_web import show_redirect_and_stop
+show_redirect_and_stop()
+
 import streamlit as st
 import os
 import sys

@@ -1,6 +1,12 @@
 # pages/15_국민체력.py
 # 국민체력100 - 등급 계산기 + 훈련 트래커 + 맞춤 플랜 + D-Day + 합격자 후기
 
+# 정식 웹사이트 이전 안내
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from redirect_to_web import show_redirect_and_stop
+show_redirect_and_stop()
+
 import streamlit as st
 import os
 import sys

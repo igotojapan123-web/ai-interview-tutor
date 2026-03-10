@@ -2,6 +2,12 @@
 # 항공 퀴즈 통합 - 항공사별 퀴즈 + 항공 상식 퀴즈
 # 항공사 10개 기업분석 퀴즈 + 항공 일반상식 5개 카테고리
 
+# 정식 웹사이트 이전 안내
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from redirect_to_web import show_redirect_and_stop
+show_redirect_and_stop()
+
 import streamlit as st
 import os
 import sys

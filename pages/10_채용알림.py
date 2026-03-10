@@ -1,6 +1,12 @@
 # pages/10_채용알림.py
 # 항공사 채용 일정 알림 페이지 - 사실 기반 정보
 
+# 정식 웹사이트 이전 안내
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from redirect_to_web import show_redirect_and_stop
+show_redirect_and_stop()
+
 import streamlit as st
 from datetime import datetime, timedelta
 import json

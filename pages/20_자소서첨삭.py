@@ -1,6 +1,12 @@
 # pages/20_자소서첨삭.py
 # AI 기반 자기소개서 첨삭 - 재첨삭 + 예시 + 키워드 + 버전비교 + 문장분석
 
+# 정식 웹사이트 이전 안내
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from redirect_to_web import show_redirect_and_stop
+show_redirect_and_stop()
+
 import os
 import json
 import re
@@ -382,9 +388,12 @@ def analyze_text(content):
 
 
 # ----------------------------
-# CSS
+# CSS (캐싱)
 # ----------------------------
-st.markdown("""
+@st.cache_resource
+def get_resume_css():
+    """자소서 첨삭 페이지 CSS (영구 캐시)"""
+    return """
 <style>
 /* 모든 입력 필드에서 복사/붙여넣기 허용 - 강화된 선택자 */
 textarea, input, [contenteditable="true"],
@@ -468,7 +477,9 @@ button, .stButton, [role="button"] {
     letter-spacing: -0.3px;
 }
 </style>
-""", unsafe_allow_html=True)
+"""
+
+st.markdown(get_resume_css(), unsafe_allow_html=True)
 
 
 # ----------------------------

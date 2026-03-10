@@ -715,6 +715,13 @@ def render_user_profile():
     tier_info = SUBSCRIPTION_TIERS.get(user.subscription_tier, SUBSCRIPTION_TIERS["free"])
     tier_color = tier_info["color"]
 
+    # 구독 남은 기간 조회
+    try:
+        from payment_system import get_subscription_remaining_days
+        sub_info = get_subscription_remaining_days(user.user_id)
+    except ImportError:
+        sub_info = {"has_subscription": False, "remaining_days": 0}
+
     st.markdown(f"""
     <style>
     .user-profile {{
@@ -765,11 +772,34 @@ def render_user_profile():
         font-size: 0.8rem;
         color: #64748b;
     }}
+    .subscription-remaining {{
+        font-size: 0.75rem;
+        color: #10b981;
+        font-weight: 600;
+        margin-top: 2px;
+    }}
+    .subscription-expiring {{
+        color: #f59e0b;
+    }}
+    .subscription-expired {{
+        color: #ef4444;
+    }}
     </style>
     """, unsafe_allow_html=True)
 
     avatar_html = f'<img src="{user.profile_image}" alt="avatar">' if user.profile_image else user.name[0] if user.name else "U"
     remaining = user.get_daily_limit() - user.daily_api_calls
+
+    # 구독 남은 기간 표시
+    sub_html = ""
+    if sub_info.get("has_subscription") and sub_info.get("remaining_days", 0) > 0:
+        days = sub_info["remaining_days"]
+        if days <= 7:
+            sub_html = f'<div class="subscription-remaining subscription-expiring">구독 {days}일 남음</div>'
+        else:
+            sub_html = f'<div class="subscription-remaining">구독 {days}일 남음</div>'
+    elif user.subscription_tier != "free":
+        sub_html = '<div class="subscription-remaining subscription-expired">구독 만료됨</div>'
 
     st.markdown(f"""
     <div class="user-profile">
@@ -777,6 +807,7 @@ def render_user_profile():
         <div class="user-info">
             <div class="user-name">{user.name}</div>
             <div class="user-tier">{tier_info['name']}</div>
+            {sub_html}
         </div>
         <div class="user-usage">오늘 남은 횟수: {remaining}회</div>
     </div>

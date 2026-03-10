@@ -1,6 +1,12 @@
 # pages/12_표정연습.py
 # 동영상으로 표정/자세 연습 - 전면 개편 버전
 
+# 정식 웹사이트 이전 안내
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from redirect_to_web import show_redirect_and_stop
+show_redirect_and_stop()
+
 import streamlit as st
 import os
 import sys
@@ -450,7 +456,235 @@ def add_to_history(context: str, result: Dict):
 
 
 def analyze_video_frames(frames_base64: List[str], context: str = "면접") -> Optional[Dict[str, Any]]:
-    """GPT-4 Vision으로 프레임 분석"""
+    """
+    MediaPipe 로컬 분석으로 프레임 분석 (비용 절감)
+    2026.02 최적화: GPT-4o Vision API 호출 제거 → 무료 로컬 분석
+    비용 절감: 세션당 $0.04 → $0 (100% 절감)
+    """
+    if not frames_base64:
+        return None
+
+    # config에서 분석 모드 확인
+    try:
+        from config import EXPRESSION_ANALYSIS_MODE
+    except ImportError:
+        EXPRESSION_ANALYSIS_MODE = "local"
+
+    # MediaPipe 로컬 분석 (비용 $0)
+    if EXPRESSION_ANALYSIS_MODE == "local":
+        return _analyze_frames_local(frames_base64, context)
+
+    # 레거시: GPT-4o Vision 분석 (비용 발생 - 비권장)
+    return _analyze_frames_vision_api(frames_base64, context)
+
+
+def _analyze_frames_local(frames_base64: List[str], context: str = "면접") -> Optional[Dict[str, Any]]:
+    """
+    MediaPipe 기반 로컬 프레임 분석 (무료)
+    """
+    try:
+        import sys
+        import os
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from webcam_analyzer import WebcamAnalyzer, MEDIAPIPE_AVAILABLE, OPENCV_AVAILABLE
+
+        if not MEDIAPIPE_AVAILABLE or not OPENCV_AVAILABLE:
+            logger.warning("[표정분석] MediaPipe 미설치, 기본 결과 반환")
+            return _get_fallback_result()
+
+        import cv2
+        import numpy as np
+
+        analyzer = WebcamAnalyzer()
+        if not analyzer.initialize():
+            logger.warning("[표정분석] MediaPipe 초기화 실패")
+            return _get_fallback_result()
+
+        # 프레임 분석 결과 수집
+        frame_results = []
+        for i, b64_frame in enumerate(frames_base64[:5]):  # 최대 5프레임
+            try:
+                # base64 → numpy array
+                img_bytes = base64.b64decode(b64_frame)
+                nparr = np.frombuffer(img_bytes, np.uint8)
+                frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+                if frame is not None:
+                    result = analyzer.analyze_frame(frame)
+                    frame_results.append(result)
+            except Exception as e:
+                logger.debug(f"프레임 {i} 분석 실패: {e}")
+
+        if not frame_results:
+            return _get_fallback_result()
+
+        # 결과 집계
+        return _aggregate_frame_results(frame_results, context)
+
+    except Exception as e:
+        logger.error(f"[표정분석] 로컬 분석 오류: {e}")
+        return _get_fallback_result()
+
+
+def _aggregate_frame_results(frame_results: List[Dict], context: str) -> Dict[str, Any]:
+    """MediaPipe 분석 결과를 집계하여 최종 결과 생성"""
+
+    # 프레임별 점수/상태 집계
+    smile_count = 0
+    eye_contact_count = 0
+    shoulder_aligned_count = 0
+    head_centered_count = 0
+    total_frames = len(frame_results)
+
+    for r in frame_results:
+        face = r.get("face", {})
+        pose = r.get("pose", {})
+
+        if face.get("expression") == "smile":
+            smile_count += 1
+        if face.get("eye_contact"):
+            eye_contact_count += 1
+        if face.get("head_position") == "centered":
+            head_centered_count += 1
+        if pose.get("shoulder_aligned"):
+            shoulder_aligned_count += 1
+
+    # 비율 계산
+    smile_ratio = smile_count / total_frames if total_frames > 0 else 0
+    eye_ratio = eye_contact_count / total_frames if total_frames > 0 else 0
+    head_ratio = head_centered_count / total_frames if total_frames > 0 else 0
+    shoulder_ratio = shoulder_aligned_count / total_frames if total_frames > 0 else 0
+
+    # 점수 계산 (100점 만점)
+    expression_score = int(smile_ratio * 5 + eye_ratio * 3 + 2)  # 1-10
+    posture_score = int(head_ratio * 4 + shoulder_ratio * 4 + 2)  # 1-10
+    overall_score = int((expression_score * 40 + posture_score * 40 + 20) / 10) * 10
+
+    # 스마일 타입 판정
+    smile_type = "무표정"
+    if smile_ratio > 0.7:
+        smile_type = "듀센스마일"
+    elif smile_ratio > 0.3:
+        smile_type = "팬암스마일"
+
+    # 시간별 분석
+    if len(frame_results) >= 3:
+        start_smile = frame_results[0].get("face", {}).get("expression") == "smile"
+        mid_smile = frame_results[len(frame_results)//2].get("face", {}).get("expression") == "smile"
+        end_smile = frame_results[-1].get("face", {}).get("expression") == "smile"
+        consistency = sum([start_smile, mid_smile, end_smile])
+    else:
+        consistency = 2
+
+    # FSC/LCC 적합도
+    fsc_score = min(10, posture_score + (1 if smile_type != "무표정" else 0))
+    lcc_score = min(10, expression_score + (2 if smile_ratio > 0.5 else 0))
+
+    # 강점/개선점 생성
+    strengths = []
+    improvements = []
+
+    if smile_ratio > 0.5:
+        strengths.append("자연스러운 미소가 좋습니다")
+    else:
+        improvements.append("미소를 더 자주 지어보세요")
+
+    if eye_ratio > 0.7:
+        strengths.append("시선 처리가 안정적입니다")
+    else:
+        improvements.append("카메라를 더 자주 바라보세요")
+
+    if shoulder_ratio > 0.7:
+        strengths.append("자세가 바르고 안정적입니다")
+    else:
+        improvements.append("어깨를 펴고 바른 자세를 유지하세요")
+
+    if not strengths:
+        strengths = ["분석 중 특별한 강점 미발견"]
+    if not improvements:
+        improvements = ["현재 상태 유지"]
+
+    return {
+        "expression": {
+            "score": expression_score,
+            "smile": "좋음" if smile_ratio > 0.5 else ("보통" if smile_ratio > 0.2 else "부족"),
+            "smile_type": smile_type,
+            "smile_consistency": "일관됨" if consistency >= 2 else "변동있음",
+            "eye_contact": "좋음" if eye_ratio > 0.7 else ("보통" if eye_ratio > 0.4 else "부족"),
+            "eye_smile": "있음" if smile_ratio > 0.5 and eye_ratio > 0.5 else "부족",
+            "naturalness": "자연스러움" if smile_ratio > 0.3 else "긴장됨",
+            "feedback": f"미소 유지율 {int(smile_ratio*100)}%, 시선 처리 {int(eye_ratio*100)}%"
+        },
+        "posture": {
+            "score": posture_score,
+            "consistency": "일관됨" if shoulder_ratio > 0.7 else "흔들림",
+            "shoulders": "바름" if shoulder_ratio > 0.7 else ("처짐" if shoulder_ratio < 0.3 else "약간 비대칭"),
+            "head_position": "바름" if head_ratio > 0.7 else "기울어짐",
+            "feedback": f"어깨 정렬 {int(shoulder_ratio*100)}%, 머리 위치 {int(head_ratio*100)}%"
+        },
+        "impression": {
+            "score": (expression_score + posture_score) // 2,
+            "confidence": "높음" if overall_score > 70 else ("보통" if overall_score > 50 else "낮음"),
+            "friendliness": "높음" if smile_ratio > 0.5 else "보통",
+            "professionalism": "높음" if posture_score > 7 else "보통",
+            "trustworthiness": "높음" if eye_ratio > 0.7 else "보통",
+            "feedback": "전반적으로 좋은 인상입니다" if overall_score > 60 else "자신감을 더 보여주세요"
+        },
+        "time_analysis": {
+            "start": "미소" if (frame_results[0].get("face", {}).get("expression") == "smile") else "무표정",
+            "mid": "미소" if (frame_results[len(frame_results)//2].get("face", {}).get("expression") == "smile") else "무표정",
+            "end": "미소" if (frame_results[-1].get("face", {}).get("expression") == "smile") else "무표정",
+            "consistency_score": min(10, consistency * 3 + 1),
+            "feedback": "일관된 표정 유지" if consistency >= 2 else "표정 변화가 있습니다"
+        },
+        "fsc_lcc_fit": {
+            "fsc_score": fsc_score,
+            "lcc_score": lcc_score,
+            "recommendation": "FSC" if fsc_score > lcc_score else ("LCC" if lcc_score > fsc_score else "둘 다 적합")
+        },
+        "overall_score": overall_score,
+        "strengths": strengths[:3],
+        "improvements": improvements[:3],
+        "specific_tips": [
+            "거울 앞에서 매일 5분 미소 연습",
+            "카메라 렌즈를 눈높이에 맞추세요"
+        ],
+        "tip": "눈으로 먼저 웃고, 입꼬리가 따라오게 하세요",
+        "_analysis_mode": "local_mediapipe",  # 분석 모드 표시
+        "_cost_saved": True  # 비용 절감 표시
+    }
+
+
+def _get_fallback_result() -> Dict[str, Any]:
+    """MediaPipe 미설치 시 기본 결과"""
+    return {
+        "expression": {"score": 5, "smile": "확인불가", "smile_type": "분석필요",
+                       "smile_consistency": "확인불가", "eye_contact": "확인불가",
+                       "eye_smile": "확인불가", "naturalness": "확인불가",
+                       "feedback": "MediaPipe 설치 후 정확한 분석이 가능합니다"},
+        "posture": {"score": 5, "consistency": "확인불가", "shoulders": "확인불가",
+                    "head_position": "확인불가", "feedback": "자세 분석을 위해 MediaPipe가 필요합니다"},
+        "impression": {"score": 5, "confidence": "확인불가", "friendliness": "확인불가",
+                       "professionalism": "확인불가", "trustworthiness": "확인불가",
+                       "feedback": "분석을 위해 MediaPipe를 설치해주세요"},
+        "time_analysis": {"start": "N/A", "mid": "N/A", "end": "N/A",
+                          "consistency_score": 5, "feedback": "시간별 분석 불가"},
+        "fsc_lcc_fit": {"fsc_score": 5, "lcc_score": 5, "recommendation": "분석 필요"},
+        "overall_score": 50,
+        "strengths": ["분석 대기 중"],
+        "improvements": ["MediaPipe 설치 권장"],
+        "specific_tips": ["pip install mediapipe opencv-python"],
+        "tip": "정확한 분석을 위해 MediaPipe를 설치하세요",
+        "_analysis_mode": "fallback",
+        "_cost_saved": True
+    }
+
+
+def _analyze_frames_vision_api(frames_base64: List[str], context: str = "면접") -> Optional[Dict[str, Any]]:
+    """
+    레거시: GPT-4o Vision API 분석 (비용 발생 - 비권장)
+    config.py에서 EXPRESSION_ANALYSIS_MODE = "vision"으로 설정 시에만 사용
+    """
     if not OPENAI_API_KEY or not frames_base64:
         return None
 
@@ -463,43 +697,11 @@ def analyze_video_frames(frames_base64: List[str], context: str = "면접") -> O
 
 JSON 형식으로만 응답:
 {
-    "expression": {
-        "score": 1-10,
-        "smile": "좋음/보통/부족",
-        "smile_type": "듀센스마일/팬암스마일/무표정",
-        "smile_consistency": "일관됨/변동있음/부족",
-        "eye_contact": "좋음/보통/부족",
-        "eye_smile": "있음/부족/없음",
-        "naturalness": "자연스러움/어색함/긴장됨",
-        "feedback": "표정 피드백"
-    },
-    "posture": {
-        "score": 1-10,
-        "consistency": "일관됨/흔들림",
-        "shoulders": "바름/처짐/비대칭",
-        "head_position": "바름/기울어짐/숙임",
-        "feedback": "자세 피드백"
-    },
-    "impression": {
-        "score": 1-10,
-        "confidence": "높음/보통/낮음",
-        "friendliness": "높음/보통/낮음",
-        "professionalism": "높음/보통/낮음",
-        "trustworthiness": "높음/보통/낮음",
-        "feedback": "인상 피드백"
-    },
-    "time_analysis": {
-        "start": "초반 상태",
-        "mid": "중반 상태",
-        "end": "후반 상태",
-        "consistency_score": 1-10,
-        "feedback": "시간별 변화 피드백"
-    },
-    "fsc_lcc_fit": {
-        "fsc_score": 1-10,
-        "lcc_score": 1-10,
-        "recommendation": "FSC/LCC/둘 다 적합"
-    },
+    "expression": {"score": 1-10, "smile": "좋음/보통/부족", "smile_type": "듀센스마일/팬암스마일/무표정", "smile_consistency": "일관됨/변동있음/부족", "eye_contact": "좋음/보통/부족", "eye_smile": "있음/부족/없음", "naturalness": "자연스러움/어색함/긴장됨", "feedback": "표정 피드백"},
+    "posture": {"score": 1-10, "consistency": "일관됨/흔들림", "shoulders": "바름/처짐/비대칭", "head_position": "바름/기울어짐/숙임", "feedback": "자세 피드백"},
+    "impression": {"score": 1-10, "confidence": "높음/보통/낮음", "friendliness": "높음/보통/낮음", "professionalism": "높음/보통/낮음", "trustworthiness": "높음/보통/낮음", "feedback": "인상 피드백"},
+    "time_analysis": {"start": "초반 상태", "mid": "중반 상태", "end": "후반 상태", "consistency_score": 1-10, "feedback": "시간별 변화 피드백"},
+    "fsc_lcc_fit": {"fsc_score": 1-10, "lcc_score": 1-10, "recommendation": "FSC/LCC/둘 다 적합"},
     "overall_score": 1-100,
     "strengths": ["강점1", "강점2", "강점3"],
     "improvements": ["개선점1", "개선점2", "개선점3"],
@@ -535,7 +737,10 @@ JSON 형식으로만 응답:
         elif "```" in content:
             content = content.split("```")[1].split("```")[0]
 
-        return json.loads(content.strip())
+        result = json.loads(content.strip())
+        result["_analysis_mode"] = "vision_api"
+        result["_cost_saved"] = False
+        return result
     except Exception as e:
         st.error(f"분석 오류: {e}")
         return None

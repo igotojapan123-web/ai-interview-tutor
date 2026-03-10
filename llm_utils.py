@@ -1,5 +1,6 @@
 # llm_utils.py
 # LLM 상태 관리, API 호출, JSON 파싱, 추출 로직
+# 2026.02 비용 최적화: 파일 기반 캐싱 추가 (동일 자소서 재분석 방지)
 
 # LLM 프롬프트 버전 - 프롬프트 변경 시 버전 올려서 캐시 무효화
 _LLM_PROMPT_VERSION = "v2_q2_topic_20260119"
@@ -8,6 +9,7 @@ import os
 import json
 import time
 import hashlib
+from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, Tuple
 
 import requests
@@ -20,12 +22,143 @@ from config import (
     LLM_REQUIRED_KEYS,
     INTERVIEWER_TONE_RULES, KOREAN_QUESTION_RULES, ABSOLUTE_PROHIBITIONS,
 )
+
+# 비용 절감 설정 임포트
+try:
+    from config import CACHE_RESUME_ANALYSIS, CACHE_RESUME_TTL_HOURS
+except ImportError:
+    CACHE_RESUME_ANALYSIS = True
+    CACHE_RESUME_TTL_HOURS = 24
+
 from text_utils import normalize_ws
 from analysis import _classify_prompt_type_kor
 from extraction_verifier import verify_llm_extraction, two_stage_extraction
 from logging_config import get_logger
 
 logger = get_logger(__name__)
+
+# =========================
+# 파일 기반 캐싱 (비용 절감)
+# =========================
+_CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache", "resume_analysis")
+
+
+def _ensure_cache_dir():
+    """캐시 디렉토리 생성"""
+    if not os.path.exists(_CACHE_DIR):
+        os.makedirs(_CACHE_DIR, exist_ok=True)
+
+
+def _get_cache_file_path(cache_hash: str) -> str:
+    """캐시 파일 경로"""
+    return os.path.join(_CACHE_DIR, f"{cache_hash[:16]}.json")
+
+
+def get_cached_resume_analysis(qa_sets: List[Dict[str, str]]) -> Optional[Dict[str, Any]]:
+    """
+    파일 기반 캐시에서 자소서 분석 결과 조회 (비용 절감)
+
+    Returns:
+        캐시된 결과 또는 None
+    """
+    if not CACHE_RESUME_ANALYSIS:
+        return None
+
+    try:
+        _ensure_cache_dir()
+        cache_hash = _calc_llm_hash_from_qa_sets(qa_sets)
+        cache_path = _get_cache_file_path(cache_hash)
+
+        if not os.path.exists(cache_path):
+            return None
+
+        with open(cache_path, 'r', encoding='utf-8') as f:
+            cached = json.load(f)
+
+        # TTL 확인
+        cached_time = cached.get("_cached_at", "")
+        if cached_time:
+            try:
+                cached_dt = datetime.fromisoformat(cached_time)
+                if datetime.now() - cached_dt > timedelta(hours=CACHE_RESUME_TTL_HOURS):
+                    logger.info(f"[캐시] TTL 만료: {cache_hash[:8]}")
+                    os.remove(cache_path)
+                    return None
+            except (ValueError, TypeError):
+                pass
+
+        logger.info(f"[캐시] 적중! 자소서 분석 캐시 사용 (API 비용 절감): {cache_hash[:8]}")
+        return cached.get("result")
+
+    except Exception as e:
+        logger.debug(f"[캐시] 조회 실패: {e}")
+        return None
+
+
+def save_cached_resume_analysis(qa_sets: List[Dict[str, str]], result: Dict[str, Any]):
+    """
+    자소서 분석 결과를 파일 캐시에 저장 (비용 절감)
+    """
+    if not CACHE_RESUME_ANALYSIS:
+        return
+
+    try:
+        _ensure_cache_dir()
+        cache_hash = _calc_llm_hash_from_qa_sets(qa_sets)
+        cache_path = _get_cache_file_path(cache_hash)
+
+        cache_data = {
+            "_cached_at": datetime.now().isoformat(),
+            "_prompt_version": _LLM_PROMPT_VERSION,
+            "_hash": cache_hash,
+            "result": result
+        }
+
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            json.dump(cache_data, f, ensure_ascii=False, indent=2)
+
+        logger.info(f"[캐시] 저장 완료: {cache_hash[:8]}")
+
+    except Exception as e:
+        logger.debug(f"[캐시] 저장 실패: {e}")
+
+
+def cleanup_expired_cache():
+    """만료된 캐시 파일 정리"""
+    try:
+        _ensure_cache_dir()
+        now = datetime.now()
+        ttl = timedelta(hours=CACHE_RESUME_TTL_HOURS)
+        deleted_count = 0
+
+        for filename in os.listdir(_CACHE_DIR):
+            if not filename.endswith('.json'):
+                continue
+
+            filepath = os.path.join(_CACHE_DIR, filename)
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    cached = json.load(f)
+
+                cached_time = cached.get("_cached_at", "")
+                if cached_time:
+                    cached_dt = datetime.fromisoformat(cached_time)
+                    if now - cached_dt > ttl:
+                        os.remove(filepath)
+                        deleted_count += 1
+            except (json.JSONDecodeError, ValueError, OSError):
+                # 손상된 캐시 파일 삭제
+                try:
+                    os.remove(filepath)
+                    deleted_count += 1
+                except OSError:
+                    pass
+
+        if deleted_count > 0:
+            logger.info(f"[캐시] 만료 캐시 {deleted_count}개 정리")
+
+    except Exception as e:
+        logger.debug(f"[캐시] 정리 실패: {e}")
 
 
 def _now_ts() -> float:

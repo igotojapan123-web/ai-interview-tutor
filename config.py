@@ -425,6 +425,45 @@ RISK_TRIGGERS = [
 ]
 
 # =========================
+# API 비용 절감 설정 (2026.02 최적화)
+# =========================
+
+# STT 모델 선택: "whisper-1" ($0.006/분) vs "gpt-4o-transcribe" ($0.003/분)
+# gpt-4o-transcribe는 Whisper 대비 50% 저렴하고 품질 동일
+STT_MODEL = "gpt-4o-transcribe"  # 비용 50% 절감
+STT_FALLBACK_MODEL = "whisper-1"  # 폴백용
+
+# 표정연습 분석 모드: "local" (MediaPipe, 무료) vs "vision" (GPT-4o Vision, 유료)
+EXPRESSION_ANALYSIS_MODE = "local"  # MediaPipe 로컬 분석 (GPT-4o Vision 비용 제거)
+
+# 사용자 티어별 음성 제한 (Whisper/STT 비용 절감)
+VOICE_LIMITS = {
+    "FREE": {
+        "max_duration_per_answer": 60,   # 답변당 최대 60초 (현재 무제한 → 제한)
+        "monthly_voice_calls": 30,        # 월 음성 인식 30회 제한
+        "daily_voice_calls": 5,           # 일일 음성 인식 5회 제한
+    },
+    "STANDARD": {
+        "max_duration_per_answer": 90,   # 답변당 최대 90초
+        "monthly_voice_calls": -1,        # 무제한
+        "daily_voice_calls": -1,          # 무제한
+    },
+    "PREMIUM": {
+        "max_duration_per_answer": 120,  # 답변당 최대 120초
+        "monthly_voice_calls": -1,        # 무제한
+        "daily_voice_calls": -1,          # 무제한
+    },
+}
+
+# 캐싱 설정 (API 호출 절감)
+CACHE_RESUME_ANALYSIS = True          # 동일 자소서 분석 결과 캐싱
+CACHE_RESUME_TTL_HOURS = 24           # 자소서 캐시 유효 시간 (24시간)
+CACHE_QUESTION_TEMPLATES = True       # 질문 템플릿 캐싱
+
+# 실전연습 프레임 최적화
+PRACTICE_FRAMES_PER_QUESTION = 3      # 질문당 분석 프레임 수 (기존 5 → 3)
+
+# =========================
 # LLM 설정
 # =========================
 

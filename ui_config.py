@@ -2,6 +2,8 @@
 # FlyReady Lab 디자인 시스템 - 전문적이고 깔끔한 UI 설정
 # 이모지 없이 아이콘과 텍스트로 구성
 
+import streamlit as st
+
 # ============================================
 # 색상 팔레트
 # ============================================
@@ -126,10 +128,11 @@ MAIN_PAGE_CARDS = {
 }
 
 # ============================================
-# 공통 CSS 스타일
+# 공통 CSS 스타일 (캐싱 적용)
 # ============================================
+@st.cache_resource
 def get_base_css():
-    """기본 CSS 스타일 반환"""
+    """기본 CSS 스타일 반환 (영구 캐시)"""
     return f"""
 <style>
 /* Pretendard 폰트 로드 */
@@ -463,8 +466,9 @@ header[data-testid="stHeader"] {{ display: none; }}
 """
 
 
+@st.cache_resource
 def get_sidebar_css():
-    """사이드바 CSS 스타일 반환"""
+    """사이드바 CSS 스타일 반환 (영구 캐시)"""
     return f"""
 <style>
 /* 기본 Streamlit 페이지 네비게이션 숨김 */
@@ -613,8 +617,9 @@ def get_sidebar_css():
 """
 
 
+@st.cache_resource
 def get_page_css():
-    """페이지별 공통 CSS 스타일 반환"""
+    """페이지별 공통 CSS 스타일 반환 (영구 캐시)"""
     return f"""
 <style>
 /* 페이지 타이틀 스타일 */
